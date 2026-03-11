@@ -24,7 +24,8 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
-    "pydocstring-rs",
+    "pydocstring-rs>=0.1.1",
+    "typer>=0.15",
 ]
 
 [project.scripts]
@@ -39,10 +40,14 @@ dev = [
 
 [tool.ruff]
 target-version = "py310"
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
+
+[tool.pyright]
+pythonVersion = "3.10"
+extraPaths = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

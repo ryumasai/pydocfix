@@ -2,27 +2,74 @@
 
 from __future__ import annotations
 
-from pydocfix.cli import main, parse_args
+from typer.testing import CliRunner
+
+from pydocfix.cli import app
+
+runner = CliRunner()
 
 
-class TestParseArgs:
-    def test_default_paths(self):
-        args = parse_args([])
-        assert args.paths == ["."]
+class TestCheck:
+    def test_no_args_shows_help(self):
+        result = runner.invoke(app, [])
+        assert "check" in result.output
 
-    def test_custom_paths(self):
-        args = parse_args(["src/", "lib/"])
-        assert args.paths == ["src/", "lib/"]
+    def test_check_empty_dir(self, tmp_path):
+        result = runner.invoke(app, ["check", str(tmp_path)])
+        assert result.exit_code == 0
 
-    def test_fix_flag(self):
-        args = parse_args(["--fix"])
-        assert args.fix is True
+    def test_check_fix_flag(self, tmp_path):
+        result = runner.invoke(app, ["check", "--fix", str(tmp_path)])
+        assert result.exit_code == 0
 
-    def test_no_fix_by_default(self):
-        args = parse_args([])
-        assert args.fix is False
+    def test_check_diff_flag(self, tmp_path):
+        result = runner.invoke(app, ["check", "--diff", str(tmp_path)])
+        assert result.exit_code == 0
 
+    def test_check_detects_violation(self, tmp_path):
+        p = tmp_path / "bad.py"
+        p.write_text('def foo():\n    """No period"""\n    pass\n')
+        result = runner.invoke(app, ["check", str(p)])
+        assert result.exit_code == 1
+        assert "D200" in result.output
 
-class TestMain:
-    def test_returns_zero(self):
-        assert main([]) == 0
+    def test_check_fix_applies(self, tmp_path):
+        p = tmp_path / "bad.py"
+        p.write_text('def foo():\n    """No period"""\n    pass\n')
+        result = runner.invoke(app, ["check", "--fix", str(p)])
+        assert result.exit_code == 0
+        assert "Fixed" in result.output
+        assert '"""No period."""' in p.read_text()
+
+    def test_check_diff_shows_diff(self, tmp_path):
+        p = tmp_path / "bad.py"
+        p.write_text('def foo():\n    """No period"""\n    pass\n')
+        result = runner.invoke(app, ["check", "--diff", str(p)])
+        assert "---" in result.output
+        assert "+++" in result.output
+
+    def test_unsafe_fix_not_applied_without_flag(self, tmp_path):
+        p = tmp_path / "bad.py"
+        p.write_text(
+            'def foo(x: int):\n    """Summary.\n\n    Args:\n        x (str): The x value.\n    """\n    pass\n'
+        )
+        result = runner.invoke(app, ["check", "--fix", str(p)])
+        assert result.exit_code == 1
+        assert "unsafe fix" in result.output
+        # docstring should NOT be changed
+        assert "(str)" in p.read_text()
+
+    def test_unsafe_fix_applied_with_flag(self, tmp_path):
+        p = tmp_path / "bad.py"
+        p.write_text(
+            'def foo(x: int):\n    """Summary.\n\n    Args:\n        x (str): The x value.\n    """\n    pass\n'
+        )
+        result = runner.invoke(app, ["check", "--fix", "--unsafe-fixes", str(p)])
+        assert "Fixed" in result.output
+        assert "(int)" in p.read_text()
+
+    def test_safe_fix_shows_fixable(self, tmp_path):
+        p = tmp_path / "bad.py"
+        p.write_text('def foo():\n    """No period"""\n    pass\n')
+        result = runner.invoke(app, ["check", str(p)])
+        assert "(fixable)" in result.output
