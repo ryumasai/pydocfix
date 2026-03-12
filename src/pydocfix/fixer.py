@@ -3,19 +3,31 @@
 from __future__ import annotations
 
 import ast
+import logging
+from collections.abc import Iterable
 from pathlib import Path
 
 from pydocfix.checker import _extract_docstrings
-from pydocfix.rules import Diagnostic, Edit, apply_edits
+from pydocfix.rules import Diagnostic, Edit, Fix, apply_edits
+
+logger = logging.getLogger(__name__)
 
 
-def fix_file(
-    filepath: Path,
-    diagnostics: list[Diagnostic],
-) -> str | None:
+def _has_overlap(accepted: Iterable[Edit], candidate: Fix) -> bool:
+    """Return True if any edit in *candidate* overlaps with *accepted* edits."""
+    for new in candidate.edits:
+        for existing in accepted:
+            if new.start < existing.end and existing.start < new.end:
+                return True
+    return False
+
+
+def fix_file(filepath: Path, diagnostics: Iterable[Diagnostic]) -> str | None:
     """Apply auto-fixes for all fixable diagnostics and return the new source.
 
     Returns None if no changes were made.
+    Fixes are applied per-Fix: if a Fix's edits overlap with already-accepted
+    edits for the same docstring, the entire Fix is skipped.
     """
     fixable = [d for d in diagnostics if d.fixable]
     if not fixable:
@@ -24,22 +36,36 @@ def fix_file(
     source = filepath.read_text(encoding="utf-8")
     lines = source.splitlines(keepends=True)
 
-    # Build lookup: docstring_line -> list of Edits
-    edits_by_line: dict[int, list[Edit]] = {}
+    # Build lookup: docstring_line -> list of (rule, Fix)
+    fixes_by_line: dict[int, list[tuple[str, Fix]]] = {}
     for d in fixable:
         assert d.fix is not None
-        edits_by_line.setdefault(d.docstring_line, []).extend(d.fix.edits)
+        fixes_by_line.setdefault(d.docstring_line, []).append((d.rule, d.fix))
 
     # Collect (file_start, file_end, new_docstring) per docstring
     file_edits: list[tuple[int, int, str]] = []
 
     for ds, _ast_node, ds_stmt in _extract_docstrings(source, filepath):
-        text_edits = edits_by_line.get(ds_stmt.lineno, [])
-        if not text_edits:
+        pending_fixes = fixes_by_line.get(ds_stmt.lineno, [])
+        if not pending_fixes:
             continue
 
-        raw = ds
-        new_raw = apply_edits(raw, text_edits)
+        # Accept fixes one at a time, skipping those that overlap
+        accepted_edits: list[Edit] = []
+        for rule_code, fix in pending_fixes:
+            if _has_overlap(accepted_edits, fix):
+                logger.warning(
+                    "%s: skipping fix from rule %s (overlapping edits)",
+                    filepath,
+                    rule_code,
+                )
+                continue
+            accepted_edits.extend(fix.edits)
+
+        if not accepted_edits:
+            continue
+
+        new_raw = apply_edits(ds, accepted_edits)
 
         assert isinstance(ds_stmt, ast.Expr)
         start, end = _find_docstring_range(lines, ds_stmt)

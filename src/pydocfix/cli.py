@@ -64,13 +64,13 @@ def check(
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
 
-    from pydocfix.checker import build_kind_map, diagnose_file
+    from pydocfix.checker import build_rules_map, diagnose_file
     from pydocfix.fixer import fix_file
     from pydocfix.rules import build_registry
 
     registry = build_registry()
     rules = registry.all_rules()
-    kind_map = build_kind_map(rules)
+    kind_map = build_rules_map(rules)
 
     targets = _collect_files(paths or ["."])
     if not targets:
@@ -101,7 +101,7 @@ def check(
 
         for d in diagnostics:
             hint = _fixable_hint(d, unsafe_fixes)
-            print(f"{d.filepath}:{d.line}:{d.col}: {d.rule} {d.message}{hint}")
+            print(f"{d.filepath}:{d.lineno}:{d.col}: {d.rule} {d.message}{hint}")
 
     remaining = total_violations - total_fixed
 

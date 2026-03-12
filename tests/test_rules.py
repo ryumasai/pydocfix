@@ -8,22 +8,33 @@ from pathlib import Path
 from pydocstring import Node, SyntaxKind, Token, parse_google, parse_numpy
 
 from pydocfix.rules import (
+    Applicability,
     D200,
     D401,
     DiagnoseContext,
     Diagnostic,
     Edit,
     Fix,
+    Offset,
     Range,
     apply_edits,
     build_registry,
 )
 
 
+def _dummy_stmt(lineno: int = 1, col_offset: int = 0) -> ast.stmt:
+    """Create a minimal ast.stmt with the given position."""
+    node = ast.Expr(value=ast.Constant(value=""))
+    node.lineno = lineno
+    node.col_offset = col_offset
+    node.end_lineno = lineno
+    node.end_col_offset = col_offset
+    return node
+
+
 def _make_diagnose_ctx(raw: str) -> DiagnoseContext:
     """Create a DiagnoseContext with the SUMMARY token as cst_node."""
     parsed = parse_google(raw)
-    model = parsed.to_model()
     # Find the SUMMARY token in the CST
     summary_token = parsed.summary
     if summary_token is None:
@@ -31,13 +42,12 @@ def _make_diagnose_ctx(raw: str) -> DiagnoseContext:
         summary_token = Token(kind="SUMMARY", text="", start=0, end=0)
     return DiagnoseContext(
         filepath=Path("test.py"),
-        docstring_source=raw,
-        docstring_model=model,
-        cst=parsed,
-        cst_node=summary_token,
-        ast_node=ast.parse("pass").body[0],
-        range=Range(start_line=1, start_col=0, end_line=1, end_col=len(raw)),
-        indent=0,
+        docstring_text=raw,
+        docstring_cst=parsed,
+        target_cst=summary_token,
+        parent_ast=ast.parse("pass").body[0],
+        docstring_stmt=_dummy_stmt(1, 0),
+        docstring_text_offset=Offset(1, 0),
     )
 
 
@@ -76,8 +86,8 @@ class TestDiagnostic:
             rule="D200",
             message="test",
             filepath="test.py",
-            range=Range(1, 0, 1, 10),
-            fix=Fix(edits=[]),
+            range=Range(Offset(1, 0), Offset(1, 10)),
+            fix=Fix(edits=[], applicability=Applicability.SAFE),
         )
         assert d.fixable is True
 
@@ -86,7 +96,7 @@ class TestDiagnostic:
             rule="D200",
             message="test",
             filepath="test.py",
-            range=Range(1, 0, 1, 10),
+            range=Range(Offset(1, 0), Offset(1, 10)),
         )
         assert d.fixable is False
 
@@ -95,9 +105,9 @@ class TestDiagnostic:
             rule="D200",
             message="test",
             filepath="test.py",
-            range=Range(start_line=5, start_col=4, end_line=7, end_col=0),
+            range=Range(Offset(5, 4), Offset(7, 0)),
         )
-        assert d.line == 5
+        assert d.lineno == 5
         assert d.col == 4
 
 
@@ -181,18 +191,16 @@ def _make_d401_ctx_google(
 ) -> DiagnoseContext:
     """Build a DiagnoseContext for D401 tests (Google style)."""
     parsed = parse_google(ds_text)
-    model = parsed.to_model()
     tree = ast.parse(func_src)
     func_node = tree.body[0]
     return DiagnoseContext(
         filepath=Path("test.py"),
-        docstring_source=ds_text,
-        docstring_model=model,
-        cst=parsed,
-        cst_node=cst_node,
-        ast_node=func_node,
-        range=Range(start_line=2, start_col=4, end_line=6, end_col=4),
-        indent=4,
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=cst_node,
+        parent_ast=func_node,
+        docstring_stmt=_dummy_stmt(2, 4),
+        docstring_text_offset=Offset(2, 7),
     )
 
 
@@ -308,13 +316,12 @@ class TestD401GoogleParam:
         tree = ast.parse(func)
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
-            docstring_source=ds,
-            docstring_model=parsed.to_model(),
-            cst=parsed,
-            cst_node=args[0],
-            ast_node=tree.body[0],
-            range=Range(start_line=1, start_col=0, end_line=1, end_col=0),
-            indent=0,
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=args[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(1, 0),
+            docstring_text_offset=Offset(1, 0),
         )
         diag = D401().diagnose(ctx)
         assert diag is None
@@ -374,17 +381,15 @@ class TestD401Numpy:
         parsed = parse_numpy(ds)
         params = _find_cst_nodes(parsed, SyntaxKind.NUMPY_PARAMETER)
         assert len(params) == 1
-        model = parsed.to_model()
         tree = ast.parse(func)
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
-            docstring_source=ds,
-            docstring_model=model,
-            cst=parsed,
-            cst_node=params[0],
-            ast_node=tree.body[0],
-            range=Range(start_line=2, start_col=4, end_line=8, end_col=4),
-            indent=4,
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=params[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_text_offset=Offset(2, 7),
         )
         diag = D401().diagnose(ctx)
         assert diag is not None
@@ -397,17 +402,15 @@ class TestD401Numpy:
         parsed = parse_numpy(ds)
         rets = _find_cst_nodes(parsed, SyntaxKind.NUMPY_RETURNS)
         assert len(rets) == 1
-        model = parsed.to_model()
         tree = ast.parse(func)
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
-            docstring_source=ds,
-            docstring_model=model,
-            cst=parsed,
-            cst_node=rets[0],
-            ast_node=tree.body[0],
-            range=Range(start_line=2, start_col=4, end_line=8, end_col=4),
-            indent=4,
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=rets[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_text_offset=Offset(2, 7),
         )
         diag = D401().diagnose(ctx)
         assert diag is not None
@@ -419,17 +422,15 @@ class TestD401Numpy:
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_numpy(ds)
         params = _find_cst_nodes(parsed, SyntaxKind.NUMPY_PARAMETER)
-        model = parsed.to_model()
         tree = ast.parse(func)
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
-            docstring_source=ds,
-            docstring_model=model,
-            cst=parsed,
-            cst_node=params[0],
-            ast_node=tree.body[0],
-            range=Range(start_line=2, start_col=4, end_line=8, end_col=4),
-            indent=4,
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=params[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_text_offset=Offset(2, 7),
         )
         diag = D401().diagnose(ctx)
         assert diag is None
