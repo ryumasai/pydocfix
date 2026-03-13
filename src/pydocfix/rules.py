@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import ast
+import bisect
 import enum
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from functools import cached_property
 from itertools import pairwise
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 from pydocstring import (
     GoogleDocstring,
@@ -100,6 +102,16 @@ class Diagnostic:
         return self.range.start.col
 
 
+class DocstringLocation(NamedTuple):
+    """Pre-computed positional info for a docstring expression."""
+
+    content_offset: Offset  # where content begins (after opening quote)
+    byte_start: int  # byte offset of expression start in source
+    byte_end: int  # byte offset of expression end in source
+    opening: str  # opening quote string (including prefix like r, u)
+    closing: str  # closing quote string
+
+
 @dataclass
 class DiagnoseContext:
     """Information passed to a rule's diagnose method."""
@@ -110,10 +122,11 @@ class DiagnoseContext:
     target_cst: Node | Token
     parent_ast: ast.AST
     docstring_stmt: ast.stmt
-    docstring_text_offset: Offset
+    docstring_location: DocstringLocation
 
-    def _build_line_offsets(self) -> list[int]:
-        """Return a list mapping each line (0-indexed) to its byte offset."""
+    @cached_property
+    def _line_offsets(self) -> list[int]:
+        """Byte offset of each line (0-indexed) within the docstring."""
         offsets = [0]
         for i, ch in enumerate(self.docstring_text):
             if ch == "\n":
@@ -124,32 +137,28 @@ class DiagnoseContext:
         """Convert a CST node/token byte range to a file-level Range."""
         if node is None:
             node = self.target_cst
-        line_offsets = self._build_line_offsets()
         return Range(
             start=Offset(
-                self._offset_to_line(node.range.start, line_offsets),
-                self._offset_to_col(node.range.start, line_offsets),
+                self._offset_to_line(node.range.start),
+                self._offset_to_col(node.range.start),
             ),
             end=Offset(
-                self._offset_to_line(node.range.end, line_offsets), self._offset_to_col(node.range.end, line_offsets)
+                self._offset_to_line(node.range.end),
+                self._offset_to_col(node.range.end),
             ),
         )
 
-    def _offset_to_line(self, offset: int, line_offsets: list[int]) -> int:
+    def _offset_to_line(self, offset: int) -> int:
         """Convert a byte offset to a 1-based file line number."""
-        import bisect
+        local_line = bisect.bisect_right(self._line_offsets, offset) - 1
+        return self.docstring_location.content_offset.lineno + local_line
 
-        local_line = bisect.bisect_right(line_offsets, offset) - 1
-        return self.docstring_text_offset.lineno + local_line
-
-    def _offset_to_col(self, offset: int, line_offsets: list[int]) -> int:
+    def _offset_to_col(self, offset: int) -> int:
         """Convert a byte offset to a 0-based file column number."""
-        import bisect
-
-        local_line = bisect.bisect_right(line_offsets, offset) - 1
-        col_in_content = offset - line_offsets[local_line]
+        local_line = bisect.bisect_right(self._line_offsets, offset) - 1
+        col_in_content = offset - self._line_offsets[local_line]
         if local_line == 0:
-            return self.docstring_text_offset.col + col_in_content
+            return self.docstring_location.content_offset.col + col_in_content
         return col_in_content
 
 
@@ -180,6 +189,15 @@ def apply_edits(source: str, edits: Iterable[Edit]) -> str:
     for edit in sorted_edits:
         result = result[: edit.start] + edit.new_text + result[edit.end :]
     return result
+
+
+def is_applicable(diag: Diagnostic, unsafe_fixes: bool) -> bool:
+    """Return True if the diagnostic's fix should be applied."""
+    if diag.fix is None:
+        return False
+    if diag.fix.applicability == Applicability.SAFE:
+        return True
+    return diag.fix.applicability == Applicability.UNSAFE and unsafe_fixes
 
 
 class BaseRule:
@@ -247,8 +265,14 @@ class D401(BaseRule):
         SyntaxKind.NUMPY_RETURNS,
     }
 
+    def __init__(self):
+        self._ann_cache: tuple[int, dict[str, str]] = (0, {})
+
     def _get_annotation_map(self, ast_node: ast.AST) -> dict[str, str]:
         """Build a mapping of parameter name -> unparsed type annotation."""
+        node_id = id(ast_node)
+        if self._ann_cache[0] == node_id:
+            return self._ann_cache[1]
         if not isinstance(ast_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return {}
         result: dict[str, str] = {}
@@ -263,6 +287,7 @@ class D401(BaseRule):
             result[ast_node.args.vararg.arg] = ast.unparse(ast_node.args.vararg.annotation)
         if ast_node.args.kwarg and ast_node.args.kwarg.annotation is not None:
             result[ast_node.args.kwarg.arg] = ast.unparse(ast_node.args.kwarg.annotation)
+        self._ann_cache = (node_id, result)
         return result
 
     def _get_return_annotation(self, ast_node: ast.AST) -> str | None:
@@ -360,6 +385,10 @@ class RuleRegistry:
 
     def all_rules(self) -> list[BaseRule]:
         return list(self._rules.values())
+
+    @property
+    def kind_map(self) -> dict[SyntaxKind, list[BaseRule]]:
+        return dict(self._by_kind)
 
 
 def build_registry() -> RuleRegistry:

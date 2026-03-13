@@ -13,6 +13,7 @@ from pydocfix.rules import (
     D401,
     DiagnoseContext,
     Diagnostic,
+    DocstringLocation,
     Edit,
     Fix,
     Offset,
@@ -47,7 +48,7 @@ def _make_diagnose_ctx(raw: str) -> DiagnoseContext:
         target_cst=summary_token,
         parent_ast=ast.parse("pass").body[0],
         docstring_stmt=_dummy_stmt(1, 0),
-        docstring_text_offset=Offset(1, 0),
+        docstring_location=DocstringLocation(Offset(1, 0), 0, len(raw) + 6, '"""', '"""'),
     )
 
 
@@ -200,7 +201,7 @@ def _make_d401_ctx_google(
         target_cst=cst_node,
         parent_ast=func_node,
         docstring_stmt=_dummy_stmt(2, 4),
-        docstring_text_offset=Offset(2, 7),
+        docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
     )
 
 
@@ -321,7 +322,7 @@ class TestD401GoogleParam:
             target_cst=args[0],
             parent_ast=tree.body[0],
             docstring_stmt=_dummy_stmt(1, 0),
-            docstring_text_offset=Offset(1, 0),
+            docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
         )
         diag = D401().diagnose(ctx)
         assert diag is None
@@ -389,7 +390,7 @@ class TestD401Numpy:
             target_cst=params[0],
             parent_ast=tree.body[0],
             docstring_stmt=_dummy_stmt(2, 4),
-            docstring_text_offset=Offset(2, 7),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
         diag = D401().diagnose(ctx)
         assert diag is not None
@@ -410,7 +411,7 @@ class TestD401Numpy:
             target_cst=rets[0],
             parent_ast=tree.body[0],
             docstring_stmt=_dummy_stmt(2, 4),
-            docstring_text_offset=Offset(2, 7),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
         diag = D401().diagnose(ctx)
         assert diag is not None
@@ -430,7 +431,7 @@ class TestD401Numpy:
             target_cst=params[0],
             parent_ast=tree.body[0],
             docstring_stmt=_dummy_stmt(2, 4),
-            docstring_text_offset=Offset(2, 7),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
         diag = D401().diagnose(ctx)
         assert diag is None

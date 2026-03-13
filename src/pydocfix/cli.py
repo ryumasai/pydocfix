@@ -64,13 +64,11 @@ def check(
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
 
-    from pydocfix.checker import build_rules_map, diagnose_file
-    from pydocfix.fixer import fix_file
+    from pydocfix.checker import check_file
     from pydocfix.rules import build_registry
 
     registry = build_registry()
-    rules = registry.all_rules()
-    kind_map = build_rules_map(rules)
+    kind_map = registry.kind_map
 
     targets = _collect_files(paths or ["."])
     if not targets:
@@ -81,23 +79,22 @@ def check(
     total_fixed = 0
 
     for filepath in sorted(targets):
-        diagnostics = diagnose_file(filepath, kind_map)
+        source = filepath.read_text(encoding="utf-8")
+        diagnostics, new_source, fixed_indices = check_file(
+            source, filepath, kind_map, fix=(fix or diff), unsafe_fixes=unsafe_fixes
+        )
         if not diagnostics:
             continue
 
         total_violations += len(diagnostics)
 
-        if fix or diff:
-            applicable = _filter_applicable(diagnostics, unsafe_fixes)
-            new_source = fix_file(filepath, applicable)
-            if new_source is not None:
-                if diff:
-                    _print_diff(filepath, new_source)
-                if fix:
-                    filepath.write_text(new_source, encoding="utf-8")
-                    fixed = sum(1 for d in applicable if d.fixable)
-                    total_fixed += fixed
-                    diagnostics = diagnose_file(filepath, kind_map)
+        if new_source is not None:
+            if diff:
+                _print_diff(filepath, source, new_source)
+            if fix:
+                filepath.write_text(new_source, encoding="utf-8")
+                total_fixed += len(fixed_indices)
+                diagnostics = [d for i, d in enumerate(diagnostics) if i not in fixed_indices]
 
         for d in diagnostics:
             hint = _fixable_hint(d, unsafe_fixes)
@@ -110,23 +107,6 @@ def check(
 
     if remaining > 0:
         raise typer.Exit(1)
-
-
-def _filter_applicable(diagnostics: list, unsafe_fixes: bool) -> list:
-    """Return diagnostics whose fixes should be applied."""
-    from pydocfix.rules import Applicability
-
-    result = []
-    for d in diagnostics:
-        if d.fix is None:
-            continue
-        if d.fix.applicability == Applicability.SAFE:
-            result.append(d)
-            continue
-        if d.fix.applicability == Applicability.UNSAFE and unsafe_fixes:
-            result.append(d)
-            continue
-    return result
 
 
 def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe fix)"]:
@@ -146,9 +126,8 @@ def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe 
     return unfixable
 
 
-def _print_diff(filepath: Path, new_source: str) -> None:
+def _print_diff(filepath: Path, original: str, new_source: str) -> None:
     """Print unified diff between original and fixed source."""
-    original = filepath.read_text(encoding="utf-8")
     diff_lines = difflib.unified_diff(
         original.splitlines(keepends=True),
         new_source.splitlines(keepends=True),
