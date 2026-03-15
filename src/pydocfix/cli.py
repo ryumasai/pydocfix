@@ -67,10 +67,10 @@ def check(
     from pydocfix.checker import check_file
     from pydocfix.rules import build_registry
 
-    registry = build_registry()
-    kind_map = registry.kind_map
+    registry: Final = build_registry()
+    kind_map: Final = registry.kind_map
 
-    targets = _collect_files(paths or ["."])
+    targets: Final = _collect_files(paths or ["."])
     if not targets:
         logger.warning("no Python files found.")
         raise typer.Exit(0)
