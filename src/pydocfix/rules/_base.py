@@ -193,6 +193,7 @@ class BaseRule:
 
     code: str = ""
     message: str = ""
+    enabled_by_default: bool = True
     target_kinds: set[SyntaxKind] = set()
 
     def __init__(self, config: Config | None = None) -> None:

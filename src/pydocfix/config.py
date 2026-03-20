@@ -16,6 +16,7 @@ class Config:
 
     period: str | None = None
     ignore: list[str] = field(default_factory=list)
+    select: list[str] = field(default_factory=list)
 
 
 def find_pyproject_toml(start: Path | None = None) -> Path | None:
@@ -48,4 +49,5 @@ def load_config(start: Path | None = None) -> Config:
 
     period: str | None = section.get("period") or None
     ignore: list[str] = [str(code) for code in section.get("ignore", [])]
-    return Config(ignore=ignore, period=period)
+    select: list[str] = [str(code) for code in section.get("select", [])]
+    return Config(ignore=ignore, period=period, select=select)

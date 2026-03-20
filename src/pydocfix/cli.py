@@ -40,7 +40,7 @@ def check(
     from pydocfix.rules import build_registry
 
     config = load_config()
-    registry: Final = build_registry(ignore=config.ignore, config=config)
+    registry: Final = build_registry(ignore=config.ignore, select=config.select, config=config)
     kind_map: Final = registry.kind_map
 
     targets: Final = _collect_files(list(paths) or ["."])

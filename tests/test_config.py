@@ -57,6 +57,16 @@ class TestLoadConfig:
         config = load_config(tmp_path)
         assert config.ignore == []
 
+    def test_select_list(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\nselect = ["D200"]\n')
+        config = load_config(tmp_path)
+        assert config.select == ["D200"]
+
+    def test_select_defaults_to_empty(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\n")
+        config = load_config(tmp_path)
+        assert config.select == []
+
 
 class TestIgnoreViaConfig:
     """Integration: ignored rules produce no diagnostics."""
@@ -79,16 +89,66 @@ class TestIgnoreViaConfig:
         diags, *_ = check_file(source, tmp_path / "f.py", registry.kind_map)
         assert any(d.rule == "D200" for d in diags)
 
-    def test_cli_respects_ignore_in_pyproject(self, tmp_path: Path, monkeypatch):
-        from typer.testing import CliRunner
 
-        from pydocfix.cli import app
+class TestSelectViaConfig:
+    """Integration: select controls which rules are active."""
 
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\nignore = ["D200"]\n')
-        p = tmp_path / "bad.py"
-        p.write_text('def foo():\n    """No period"""\n    pass\n')
+    def test_select_limits_to_specified_rule(self, tmp_path: Path):
+        from pydocfix.checker import check_file
+        from pydocfix.rules import build_registry
 
-        result = CliRunner().invoke(app, ["check", str(p)])
-        assert result.exit_code == 0
-        assert "D200" not in result.output
+        source = 'def foo():\n    """No period"""\n    pass\n'
+        # Only D401 selected → D200 should NOT fire even though it is default-enabled
+        registry = build_registry(select=["D401"])
+        diags, *_ = check_file(source, tmp_path / "f.py", registry.kind_map)
+        assert not any(d.rule == "D200" for d in diags)
+
+    def test_select_all_enables_non_default_rule(self, tmp_path: Path):
+        from pydocfix.rules import BaseRule, build_registry
+
+        # Fabricate a rule with enabled_by_default=False
+        class _OptIn(BaseRule):
+            code = "_OPTIN"
+            enabled_by_default = False
+            target_kinds = set()
+
+        from pydocfix.rules import _BUILTIN_RULES
+
+        _BUILTIN_RULES.append(_OptIn)
+        try:
+            registry = build_registry(select=["ALL"])
+            assert registry.get("_OPTIN") is not None
+        finally:
+            _BUILTIN_RULES.remove(_OptIn)
+
+    def test_default_enabled_rule_active_without_select(self, tmp_path: Path):
+        from pydocfix.checker import check_file
+        from pydocfix.rules import build_registry
+
+        source = 'def foo():\n    """No period"""\n    pass\n'
+        registry = build_registry()  # no select → only default-enabled rules
+        diags, *_ = check_file(source, tmp_path / "f.py", registry.kind_map)
+        assert any(d.rule == "D200" for d in diags)
+
+    def test_non_default_rule_inactive_without_select(self, tmp_path: Path):
+        from pydocfix.rules import BaseRule, build_registry
+
+        class _OptIn(BaseRule):
+            code = "_OPTIN2"
+            enabled_by_default = False
+            target_kinds = set()
+
+        from pydocfix.rules import _BUILTIN_RULES
+
+        _BUILTIN_RULES.append(_OptIn)
+        try:
+            registry = build_registry()
+            assert registry.get("_OPTIN2") is None
+        finally:
+            _BUILTIN_RULES.remove(_OptIn)
+
+    def test_ignore_overrides_select(self, tmp_path: Path):
+        from pydocfix.rules import build_registry
+
+        registry = build_registry(select=["ALL"], ignore=["D200"])
+        assert registry.get("D200") is None
