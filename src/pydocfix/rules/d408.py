@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 
 from pydocstring import Node, SyntaxKind, Token
 
@@ -52,17 +53,16 @@ class D408(BaseRule):
             applicability=Applicability.UNSAFE,
         )
 
-    def diagnose(self, ctx: DiagnoseContext) -> list[Diagnostic] | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
         if not isinstance(section, Node):
-            return None
+            return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return None
+            return
         if not self._is_param_section(section):
-            return None
+            return
 
         seen: dict[str, Node] = {}
-        diagnostics: list[Diagnostic] = []
 
         for child in section.children:
             if not isinstance(child, Node):
@@ -78,8 +78,6 @@ class D408(BaseRule):
             if name in seen:
                 fix = self._build_delete_fix(ctx.docstring_text, child)
                 message = f"Parameter '{name}' is documented more than once."
-                diagnostics.append(self._make_diagnostic(ctx, message, fix=fix, target=name_token))
+                yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)
             else:
                 seen[name] = child
-
-        return diagnostics or None

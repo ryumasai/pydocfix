@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 
 from pydocstring import Node, SyntaxKind, Token
 
@@ -94,14 +95,14 @@ class D404(BaseRule):
 
     # -- entry point ---------------------------------------------------
 
-    def diagnose(self, ctx: DiagnoseContext) -> list[Diagnostic]:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
         if not isinstance(section, Node):
-            return []
+            return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return []
+            return
         if not self._is_param_section(section):
-            return []
+            return
 
         documented = self._get_documented_params(section)
         sig_params = self._get_signature_params(ctx.parent_ast)
@@ -113,13 +114,12 @@ class D404(BaseRule):
             if isinstance(c, Node) and c.kind in (SyntaxKind.GOOGLE_ARG, SyntaxKind.NUMPY_PARAMETER)
         ]
         if not param_nodes:
-            return []
+            return
 
         indent = self._get_indent(ctx.docstring_text, param_nodes[0])
         is_numpy = section.kind == SyntaxKind.NUMPY_SECTION
         insert_offset = section.range.end
 
-        diagnostics: list[Diagnostic] = []
         for display_name, ann in sig_params:
             if _bare_name(display_name) in documented:
                 continue
@@ -129,5 +129,4 @@ class D404(BaseRule):
                 applicability=Applicability.UNSAFE,
             )
             message = f"Missing parameter '{display_name}' in docstring."
-            diagnostics.append(self._make_diagnostic(ctx, message, fix=fix, target=section))
-        return diagnostics
+            yield self._make_diagnostic(ctx, message, fix=fix, target=section)

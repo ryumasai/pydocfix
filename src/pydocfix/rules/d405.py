@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 
 from pydocstring import Node, SyntaxKind, Token
 
@@ -57,22 +58,22 @@ class D405(BaseRule):
             applicability=Applicability.UNSAFE,
         )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Diagnostic | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
         if not isinstance(cst_node, Node):
-            return None
+            return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return None
+            return
 
         name_token = self._find_child_token(cst_node, SyntaxKind.NAME)
         if name_token is None:
-            return None
+            return
 
         sig_names = self._get_signature_names(ctx.parent_ast)
         bare = _bare_name(name_token.text)
         if bare in sig_names:
-            return None
+            return
 
         fix = self._build_delete_fix(ctx.docstring_text, cst_node)
         message = f"Parameter '{name_token.text}' not in function signature."
-        return self._make_diagnostic(ctx, message, fix=fix, target=name_token)
+        yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)

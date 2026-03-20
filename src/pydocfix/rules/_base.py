@@ -5,13 +5,14 @@ from __future__ import annotations
 import ast
 import enum
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from itertools import pairwise
 from typing import TYPE_CHECKING, Final, NamedTuple
 
 from pydocstring import (
     GoogleDocstring,
+    LineColumn,
     Node,
     NumPyDocstring,
     SyntaxKind,
@@ -124,15 +125,14 @@ class DiagnoseContext:
     docstring_stmt: ast.stmt
     docstring_location: DocstringLocation
     config: Config | None = None
-    config: Config | None = None
 
-    def cst_node_range(self, node: Node | Token | None = None) -> Range:
+    def cst_node_range(self, cst: Node | Token | None = None) -> Range:
         """Convert a CST node/token byte range to a file-level Range."""
-        if node is None:
-            node = self.target_cst
-        ds_offset = self.docstring_location.content_offset
-        start_lc = self.docstring_cst.line_col(node.range.start)
-        end_lc = self.docstring_cst.line_col(node.range.end)
+        if cst is None:
+            cst = self.target_cst
+        ds_offset: Final[Offset] = self.docstring_location.content_offset
+        start_lc: Final[LineColumn] = self.docstring_cst.line_col(cst.range.start)
+        end_lc: Final[LineColumn] = self.docstring_cst.line_col(cst.range.end)
         return Range(
             start=Offset(
                 ds_offset.lineno + start_lc.lineno - 1,
@@ -165,13 +165,13 @@ def apply_edits(source: str, edits: Iterable[Edit]) -> str:
 
     Edit offsets are UTF-8 byte positions (as returned by pydocstring-rs).
     """
-    sorted_edits: Final = sorted(edits, key=lambda e: e.start, reverse=True)
+    sorted_edits: Final[list[Edit]] = sorted(edits, key=lambda e: e.start, reverse=True)
     # Validate no overlaps
     for prev, curr in pairwise(sorted_edits):
         if curr.end > prev.start:
             msg = f"Overlapping edits: [{curr.start}:{curr.end}] and [{prev.start}:{prev.end}]"
             raise ValueError(msg)
-    buf = source.encode("utf-8")
+    buf: bytes = source.encode("utf-8")
     for edit in sorted_edits:
         buf = buf[: edit.start] + edit.new_text.encode("utf-8") + buf[edit.end :]
     return buf.decode("utf-8")
@@ -183,7 +183,9 @@ def is_applicable(diag: Diagnostic, unsafe_fixes: bool) -> bool:
         return False
     if diag.fix.applicability == Applicability.SAFE:
         return True
-    return diag.fix.applicability == Applicability.UNSAFE and unsafe_fixes
+    if diag.fix.applicability == Applicability.UNSAFE and unsafe_fixes:  # noqa: SIM103
+        return True
+    return False
 
 
 class BaseRule:
@@ -196,10 +198,9 @@ class BaseRule:
     def __init__(self, config: Config | None = None) -> None:
         self.config = config
 
-    def diagnose(self, ctx: DiagnoseContext) -> Diagnostic | list[Diagnostic] | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        """Yield zero or more Diagnostics for the given context."""
         raise NotImplementedError
-
-    # Helper -----------------------------------------------------------
 
     def _make_diagnostic(
         self,
@@ -209,6 +210,7 @@ class BaseRule:
         fix: Fix | None = None,
         target: Node | Token | None = None,
     ) -> Diagnostic:
+        """Helper to create a Diagnostic with correct filepath and range."""
         return Diagnostic(
             rule=self.code,
             message=message,

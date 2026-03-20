@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 
 from pydocstring import Node, SyntaxKind, Token
 
@@ -34,26 +35,26 @@ class D402(BaseRule):
                 return child
         return None
 
-    def diagnose(self, ctx: DiagnoseContext) -> Diagnostic | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
         if not isinstance(cst_node, Node):
-            return None
+            return
 
         ret_type_token = self._find_child_token(cst_node, SyntaxKind.RETURN_TYPE)
         if ret_type_token is None:
-            return None
+            return
 
         hint_type = self._get_return_annotation(ctx.parent_ast)
         if hint_type is None:
-            return None
+            return
 
         doc_type = ret_type_token.text
         if doc_type == hint_type:
-            return None
+            return
 
         fix = Fix(
             edits=[replace_token(ret_type_token, hint_type)],
             applicability=Applicability.UNSAFE,
         )
         message = f"Docstring return type '{doc_type}' does not match type hint '{hint_type}'."
-        return self._make_diagnostic(ctx, message, fix=fix, target=ret_type_token)
+        yield self._make_diagnostic(ctx, message, fix=fix, target=ret_type_token)

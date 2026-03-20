@@ -123,7 +123,7 @@ class TestDiagnostic:
 class TestD200:
     def test_missing_period(self):
         ctx = _make_diagnose_ctx("Do something")
-        diag = D200().diagnose(ctx)
+        diag = next(iter(D200().diagnose(ctx)), None)
         assert diag is not None
         assert diag.rule == "D200"
         assert diag.fixable is True
@@ -131,7 +131,7 @@ class TestD200:
 
     def test_has_period(self):
         ctx = _make_diagnose_ctx("Do something.")
-        diag = D200().diagnose(ctx)
+        diag = next(iter(D200().diagnose(ctx)), None)
         assert diag is None
 
     def test_empty_summary(self):
@@ -142,7 +142,7 @@ class TestD200:
     def test_fix_returns_edit(self):
         raw = "Do something"
         ctx = _make_diagnose_ctx(raw)
-        diag = D200().diagnose(ctx)
+        diag = next(iter(D200().diagnose(ctx)), None)
         assert diag is not None
         assert diag.fix is not None
         result = apply_edits(raw, diag.fix.edits)
@@ -151,13 +151,13 @@ class TestD200:
     def test_fix_no_change_when_period_exists(self):
         raw = "Do something."
         ctx = _make_diagnose_ctx(raw)
-        diag = D200().diagnose(ctx)
+        diag = next(iter(D200().diagnose(ctx)), None)
         assert diag is None
 
     def test_fix_preserves_surrounding_text(self):
         raw = "Do something\n\n    Args:\n        x: val.\n"
         ctx = _make_diagnose_ctx(raw)
-        diag = D200().diagnose(ctx)
+        diag = next(iter(D200().diagnose(ctx)), None)
         assert diag is not None
         assert diag.fix is not None
         result = apply_edits(raw, diag.fix.edits)
@@ -250,7 +250,7 @@ class TestD401GoogleParam:
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         assert len(args) == 1
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D401().diagnose(ctx)
+        diag = next(iter(D401().diagnose(ctx)), None)
         assert diag is not None
         assert diag.rule == "D401"
         assert "'str'" in diag.message
@@ -263,7 +263,7 @@ class TestD401GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D401().diagnose(ctx)
+        diag = next(iter(D401().diagnose(ctx)), None)
         assert diag is None
 
     def test_no_annotation_no_diagnostic(self):
@@ -272,7 +272,7 @@ class TestD401GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D401().diagnose(ctx)
+        diag = next(iter(D401().diagnose(ctx)), None)
         assert diag is None
 
     def test_no_doc_type_no_diagnostic(self):
@@ -281,7 +281,7 @@ class TestD401GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D401().diagnose(ctx)
+        diag = next(iter(D401().diagnose(ctx)), None)
         assert diag is None
 
     def test_fix_replaces_type(self):
@@ -290,7 +290,7 @@ class TestD401GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D401().diagnose(ctx)
+        diag = next(iter(D401().diagnose(ctx)), None)
         assert diag is not None
         assert diag.fix is not None
         result = apply_edits(ds, diag.fix.edits)
@@ -302,7 +302,7 @@ class TestD401GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D401().diagnose(ctx)
+        diag = next(iter(D401().diagnose(ctx)), None)
         assert diag is not None
         result = apply_edits(ds, diag.fix.edits)
         assert "(list[int])" in result
@@ -315,12 +315,12 @@ class TestD401GoogleParam:
         assert len(args) == 2
         # x: str vs int → mismatch
         ctx0 = _make_d401_ctx_google(ds, func, args[0])
-        diag0 = D401().diagnose(ctx0)
+        diag0 = next(iter(D401().diagnose(ctx0)), None)
         assert diag0 is not None
         assert "'x'" in diag0.message
         # y: int vs int → match
         ctx1 = _make_d401_ctx_google(ds, func, args[1])
-        diag1 = D401().diagnose(ctx1)
+        diag1 = next(iter(D401().diagnose(ctx1)), None)
         assert diag1 is None
 
     def test_class_method_skipped(self):
@@ -339,7 +339,7 @@ class TestD401GoogleParam:
             docstring_stmt=_dummy_stmt(1, 0),
             docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
         )
-        diag = D401().diagnose(ctx)
+        diag = next(iter(D401().diagnose(ctx)), None)
         assert diag is None
 
 
@@ -353,7 +353,7 @@ class TestD402GoogleReturn:
         rets = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_RETURNS)
         assert len(rets) == 1
         ctx = _make_d401_ctx_google(ds, func, rets[0])
-        diag = D402().diagnose(ctx)
+        diag = next(iter(D402().diagnose(ctx)), None)
         assert diag is not None
         assert diag.rule == "D402"
         assert "'str'" in diag.message
@@ -365,7 +365,7 @@ class TestD402GoogleReturn:
         parsed = parse_google(ds)
         rets = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_RETURNS)
         ctx = _make_d401_ctx_google(ds, func, rets[0])
-        diag = D402().diagnose(ctx)
+        diag = next(iter(D402().diagnose(ctx)), None)
         assert diag is None
 
     def test_no_return_annotation_no_diagnostic(self):
@@ -374,7 +374,7 @@ class TestD402GoogleReturn:
         parsed = parse_google(ds)
         rets = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_RETURNS)
         ctx = _make_d401_ctx_google(ds, func, rets[0])
-        diag = D402().diagnose(ctx)
+        diag = next(iter(D402().diagnose(ctx)), None)
         assert diag is None
 
     def test_fix_replaces_return_type(self):
@@ -383,7 +383,7 @@ class TestD402GoogleReturn:
         parsed = parse_google(ds)
         rets = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_RETURNS)
         ctx = _make_d401_ctx_google(ds, func, rets[0])
-        diag = D402().diagnose(ctx)
+        diag = next(iter(D402().diagnose(ctx)), None)
         assert diag is not None
         result = apply_edits(ds, diag.fix.edits)
         assert "bool:" in result
@@ -408,7 +408,7 @@ class TestD401Numpy:
             docstring_stmt=_dummy_stmt(2, 4),
             docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
-        diag = D401().diagnose(ctx)
+        diag = next(iter(D401().diagnose(ctx)), None)
         assert diag is not None
         assert "'str'" in diag.message
         assert "'int'" in diag.message
@@ -429,7 +429,7 @@ class TestD401Numpy:
             docstring_stmt=_dummy_stmt(2, 4),
             docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
-        diag = D402().diagnose(ctx)
+        diag = next(iter(D402().diagnose(ctx)), None)
         assert diag is not None
         assert "'str'" in diag.message
         assert "'int'" in diag.message
@@ -449,7 +449,7 @@ class TestD401Numpy:
             docstring_stmt=_dummy_stmt(2, 4),
             docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
-        diag = D401().diagnose(ctx)
+        diag = next(iter(D401().diagnose(ctx)), None)
         assert diag is None
 
 
@@ -466,7 +466,7 @@ class TestD403GoogleParam:
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         assert len(args) == 1
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D403().diagnose(ctx)
+        diag = next(iter(D403().diagnose(ctx)), None)
         assert diag is not None
         assert diag.rule == "D403"
         assert "'kwargs'" in diag.message
@@ -478,7 +478,7 @@ class TestD403GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D403().diagnose(ctx)
+        diag = next(iter(D403().diagnose(ctx)), None)
         assert diag is not None
         assert "'args'" in diag.message
         assert "'*args'" in diag.message
@@ -489,7 +489,7 @@ class TestD403GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D403().diagnose(ctx)
+        diag = next(iter(D403().diagnose(ctx)), None)
         assert diag is None
 
     def test_args_with_prefix_no_diagnostic(self):
@@ -498,7 +498,7 @@ class TestD403GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D403().diagnose(ctx)
+        diag = next(iter(D403().diagnose(ctx)), None)
         assert diag is None
 
     def test_regular_param_no_diagnostic(self):
@@ -507,7 +507,7 @@ class TestD403GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D403().diagnose(ctx)
+        diag = next(iter(D403().diagnose(ctx)), None)
         assert diag is None
 
     def test_fix_adds_prefix(self):
@@ -516,7 +516,7 @@ class TestD403GoogleParam:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = D403().diagnose(ctx)
+        diag = next(iter(D403().diagnose(ctx)), None)
         assert diag is not None
         assert diag.fix.applicability == Applicability.SAFE
         result = apply_edits(ds, diag.fix.edits)
@@ -537,7 +537,7 @@ class TestD403GoogleParam:
             docstring_stmt=_dummy_stmt(1, 0),
             docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
         )
-        diag = D403().diagnose(ctx)
+        diag = next(iter(D403().diagnose(ctx)), None)
         assert diag is None
 
 
@@ -560,7 +560,7 @@ class TestD403NumpyParam:
             docstring_stmt=_dummy_stmt(2, 4),
             docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
-        diag = D403().diagnose(ctx)
+        diag = next(iter(D403().diagnose(ctx)), None)
         assert diag is not None
         assert "'kwargs'" in diag.message
         assert "'**kwargs'" in diag.message
@@ -580,7 +580,7 @@ class TestD403NumpyParam:
             docstring_stmt=_dummy_stmt(2, 4),
             docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
-        diag = D403().diagnose(ctx)
+        diag = next(iter(D403().diagnose(ctx)), None)
         assert diag is None
 
 
@@ -644,7 +644,7 @@ class TestD404GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         assert diags[0].rule == "D404"
         assert "'y'" in diags[0].message
@@ -653,14 +653,14 @@ class TestD404GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n    y (str): The y.\n"
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert diags == []
 
     def test_multiple_missing(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(x: int, y: str, z: float):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 2
         names = {d.message for d in diags}
         assert any("'y'" in m for m in names)
@@ -670,21 +670,21 @@ class TestD404GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(self, x: int):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert diags == []
 
     def test_cls_excluded(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(cls, x: int):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert diags == []
 
     def test_varargs_missing(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(x: int, *args: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         assert "'*args'" in diags[0].message
 
@@ -692,7 +692,7 @@ class TestD404GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(x: int, **kwargs: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         assert "'**kwargs'" in diags[0].message
 
@@ -700,21 +700,21 @@ class TestD404GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n    *args (str): Extra.\n"
         func = "def foo(x: int, *args: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert diags == []
 
     def test_varargs_documented_without_prefix(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n    args (str): Extra.\n"
         func = "def foo(x: int, *args: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert diags == []
 
     def test_kwonly_missing(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(x: int, *, key: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         assert "'key'" in diags[0].message
 
@@ -722,7 +722,7 @@ class TestD404GoogleParam:
         ds = "Summary.\n\nArgs:\n    x: The x.\n"
         func = "def foo(x, y):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         assert "'y'" in diags[0].message
 
@@ -730,7 +730,7 @@ class TestD404GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         assert diags[0].fix is not None
         assert diags[0].fix.applicability == Applicability.UNSAFE
@@ -744,7 +744,7 @@ class TestD404GoogleParam:
         ds = "Summary.\n\nArgs:\n    x: The x.\n"
         func = "def foo(x, y):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         result = apply_edits(ds, diags[0].fix.edits)
         assert "\n    y:" in result
@@ -764,7 +764,7 @@ class TestD404GoogleParam:
             docstring_stmt=_dummy_stmt(1, 0),
             docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
         )
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert diags == []
 
     def test_returns_section_ignored(self):
@@ -772,7 +772,7 @@ class TestD404GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n\nReturns:\n    int: The result.\n"
         func = "def foo(x: int) -> int:\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert diags == []
 
 
@@ -783,7 +783,7 @@ class TestD404NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\n"
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         assert "'y'" in diags[0].message
 
@@ -791,14 +791,14 @@ class TestD404NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\ny : str\n    The y.\n"
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert diags == []
 
     def test_fix_inserts_numpy_stub_with_type(self):
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\n"
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         result = apply_edits(ds, diags[0].fix.edits)
         assert "y : str" in result
@@ -808,7 +808,7 @@ class TestD404NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nx\n    The x.\n"
         func = "def foo(x, y):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert len(diags) == 1
         result = apply_edits(ds, diags[0].fix.edits)
         assert "\ny" in result
@@ -817,7 +817,7 @@ class TestD404NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\n"
         func = "def foo(self, x: int):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        diags = D404().diagnose(ctx)
+        diags = list(D404().diagnose(ctx))
         assert diags == []
 
 
@@ -888,7 +888,7 @@ class TestD405GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n    y (str): The y.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d405_ctx_google(ds, func, arg_index=1)
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is not None
         assert diag.rule == "D405"
         assert "'y'" in diag.message
@@ -897,7 +897,7 @@ class TestD405GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d405_ctx_google(ds, func, arg_index=0)
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is None
 
     def test_self_not_in_signature_check(self):
@@ -906,28 +906,28 @@ class TestD405GoogleParam:
         func = "def foo(self):\n    pass\n"
         ctx = _make_d405_ctx_google(ds, func, arg_index=0)
         # 'self' IS in func.args, so not flagged as extra
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is None
 
     def test_star_args_with_prefix_valid(self):
         ds = "Summary.\n\nArgs:\n    *args: Extra.\n"
         func = "def foo(*args):\n    pass\n"
         ctx = _make_d405_ctx_google(ds, func, arg_index=0)
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is None
 
     def test_star_args_without_prefix_valid(self):
         ds = "Summary.\n\nArgs:\n    args: Extra.\n"
         func = "def foo(*args):\n    pass\n"
         ctx = _make_d405_ctx_google(ds, func, arg_index=0)
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is None
 
     def test_fix_deletes_entry(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n    y (str): The y.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d405_ctx_google(ds, func, arg_index=1)
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is not None
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.UNSAFE
@@ -949,7 +949,7 @@ class TestD405GoogleParam:
             docstring_stmt=_dummy_stmt(1, 0),
             docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
         )
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is None
 
 
@@ -960,7 +960,7 @@ class TestD405NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\ny : str\n    The y.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d405_ctx_numpy(ds, func, param_index=1)
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is not None
         assert "'y'" in diag.message
 
@@ -968,14 +968,14 @@ class TestD405NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d405_ctx_numpy(ds, func, param_index=0)
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is None
 
     def test_fix_deletes_entry(self):
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\ny : str\n    The y.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d405_ctx_numpy(ds, func, param_index=1)
-        diag = D405().diagnose(ctx)
+        diag = next(iter(D405().diagnose(ctx)), None)
         assert diag is not None
         result = apply_edits(ds, diag.fix.edits)
         assert "x : int" in result
@@ -1027,7 +1027,7 @@ class TestD406Google:
         ds = "Summary."
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d406_ctx_google(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is not None
         assert diag.rule == "D406"
 
@@ -1035,35 +1035,35 @@ class TestD406Google:
         ds = "Summary."
         func = "def foo():\n    pass\n"
         ctx = _make_d406_ctx_google(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is None
 
     def test_only_self_no_diagnostic(self):
         ds = "Summary."
         func = "def foo(self):\n    pass\n"
         ctx = _make_d406_ctx_google(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is None
 
     def test_has_args_section_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d406_ctx_google(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is None
 
     def test_returns_section_only_still_flagged(self):
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         func = "def foo(x: int) -> int:\n    pass\n"
         ctx = _make_d406_ctx_google(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is not None
 
     def test_fix_inserts_section(self):
         ds = "Summary."
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d406_ctx_google(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is not None
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.UNSAFE
@@ -1078,7 +1078,7 @@ class TestD406Google:
         ds = "Summary."
         func = "def foo(x, y):\n    pass\n"
         ctx = _make_d406_ctx_google(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is not None
         result = apply_edits(ds, diag.fix.edits)
         assert "\n    x:" in result
@@ -1089,7 +1089,7 @@ class TestD406Google:
         ds = "Summary."
         func = "def foo(x: int, *args: str, **kwargs: bool):\n    pass\n"
         ctx = _make_d406_ctx_google(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is not None
         result = apply_edits(ds, diag.fix.edits)
         assert "*args (str):" in result
@@ -1109,14 +1109,14 @@ class TestD406Google:
             docstring_stmt=_dummy_stmt(1, 0),
             docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
         )
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is None
 
     def test_async_function(self):
         ds = "Summary."
         func = "async def foo(x: int):\n    pass\n"
         ctx = _make_d406_ctx_google(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is not None
 
 
@@ -1127,21 +1127,21 @@ class TestD406Numpy:
         ds = "Summary."
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d406_ctx_numpy(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is not None
 
     def test_has_parameters_section_no_diagnostic(self):
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d406_ctx_numpy(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is None
 
     def test_fix_inserts_numpy_section(self):
         ds = "Summary."
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d406_ctx_numpy(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is not None
         result = apply_edits(ds, diag.fix.edits)
         assert "Parameters" in result
@@ -1153,7 +1153,7 @@ class TestD406Numpy:
         ds = "Summary."
         func = "def foo():\n    pass\n"
         ctx = _make_d406_ctx_numpy(ds, func)
-        diag = D406().diagnose(ctx)
+        diag = next(iter(D406().diagnose(ctx)), None)
         assert diag is None
 
 
@@ -1234,7 +1234,7 @@ class TestD407GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int):\n    y (str): The y.\n"
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d407_ctx_google(ds, func, arg_index=0)
-        diag = D407().diagnose(ctx)
+        diag = next(iter(D407().diagnose(ctx)), None)
         assert diag is not None
         assert diag.rule == "D407"
         assert "'x'" in diag.message
@@ -1243,14 +1243,14 @@ class TestD407GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d407_ctx_google(ds, func, arg_index=0)
-        diag = D407().diagnose(ctx)
+        diag = next(iter(D407().diagnose(ctx)), None)
         assert diag is None
 
     def test_second_arg_empty(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n    y (str):\n"
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d407_ctx_google(ds, func, arg_index=1)
-        diag = D407().diagnose(ctx)
+        diag = next(iter(D407().diagnose(ctx)), None)
         assert diag is not None
         assert "'y'" in diag.message
 
@@ -1258,7 +1258,7 @@ class TestD407GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int):\n    y (str): The y.\n"
         func = "def foo(x: int, y: str):\n    pass\n"
         ctx = _make_d407_ctx_google(ds, func, arg_index=0)
-        diag = D407().diagnose(ctx)
+        diag = next(iter(D407().diagnose(ctx)), None)
         assert diag is not None
         assert diag.fix is None
 
@@ -1276,7 +1276,7 @@ class TestD407GoogleParam:
             docstring_stmt=_dummy_stmt(1, 0),
             docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
         )
-        diag = D407().diagnose(ctx)
+        diag = next(iter(D407().diagnose(ctx)), None)
         assert diag is None
 
 
@@ -1287,7 +1287,7 @@ class TestD407NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nx : int\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d407_ctx_numpy(ds, func, param_index=0)
-        diag = D407().diagnose(ctx)
+        diag = next(iter(D407().diagnose(ctx)), None)
         assert diag is not None
         assert "'x'" in diag.message
 
@@ -1295,14 +1295,14 @@ class TestD407NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d407_ctx_numpy(ds, func, param_index=0)
-        diag = D407().diagnose(ctx)
+        diag = next(iter(D407().diagnose(ctx)), None)
         assert diag is None
 
     def test_no_fix(self):
         ds = "Summary.\n\nParameters\n----------\nx : int\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d407_ctx_numpy(ds, func, param_index=0)
-        diag = D407().diagnose(ctx)
+        diag = next(iter(D407().diagnose(ctx)), None)
         assert diag is not None
         assert diag.fix is None
 
@@ -1335,7 +1335,7 @@ class TestD408GoogleParam:
         ds = "Summary.\n\nArgs:\n    b (int): An integer.\n    b (str): A string.\n"
         func = "def foo(b: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D408().diagnose(ctx)
+        result = list(D408().diagnose(ctx))
         assert result is not None
         assert len(result) == 1
         assert result[0].rule == "D408"
@@ -1345,14 +1345,14 @@ class TestD408GoogleParam:
         ds = "Summary.\n\nArgs:\n    a (int): An integer.\n    b (str): A string.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D408().diagnose(ctx)
-        assert result is None
+        result = list(D408().diagnose(ctx))
+        assert result == []
 
     def test_triple_duplicate_two_diagnostics(self):
         ds = "Summary.\n\nArgs:\n    x: First.\n    x: Second.\n    x: Third.\n"
         func = "def foo(x: int):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D408().diagnose(ctx)
+        result = list(D408().diagnose(ctx))
         assert result is not None
         assert len(result) == 2
 
@@ -1360,7 +1360,7 @@ class TestD408GoogleParam:
         ds = "Summary.\n\nArgs:\n    b (int): An integer.\n    b (str): A string.\n"
         func = "def foo(b: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D408().diagnose(ctx)
+        result = list(D408().diagnose(ctx))
         assert result is not None
         assert result[0].fix is not None
         assert result[0].fix.applicability == Applicability.UNSAFE
@@ -1382,8 +1382,8 @@ class TestD408GoogleParam:
             docstring_stmt=_dummy_stmt(1, 0),
             docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
         )
-        result = D408().diagnose(ctx)
-        assert result is None
+        result = list(D408().diagnose(ctx))
+        assert result == []
 
 
 class TestD408NumpyParam:
@@ -1393,7 +1393,7 @@ class TestD408NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nb : int\n    An integer.\nb : str\n    A string.\n"
         func = "def foo(b: str):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        result = D408().diagnose(ctx)
+        result = list(D408().diagnose(ctx))
         assert result is not None
         assert len(result) == 1
         assert "'b'" in result[0].message
@@ -1402,8 +1402,8 @@ class TestD408NumpyParam:
         ds = "Summary.\n\nParameters\n----------\na : int\n    An integer.\nb : str\n    A string.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        result = D408().diagnose(ctx)
-        assert result is None
+        result = list(D408().diagnose(ctx))
+        assert result == []
 
 
 class TestD408Registry:
@@ -1434,7 +1434,7 @@ class TestD409GoogleParam:
         ds = "Summary.\n\nArgs:\n    b: The b.\n    a: The a.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D409().diagnose(ctx)
+        result = list(D409().diagnose(ctx))
         assert result is not None
         assert len(result) >= 1
         assert result[0].rule == "D409"
@@ -1444,23 +1444,23 @@ class TestD409GoogleParam:
         ds = "Summary.\n\nArgs:\n    a: The a.\n    b: The b.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D409().diagnose(ctx)
-        assert result is None
+        result = list(D409().diagnose(ctx))
+        assert result == []
 
     def test_partial_docs_correct_relative_order(self):
         """Only `a` and `c` documented and in correct relative order."""
         ds = "Summary.\n\nArgs:\n    a: The a.\n    c: The c.\n"
         func = "def foo(a: int, b: str, c: float):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D409().diagnose(ctx)
-        assert result is None
+        result = list(D409().diagnose(ctx))
+        assert result == []
 
     def test_partial_docs_wrong_relative_order(self):
         """Only `c` and `a` documented but in wrong relative order."""
         ds = "Summary.\n\nArgs:\n    c: The c.\n    a: The a.\n"
         func = "def foo(a: int, b: str, c: float):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D409().diagnose(ctx)
+        result = list(D409().diagnose(ctx))
         assert result is not None
 
     def test_extra_param_not_in_sig_ignored(self):
@@ -1468,14 +1468,14 @@ class TestD409GoogleParam:
         ds = "Summary.\n\nArgs:\n    z: Unknown.\n    a: The a.\n    b: The b.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D409().diagnose(ctx)
-        assert result is None
+        result = list(D409().diagnose(ctx))
+        assert result == []
 
     def test_fix_reorders_params(self):
         ds = "Summary.\n\nArgs:\n    b: The b.\n    a: The a.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D409().diagnose(ctx)
+        result = list(D409().diagnose(ctx))
         assert result is not None
         assert result[0].fix is not None
         assert result[0].fix.applicability == Applicability.UNSAFE
@@ -1487,7 +1487,7 @@ class TestD409GoogleParam:
         ds = "Summary.\n\nArgs:\n    c: The c.\n    b: The b.\n    a: The a.\n"
         func = "def foo(a: int, b: str, c: float):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D409().diagnose(ctx)
+        result = list(D409().diagnose(ctx))
         assert result is not None
         assert result[0].fix is not None
         assert all(d.fix is None for d in result[1:])
@@ -1496,7 +1496,7 @@ class TestD409GoogleParam:
         ds = "Summary.\n\nArgs:\n    b: The b.\n    z: Unknown.\n    a: The a.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_google(ds, func)
-        result = D409().diagnose(ctx)
+        result = list(D409().diagnose(ctx))
         assert result is not None
         fixed = apply_edits(ds, result[0].fix.edits)
         assert fixed.index("    a:") < fixed.index("    b:") or fixed.index("    b:") < fixed.index("    z:")
@@ -1519,8 +1519,8 @@ class TestD409GoogleParam:
             docstring_stmt=_dummy_stmt(1, 0),
             docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
         )
-        result = D409().diagnose(ctx)
-        assert result is None
+        result = list(D409().diagnose(ctx))
+        assert result == []
 
 
 class TestD409NumpyParam:
@@ -1530,7 +1530,7 @@ class TestD409NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nb : str\n    The b.\na : int\n    The a.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        result = D409().diagnose(ctx)
+        result = list(D409().diagnose(ctx))
         assert result is not None
         assert len(result) >= 1
         assert "'b'" in result[0].message
@@ -1539,14 +1539,14 @@ class TestD409NumpyParam:
         ds = "Summary.\n\nParameters\n----------\na : int\n    The a.\nb : str\n    The b.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        result = D409().diagnose(ctx)
-        assert result is None
+        result = list(D409().diagnose(ctx))
+        assert result == []
 
     def test_fix_reorders_params(self):
         ds = "Summary.\n\nParameters\n----------\nb : str\n    The b.\na : int\n    The a.\n"
         func = "def foo(a: int, b: str):\n    pass\n"
         ctx = _make_d404_ctx_numpy(ds, func)
-        result = D409().diagnose(ctx)
+        result = list(D409().diagnose(ctx))
         assert result is not None
         assert result[0].fix is not None
         fixed = apply_edits(ds, result[0].fix.edits)

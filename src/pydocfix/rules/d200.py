@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Final
 
 from pydocstring import SyntaxKind, Token
@@ -25,7 +26,7 @@ class D200(BaseRule):
         self._conf_period: Final[str | None] = config.period.strip() if config and config.period else None
         self._valid_endings: frozenset[str] = _PERIOD_SET | {self._conf_period} if self._conf_period else _PERIOD_SET
 
-    def diagnose(self, ctx: DiagnoseContext) -> Diagnostic | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         token = ctx.target_cst
         assert isinstance(token, Token)
 
@@ -37,5 +38,4 @@ class D200(BaseRule):
                 edits=[insert_at(token.range.end, self._conf_period or _DEFAULT_PERIOD)],
                 applicability=Applicability.SAFE,
             )
-            return self._make_diagnostic(ctx, self.message, fix=fix)
-        return None
+            yield self._make_diagnostic(ctx, self.message, fix=fix)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 
 from pydocstring import Node, SyntaxKind, Token
 
@@ -100,19 +101,19 @@ class D406(BaseRule):
 
     # -- entry point ---------------------------------------------------
 
-    def diagnose(self, ctx: DiagnoseContext) -> Diagnostic | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         root = ctx.target_cst
         if not isinstance(root, Node):
-            return None
+            return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return None
+            return
 
         params = self._get_signature_params(ctx.parent_ast)
         if not params:
-            return None
+            return
 
         if self._has_param_section(root):
-            return None
+            return
 
         is_numpy = root.kind == SyntaxKind.NUMPY_DOCSTRING
         indent = self._detect_indent(ctx.docstring_text, root)
@@ -123,4 +124,4 @@ class D406(BaseRule):
             applicability=Applicability.UNSAFE,
         )
         message = "Missing Args/Parameters section in docstring."
-        return self._make_diagnostic(ctx, message, fix=fix, target=root)
+        yield self._make_diagnostic(ctx, message, fix=fix, target=root)

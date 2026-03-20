@@ -14,9 +14,8 @@ logger = logging.getLogger(__name__)
 class Config:
     """Resolved pydocfix configuration."""
 
-    ignore: list[str] = field(default_factory=list)
-    # Period character used for D200 auto-fix. None means fall back to "."
     period: str | None = None
+    ignore: list[str] = field(default_factory=list)
 
 
 def find_pyproject_toml(start: Path | None = None) -> Path | None:
@@ -47,6 +46,6 @@ def load_config(start: Path | None = None) -> Config:
 
     section: dict = data.get("tool", {}).get("pydocfix", {})
 
-    ignore: list[str] = [str(code) for code in section.get("ignore", [])]
     period: str | None = section.get("period") or None
+    ignore: list[str] = [str(code) for code in section.get("ignore", [])]
     return Config(ignore=ignore, period=period)

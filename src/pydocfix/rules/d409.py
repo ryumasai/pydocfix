@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 
 from pydocstring import Node, SyntaxKind, Token
 
@@ -110,14 +111,14 @@ class D409(BaseRule):
             applicability=Applicability.UNSAFE,
         )
 
-    def diagnose(self, ctx: DiagnoseContext) -> list[Diagnostic] | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
         if not isinstance(section, Node):
-            return None
+            return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return None
+            return
         if not self._is_param_section(section):
-            return None
+            return
 
         doc_params = self._get_documented_param_nodes(section)
         sig_order = self._get_signature_order(ctx.parent_ast)
@@ -130,25 +131,22 @@ class D409(BaseRule):
         expected = [name for name in sig_order if name in doc_name_set]
 
         if doc_names == expected:
-            return None
+            return
 
         fix = self._build_reorder_fix(ctx.docstring_text, doc_params, sig_order)
 
         # Report diagnostics for each parameter that is out of position;
         # attach the (single) reorder fix only to the first violation.
-        diagnostics: list[Diagnostic] = []
+        first = True
         for (doc_name, param_node), exp_name in zip(doc_params, expected):
             if doc_name == exp_name or doc_name not in sig_set:
                 continue
             name_token = self._find_child_token(param_node, SyntaxKind.NAME)
             message = f"Parameter '{doc_name}' is in the wrong order (expected '{exp_name}' at this position)."
-            diagnostics.append(
-                self._make_diagnostic(
-                    ctx,
-                    message,
-                    fix=fix if not diagnostics else None,
-                    target=name_token or param_node,
-                )
+            yield self._make_diagnostic(
+                ctx,
+                message,
+                fix=fix if first else None,
+                target=name_token or param_node,
             )
-
-        return diagnostics or None
+            first = False

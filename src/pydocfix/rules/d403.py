@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 
 from pydocstring import Node, SyntaxKind, Token
 
@@ -36,28 +37,28 @@ class D403(BaseRule):
                 return child
         return None
 
-    def diagnose(self, ctx: DiagnoseContext) -> Diagnostic | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
         if not isinstance(cst_node, Node):
-            return None
+            return
 
         name_token = self._find_child_token(cst_node, SyntaxKind.NAME)
         if name_token is None:
-            return None
+            return
 
         param_name = name_token.text
         # Already has prefix — nothing to do
         if param_name.startswith("*"):
-            return None
+            return
 
         prefixed_names = self._get_vararg_kwarg_names(ctx.parent_ast)
         expected = prefixed_names.get(param_name)
         if expected is None:
-            return None
+            return
 
         fix = Fix(
             edits=[replace_token(name_token, expected)],
             applicability=Applicability.SAFE,
         )
         message = f"Docstring parameter '{param_name}' should be '{expected}'."
-        return self._make_diagnostic(ctx, message, fix=fix, target=name_token)
+        yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)

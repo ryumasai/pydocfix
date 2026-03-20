@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from pydocstring import Node, SyntaxKind, Token
@@ -62,29 +63,29 @@ class D401(BaseRule):
                 return child
         return None
 
-    def diagnose(self, ctx: DiagnoseContext) -> Diagnostic | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
         if not isinstance(cst_node, Node):
-            return None
+            return
 
         name_token = self._find_child_token(cst_node, SyntaxKind.NAME)
         type_token = self._find_child_token(cst_node, SyntaxKind.TYPE)
         if name_token is None or type_token is None:
-            return None
+            return
 
         ann_map = self._get_annotation_map(ctx.parent_ast)
         param_name = name_token.text
         hint_type = ann_map.get(param_name)
         if hint_type is None:
-            return None
+            return
 
         doc_type = type_token.text
         if doc_type == hint_type:
-            return None
+            return
 
         fix = Fix(
             edits=[replace_token(type_token, hint_type)],
             applicability=Applicability.UNSAFE,
         )
         message = f"Docstring type '{doc_type}' does not match type hint '{hint_type}' for parameter '{param_name}'."
-        return self._make_diagnostic(ctx, message, fix=fix, target=type_token)
+        yield self._make_diagnostic(ctx, message, fix=fix, target=type_token)

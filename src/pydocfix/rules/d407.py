@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 
 from pydocstring import Node, SyntaxKind, Token
 
@@ -26,20 +27,20 @@ class D407(BaseRule):
                 return child
         return None
 
-    def diagnose(self, ctx: DiagnoseContext) -> Diagnostic | None:
+    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
         if not isinstance(cst_node, Node):
-            return None
+            return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return None
+            return
 
         name_token = self._find_child_token(cst_node, SyntaxKind.NAME)
         if name_token is None:
-            return None
+            return
 
         desc_token = self._find_child_token(cst_node, SyntaxKind.DESCRIPTION)
         if desc_token is not None and desc_token.text.strip():
-            return None
+            return
 
         message = f"Parameter '{name_token.text}' has no description."
-        return self._make_diagnostic(ctx, message, target=name_token)
+        yield self._make_diagnostic(ctx, message, target=name_token)

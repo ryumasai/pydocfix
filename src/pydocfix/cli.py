@@ -6,60 +6,31 @@ import difflib
 import logging
 import sys
 from pathlib import Path
-from typing import Annotated, Final, Literal
+from typing import Final, Literal
 
-import typer
+import click
+
+from pydocfix import __version__
 
 logger = logging.getLogger(__name__)
 
-app = typer.Typer(
-    help="A Python docstring linter with auto-fix support.",
-    no_args_is_help=True,
-    add_completion=False,
-)
 
-
-def _version_callback(value: bool) -> None:
-    if value:
-        from pydocfix import __version__
-
-        print(f"pydocfix {__version__}")
-        raise typer.Exit
-
-
-@app.callback()
-def callback(
-    version: Annotated[
-        bool | None,
-        typer.Option(
-            "--version",
-            callback=_version_callback,
-            is_eager=True,
-            help="Show version and exit.",
-        ),
-    ] = None,
-) -> None:
+@click.group()
+@click.version_option(__version__, "--version", message="pydocfix %(version)s")
+def cli() -> None:
     """A Python docstring linter with auto-fix support."""
 
 
-@app.command()
+@cli.command()
+@click.argument("paths", nargs=-1)
+@click.option("--fix", is_flag=True, help="Automatically fix docstring issues.")
+@click.option("--diff", is_flag=True, help="Show diff of fixes without applying.")
+@click.option("--unsafe-fixes", is_flag=True, help="Also apply unsafe fixes.")
 def check(
-    paths: Annotated[
-        list[str] | None,
-        typer.Argument(help="Files or directories to check."),
-    ] = None,
-    fix: Annotated[
-        bool,
-        typer.Option("--fix", help="Automatically fix docstring issues."),
-    ] = False,
-    diff: Annotated[
-        bool,
-        typer.Option("--diff", help="Show diff of fixes without applying."),
-    ] = False,
-    unsafe_fixes: Annotated[
-        bool,
-        typer.Option("--unsafe-fixes", help="Also apply unsafe fixes."),
-    ] = False,
+    paths: tuple[str, ...],
+    fix: bool,
+    diff: bool,
+    unsafe_fixes: bool,
 ) -> None:
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
@@ -72,10 +43,10 @@ def check(
     registry: Final = build_registry(ignore=config.ignore, config=config)
     kind_map: Final = registry.kind_map
 
-    targets: Final = _collect_files(paths or ["."])
+    targets: Final = _collect_files(list(paths) or ["."])
     if not targets:
         logger.warning("no Python files found.")
-        raise typer.Exit(0)
+        sys.exit(0)
 
     total_violations = 0
     total_fixed = 0
@@ -108,7 +79,7 @@ def check(
         print(f"\nFixed {total_fixed} violation(s).")
 
     if remaining > 0:
-        raise typer.Exit(1)
+        sys.exit(1)
 
 
 def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe fix)"]:
@@ -159,7 +130,7 @@ def _collect_files(paths: list[str]) -> list[Path]:
 
 
 def main() -> None:
-    app()
+    cli()
 
 
 if __name__ == "__main__":
