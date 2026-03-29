@@ -5,7 +5,14 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator
 
-from pydocstring import Node, SyntaxKind, Token
+import pydocstring
+from pydocstring import (
+    GoogleSection,
+    GoogleSectionKind,
+    NumPySection,
+    NumPySectionKind,
+    Visitor,
+)
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
 
@@ -21,33 +28,35 @@ class PRM004(BaseRule):
     code = "PDX-PRM004"
     message = "Missing parameter in docstring."
     target_kinds = {
-        SyntaxKind.GOOGLE_SECTION,
-        SyntaxKind.NUMPY_SECTION,
+        GoogleSection,
+        NumPySection,
     }
 
     # -- helpers -------------------------------------------------------
 
     @staticmethod
-    def _is_param_section(section: Node) -> bool:
-        """Return True if *section* contains parameter entries."""
-        return any(
-            isinstance(c, Node) and c.kind in (SyntaxKind.GOOGLE_ARG, SyntaxKind.NUMPY_PARAMETER)
-            for c in section.children
-        )
+    def _is_param_section(section: GoogleSection | NumPySection) -> bool:
+        """Return True if *section* is a parameter section."""
+        if isinstance(section, GoogleSection):
+            return section.section_kind == GoogleSectionKind.ARGS
+        return section.section_kind == NumPySectionKind.PARAMETERS
 
     @staticmethod
-    def _get_documented_params(section: Node) -> set[str]:
+    def _get_documented_params(parsed, section: GoogleSection | NumPySection) -> set[str]:
         """Extract bare parameter names documented in the section."""
         names: set[str] = set()
-        for child in section.children:
-            if not isinstance(child, Node):
-                continue
-            if child.kind not in (SyntaxKind.GOOGLE_ARG, SyntaxKind.NUMPY_PARAMETER):
-                continue
-            for token in child.children:
-                if isinstance(token, Token) and token.kind == SyntaxKind.NAME:
-                    names.add(_bare_name(token.text))
-                    break
+
+        class _ParamCollector(Visitor):
+            def enter_google_arg(self, node, ctx):
+                if node.range.start >= section.range.start and node.range.end <= section.range.end and node.name:
+                    names.add(_bare_name(node.name.text))
+
+            def enter_numpy_parameter(self, node, ctx):
+                if node.range.start >= section.range.start and node.range.end <= section.range.end:
+                    for n in node.names:
+                        names.add(_bare_name(n.text))
+
+        pydocstring.walk(parsed, _ParamCollector())
         return names
 
     @staticmethod
@@ -75,15 +84,6 @@ class PRM004(BaseRule):
         return result
 
     @staticmethod
-    def _get_indent(ds_text: str, first_param: Node) -> str:
-        """Determine the indentation used for the first parameter entry."""
-        ds_bytes = ds_text.encode("utf-8")
-        nl_pos = ds_bytes.rfind(b"\n", 0, first_param.range.start)
-        if nl_pos == -1:
-            return ""
-        return ds_bytes[nl_pos + 1 : first_param.range.start].decode("utf-8")
-
-    @staticmethod
     def _build_stub(name: str, ann: str | None, *, is_numpy: bool, indent: str) -> str:
         """Build a stub entry string for a missing parameter."""
         if is_numpy:
@@ -97,27 +97,21 @@ class PRM004(BaseRule):
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
-        if not isinstance(section, Node):
+        if not isinstance(section, (GoogleSection, NumPySection)):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
         if not self._is_param_section(section):
             return
 
-        documented = self._get_documented_params(section)
+        documented = self._get_documented_params(ctx.docstring_cst, section)
         sig_params = self._get_signature_params(ctx.parent_ast)
 
-        # Determine indentation from existing entries
-        param_nodes = [
-            c
-            for c in section.children
-            if isinstance(c, Node) and c.kind in (SyntaxKind.GOOGLE_ARG, SyntaxKind.NUMPY_PARAMETER)
-        ]
-        if not param_nodes:
+        if not documented:
             return
 
-        indent = self._get_indent(ctx.docstring_text, param_nodes[0])
-        is_numpy = section.kind == SyntaxKind.NUMPY_SECTION
+        is_numpy = isinstance(section, NumPySection)
+        indent = "    "
         insert_offset = section.range.end
 
         for display_name, ann in sig_params:
@@ -129,4 +123,4 @@ class PRM004(BaseRule):
                 applicability=Applicability.UNSAFE,
             )
             message = f"Missing parameter '{display_name}' in docstring."
-            yield self._make_diagnostic(ctx, message, fix=fix, target=section)
+            yield self._make_diagnostic(ctx, message, fix=fix, target=section.header_name or section)

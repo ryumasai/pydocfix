@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator
 
-from pydocstring import Node, SyntaxKind, Token
+from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
 
@@ -21,8 +21,8 @@ class PRM005(BaseRule):
     code = "PDX-PRM005"
     message = "Docstring has parameter not in function signature."
     target_kinds = {
-        SyntaxKind.GOOGLE_ARG,
-        SyntaxKind.NUMPY_PARAMETER,
+        GoogleArg,
+        NumPyParameter,
     }
 
     @staticmethod
@@ -38,17 +38,9 @@ class PRM005(BaseRule):
         return names
 
     @staticmethod
-    def _find_child_token(node: Node, kind: SyntaxKind) -> Token | None:
-        for child in node.children:
-            if isinstance(child, Token) and child.kind == kind:
-                return child
-        return None
-
-    @staticmethod
-    def _build_delete_fix(ds_text: str, param_node: Node) -> Fix:
+    def _build_delete_fix(ds_text: str, param_node) -> Fix:
         """Build a fix that deletes the parameter entry line(s)."""
         ds_bytes = ds_text.encode("utf-8")
-        # Delete from the start of the line to the trailing newline (inclusive)
         nl_before = ds_bytes.rfind(b"\n", 0, param_node.range.start)
         start = nl_before + 1 if nl_before != -1 else param_node.range.start
         nl_after = ds_bytes.find(b"\n", param_node.range.end)
@@ -60,12 +52,12 @@ class PRM005(BaseRule):
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
-        if not isinstance(cst_node, Node):
+        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
-        name_token = self._find_child_token(cst_node, SyntaxKind.NAME)
+        name_token = cst_node.name if isinstance(cst_node, GoogleArg) else cst_node.names[0] if cst_node.names else None
         if name_token is None:
             return
 

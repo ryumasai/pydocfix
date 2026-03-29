@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator
 
-from pydocstring import Node, SyntaxKind, Token
+from pydocstring import GoogleReturn, NumPyReturns
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, replace_token
 
@@ -16,31 +16,23 @@ class RTN101(BaseRule):
     code = "PDX-RTN101"
     message = "Docstring return type does not match type hint."
     target_kinds = {
-        SyntaxKind.GOOGLE_RETURNS,
-        SyntaxKind.NUMPY_RETURNS,
+        GoogleReturn,
+        NumPyReturns,
     }
 
     def _get_return_annotation(self, ast_node: ast.AST) -> str | None:
-        """Return unparsed return type annotation, or None."""
         if not isinstance(ast_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return None
         if ast_node.returns is None:
             return None
         return ast.unparse(ast_node.returns)
 
-    def _find_child_token(self, node: Node, kind: SyntaxKind) -> Token | None:
-        """Find the first child token with the given kind."""
-        for child in node.children:
-            if isinstance(child, Token) and child.kind == kind:
-                return child
-        return None
-
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
-        if not isinstance(cst_node, Node):
+        if not isinstance(cst_node, (GoogleReturn, NumPyReturns)):
             return
 
-        ret_type_token = self._find_child_token(cst_node, SyntaxKind.RETURN_TYPE)
+        ret_type_token = cst_node.return_type
         if ret_type_token is None:
             return
 
@@ -56,5 +48,5 @@ class RTN101(BaseRule):
             edits=[replace_token(ret_type_token, hint_type)],
             applicability=Applicability.UNSAFE,
         )
-        message = f"Docstring return type '{doc_type}' does not match type hint '{hint_type}'."
+        message = f"Docstring return type \'{doc_type}\' does not match type hint \'{hint_type}\'."
         yield self._make_diagnostic(ctx, message, fix=fix, target=ret_type_token)

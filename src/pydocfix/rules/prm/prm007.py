@@ -5,7 +5,14 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator
 
-from pydocstring import Node, SyntaxKind, Token
+import pydocstring
+from pydocstring import (
+    GoogleSection,
+    GoogleSectionKind,
+    NumPySection,
+    NumPySectionKind,
+    Visitor,
+)
 
 from pydocfix.rules._base import (
     Applicability,
@@ -23,26 +30,20 @@ class PRM007(BaseRule):
     code = "PDX-PRM007"
     message = "Duplicate parameter in docstring."
     target_kinds = {
-        SyntaxKind.GOOGLE_SECTION,
-        SyntaxKind.NUMPY_SECTION,
+        GoogleSection,
+        NumPySection,
     }
 
     @staticmethod
-    def _is_param_section(section: Node) -> bool:
-        return any(
-            isinstance(c, Node) and c.kind in (SyntaxKind.GOOGLE_ARG, SyntaxKind.NUMPY_PARAMETER)
-            for c in section.children
-        )
+    def _is_param_section(section) -> bool:
+        if isinstance(section, GoogleSection):
+            return section.section_kind == GoogleSectionKind.ARGS
+        if isinstance(section, NumPySection):
+            return section.section_kind == NumPySectionKind.PARAMETERS
+        return False
 
     @staticmethod
-    def _find_child_token(node: Node, kind: SyntaxKind) -> Token | None:
-        for child in node.children:
-            if isinstance(child, Token) and child.kind == kind:
-                return child
-        return None
-
-    @staticmethod
-    def _build_delete_fix(ds_text: str, param_node: Node) -> Fix:
+    def _build_delete_fix(ds_text: str, param_node) -> Fix:
         ds_bytes = ds_text.encode("utf-8")
         nl_before = ds_bytes.rfind(b"\n", 0, param_node.range.start)
         start = nl_before + 1 if nl_before != -1 else param_node.range.start
@@ -55,29 +56,32 @@ class PRM007(BaseRule):
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
-        if not isinstance(section, Node):
+        if not isinstance(section, (GoogleSection, NumPySection)):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
         if not self._is_param_section(section):
             return
 
-        seen: dict[str, Node] = {}
+        # Collect all param entries in this section via walk
+        entries: list[tuple[str, object, object]] = []  # (name, node, name_token)
 
-        for child in section.children:
-            if not isinstance(child, Node):
-                continue
-            if child.kind not in (SyntaxKind.GOOGLE_ARG, SyntaxKind.NUMPY_PARAMETER):
-                continue
+        class _Collector(Visitor):
+            def enter_google_arg(self, node, walk_ctx):
+                if node.range.start >= section.range.start and node.range.end <= section.range.end and node.name:
+                    entries.append((node.name.text, node, node.name))
 
-            name_token = self._find_child_token(child, SyntaxKind.NAME)
-            if name_token is None:
-                continue
+            def enter_numpy_parameter(self, node, walk_ctx):
+                if node.range.start >= section.range.start and node.range.end <= section.range.end and node.names:
+                    entries.append((node.names[0].text, node, node.names[0]))
 
-            name = name_token.text
+        pydocstring.walk(ctx.docstring_cst, _Collector())
+
+        seen: set[str] = set()
+        for name, param_node, name_token in entries:
             if name in seen:
-                fix = self._build_delete_fix(ctx.docstring_text, child)
+                fix = self._build_delete_fix(ctx.docstring_text, param_node)
                 message = f"Parameter '{name}' is documented more than once."
                 yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)
             else:
-                seen[name] = child
+                seen.add(name)

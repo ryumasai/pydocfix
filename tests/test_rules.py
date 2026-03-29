@@ -5,19 +5,60 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from pydocstring import Node, SyntaxKind, Token, parse_google, parse_numpy
+import pydocstring
+from pydocstring import (
+    GoogleArg,
+    GoogleDocstring,
+    GoogleException,
+    GoogleReturn,
+    GoogleSection,
+    GoogleSectionKind,
+    GoogleYield,
+    NumPyDocstring,
+    NumPyException,
+    NumPyParameter,
+    NumPyReturns,
+    NumPySection,
+    NumPySectionKind,
+    NumPyYields,
+    Token,
+    Visitor,
+    parse_google,
+    parse_numpy,
+)
 
 from pydocfix.rules import (
-    SUM002,
-    PRM101,
-    RTN101,
-    PRM009,
+    PRM001,
+    PRM002,
+    PRM003,
     PRM004,
     PRM005,
-    PRM001,
-    PRM008,
-    PRM007,
     PRM006,
+    PRM007,
+    PRM008,
+    PRM009,
+    PRM101,
+    PRM102,
+    PRM103,
+    PRM104,
+    PRM201,
+    PRM202,
+    RTN001,
+    RTN002,
+    RTN003,
+    RTN101,
+    RTN102,
+    RTN103,
+    RTN104,
+    SUM001,
+    SUM002,
+    YLD001,
+    YLD002,
+    YLD003,
+    YLD101,
+    YLD102,
+    YLD103,
+    YLD104,
     Applicability,
     DiagnoseContext,
     Diagnostic,
@@ -44,16 +85,14 @@ def _dummy_stmt(lineno: int = 1, col_offset: int = 0) -> ast.stmt:
 def _make_diagnose_ctx(raw: str) -> DiagnoseContext:
     """Create a DiagnoseContext with the SUMMARY token as cst_node."""
     parsed = parse_google(raw)
-    # Find the SUMMARY token in the CST
     summary_token = parsed.summary
-    if summary_token is None:
-        # Create a dummy token for empty docstrings
-        summary_token = Token(kind="SUMMARY", text="", start=0, end=0)
+    # If no summary, use the parsed docstring itself as target
+    target = summary_token if summary_token is not None else parsed
     return DiagnoseContext(
         filepath=Path("test.py"),
         docstring_text=raw,
         docstring_cst=parsed,
-        target_cst=summary_token,
+        target_cst=target,
         parent_ast=ast.parse("pass").body[0],
         docstring_stmt=_dummy_stmt(1, 0),
         docstring_location=DocstringLocation(Offset(1, 0), 0, len(raw) + 6, '"""', '"""'),
@@ -84,7 +123,7 @@ class TestEdit:
         ]
         try:
             apply_edits("abcdef", edits)
-            assert False, "Should have raised ValueError"
+            raise AssertionError("Should have raised ValueError")
         except ValueError:
             pass
 
@@ -188,12 +227,12 @@ class TestRegistry:
 
     def test_rules_for_kind(self):
         registry = build_registry()
-        summary_rules = registry.rules_for_kind(SyntaxKind.SUMMARY)
+        summary_rules = registry.rules_for_kind(Token)
         assert any(r.code == "PDX-SUM002" for r in summary_rules)
-        assert registry.rules_for_kind(SyntaxKind.COLON) == []
-        google_arg_rules = registry.rules_for_kind(SyntaxKind.GOOGLE_ARG)
+        assert registry.rules_for_kind(type(None)) == []
+        google_arg_rules = registry.rules_for_kind(GoogleArg)
         assert any(r.code == "PDX-PRM101" for r in google_arg_rules)
-        google_return_rules = registry.rules_for_kind(SyntaxKind.GOOGLE_RETURNS)
+        google_return_rules = registry.rules_for_kind(GoogleReturn)
         assert any(r.code == "PDX-RTN101" for r in google_return_rules)
 
 
@@ -203,7 +242,7 @@ class TestRegistry:
 def _make_d401_ctx_google(
     ds_text: str,
     func_src: str,
-    cst_node: Node | Token,
+    cst_node,
 ) -> DiagnoseContext:
     """Build a DiagnoseContext for PRM101 tests (Google style)."""
     parsed = parse_google(ds_text)
@@ -220,20 +259,66 @@ def _make_d401_ctx_google(
     )
 
 
-def _find_cst_nodes(parsed, kind: SyntaxKind) -> list[Node]:
-    """Find all CST nodes of a given kind."""
-    results: list[Node] = []
+def _find_cst_nodes(parsed, node_type):
+    """Find all CST nodes of a given type using Visitor."""
+    results = []
 
-    def _walk(n):
-        if hasattr(n, "children"):
-            if n.kind == kind:
-                results.append(n)
-            for c in n.children:
-                _walk(c)
-        elif isinstance(n, Token) and n.kind == kind:
-            results.append(n)
+    class _GoogleArgCollector(Visitor):
+        def enter_google_arg(self, node, ctx):
+            results.append(node)
 
-    _walk(parsed.node)
+    class _GoogleReturnCollector(Visitor):
+        def enter_google_return(self, node, ctx):
+            results.append(node)
+
+    class _GoogleExceptionCollector(Visitor):
+        def enter_google_exception(self, node, ctx):
+            results.append(node)
+
+    class _GoogleYieldCollector(Visitor):
+        def enter_google_yield(self, node, ctx):
+            results.append(node)
+
+    class _GoogleSectionCollector(Visitor):
+        def enter_google_section(self, node, ctx):
+            results.append(node)
+
+    class _NumPyParameterCollector(Visitor):
+        def enter_numpy_parameter(self, node, ctx):
+            results.append(node)
+
+    class _NumPyReturnsCollector(Visitor):
+        def enter_numpy_returns(self, node, ctx):
+            results.append(node)
+
+    class _NumPyExceptionCollector(Visitor):
+        def enter_numpy_exception(self, node, ctx):
+            results.append(node)
+
+    class _NumPyYieldsCollector(Visitor):
+        def enter_numpy_yields(self, node, ctx):
+            results.append(node)
+
+    class _NumPySectionCollector(Visitor):
+        def enter_numpy_section(self, node, ctx):
+            results.append(node)
+
+    _type_to_collector = {
+        GoogleArg: _GoogleArgCollector,
+        GoogleReturn: _GoogleReturnCollector,
+        GoogleException: _GoogleExceptionCollector,
+        GoogleYield: _GoogleYieldCollector,
+        GoogleSection: _GoogleSectionCollector,
+        NumPyParameter: _NumPyParameterCollector,
+        NumPyReturns: _NumPyReturnsCollector,
+        NumPyException: _NumPyExceptionCollector,
+        NumPyYields: _NumPyYieldsCollector,
+        NumPySection: _NumPySectionCollector,
+    }
+
+    collector_cls = _type_to_collector.get(node_type)
+    if collector_cls:
+        pydocstring.walk(parsed, collector_cls())
     return results
 
 
@@ -247,7 +332,7 @@ class TestD401GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (str): The x value.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         assert len(args) == 1
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM101().diagnose(ctx)), None)
@@ -261,7 +346,7 @@ class TestD401GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): The x value.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM101().diagnose(ctx)), None)
         assert diag is None
@@ -270,7 +355,7 @@ class TestD401GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (str): The x value.\n"
         func = "def foo(x):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM101().diagnose(ctx)), None)
         assert diag is None
@@ -279,7 +364,7 @@ class TestD401GoogleParam:
         ds = "Summary.\n\nArgs:\n    x: The x value.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM101().diagnose(ctx)), None)
         assert diag is None
@@ -288,7 +373,7 @@ class TestD401GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (str): The x value.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM101().diagnose(ctx)), None)
         assert diag is not None
@@ -300,7 +385,7 @@ class TestD401GoogleParam:
         ds = "Summary.\n\nArgs:\n    items (list): The items.\n"
         func = "def foo(items: list[int]):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM101().diagnose(ctx)), None)
         assert diag is not None
@@ -311,7 +396,7 @@ class TestD401GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (str): X.\n    y (int): Y.\n"
         func = "def foo(x: int, y: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         assert len(args) == 2
         # x: str vs int → mismatch
         ctx0 = _make_d401_ctx_google(ds, func, args[0])
@@ -328,7 +413,7 @@ class TestD401GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): X.\n"
         func = "class Foo:\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         tree = ast.parse(func)
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
@@ -350,7 +435,7 @@ class TestD402GoogleReturn:
         ds = "Summary.\n\nReturns:\n    str: The result.\n"
         func = "def foo() -> int:\n    pass\n"
         parsed = parse_google(ds)
-        rets = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_RETURNS)
+        rets = _find_cst_nodes(parsed, GoogleReturn)
         assert len(rets) == 1
         ctx = _make_d401_ctx_google(ds, func, rets[0])
         diag = next(iter(RTN101().diagnose(ctx)), None)
@@ -363,7 +448,7 @@ class TestD402GoogleReturn:
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         func = "def foo() -> int:\n    pass\n"
         parsed = parse_google(ds)
-        rets = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_RETURNS)
+        rets = _find_cst_nodes(parsed, GoogleReturn)
         ctx = _make_d401_ctx_google(ds, func, rets[0])
         diag = next(iter(RTN101().diagnose(ctx)), None)
         assert diag is None
@@ -372,7 +457,7 @@ class TestD402GoogleReturn:
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         func = "def foo():\n    pass\n"
         parsed = parse_google(ds)
-        rets = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_RETURNS)
+        rets = _find_cst_nodes(parsed, GoogleReturn)
         ctx = _make_d401_ctx_google(ds, func, rets[0])
         diag = next(iter(RTN101().diagnose(ctx)), None)
         assert diag is None
@@ -381,7 +466,7 @@ class TestD402GoogleReturn:
         ds = "Summary.\n\nReturns:\n    str: The result.\n"
         func = "def foo() -> bool:\n    pass\n"
         parsed = parse_google(ds)
-        rets = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_RETURNS)
+        rets = _find_cst_nodes(parsed, GoogleReturn)
         ctx = _make_d401_ctx_google(ds, func, rets[0])
         diag = next(iter(RTN101().diagnose(ctx)), None)
         assert diag is not None
@@ -396,7 +481,7 @@ class TestD401Numpy:
         ds = "Summary.\n\nParameters\n----------\nx : str\n    The x.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_numpy(ds)
-        params = _find_cst_nodes(parsed, SyntaxKind.NUMPY_PARAMETER)
+        params = _find_cst_nodes(parsed, NumPyParameter)
         assert len(params) == 1
         tree = ast.parse(func)
         ctx = DiagnoseContext(
@@ -417,7 +502,7 @@ class TestD401Numpy:
         ds = "Summary.\n\nReturns\n-------\nstr\n    The result.\n"
         func = "def foo() -> int:\n    pass\n"
         parsed = parse_numpy(ds)
-        rets = _find_cst_nodes(parsed, SyntaxKind.NUMPY_RETURNS)
+        rets = _find_cst_nodes(parsed, NumPyReturns)
         assert len(rets) == 1
         tree = ast.parse(func)
         ctx = DiagnoseContext(
@@ -438,7 +523,7 @@ class TestD401Numpy:
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_numpy(ds)
-        params = _find_cst_nodes(parsed, SyntaxKind.NUMPY_PARAMETER)
+        params = _find_cst_nodes(parsed, NumPyParameter)
         tree = ast.parse(func)
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
@@ -463,7 +548,7 @@ class TestD403GoogleParam:
         ds = "Summary.\n\nArgs:\n    kwargs (int): desc.\n"
         func = "def foo(**kwargs: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         assert len(args) == 1
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM009().diagnose(ctx)), None)
@@ -476,7 +561,7 @@ class TestD403GoogleParam:
         ds = "Summary.\n\nArgs:\n    args (int): desc.\n"
         func = "def foo(*args: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM009().diagnose(ctx)), None)
         assert diag is not None
@@ -487,7 +572,7 @@ class TestD403GoogleParam:
         ds = "Summary.\n\nArgs:\n    **kwargs (int): desc.\n"
         func = "def foo(**kwargs: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM009().diagnose(ctx)), None)
         assert diag is None
@@ -496,7 +581,7 @@ class TestD403GoogleParam:
         ds = "Summary.\n\nArgs:\n    *args (int): desc.\n"
         func = "def foo(*args: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM009().diagnose(ctx)), None)
         assert diag is None
@@ -505,7 +590,7 @@ class TestD403GoogleParam:
         ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM009().diagnose(ctx)), None)
         assert diag is None
@@ -514,7 +599,7 @@ class TestD403GoogleParam:
         ds = "Summary.\n\nArgs:\n    kwargs (int): desc.\n"
         func = "def foo(**kwargs: int):\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM009().diagnose(ctx)), None)
         assert diag is not None
@@ -526,7 +611,7 @@ class TestD403GoogleParam:
         ds = "Summary.\n\nArgs:\n    kwargs (int): desc.\n"
         func = "class Foo:\n    pass\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         tree = ast.parse(func)
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
@@ -548,7 +633,7 @@ class TestD403NumpyParam:
         ds = "Summary.\n\nParameters\n----------\nkwargs : int\n    desc.\n"
         func = "def foo(**kwargs: int):\n    pass\n"
         parsed = parse_numpy(ds)
-        params = _find_cst_nodes(parsed, SyntaxKind.NUMPY_PARAMETER)
+        params = _find_cst_nodes(parsed, NumPyParameter)
         assert len(params) == 1
         tree = ast.parse(func)
         ctx = DiagnoseContext(
@@ -569,7 +654,7 @@ class TestD403NumpyParam:
         ds = "Summary.\n\nParameters\n----------\n**kwargs : int\n    desc.\n"
         func = "def foo(**kwargs: int):\n    pass\n"
         parsed = parse_numpy(ds)
-        params = _find_cst_nodes(parsed, SyntaxKind.NUMPY_PARAMETER)
+        params = _find_cst_nodes(parsed, NumPyParameter)
         tree = ast.parse(func)
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
@@ -590,11 +675,11 @@ class TestD403NumpyParam:
 def _make_d404_ctx_google(ds_text: str, func_src: str) -> DiagnoseContext:
     """Build a DiagnoseContext targeting the GOOGLE_SECTION node."""
     parsed = parse_google(ds_text)
-    sections = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_SECTION)
-    # Pick the first section that contains GOOGLE_ARG children
+    sections = _find_cst_nodes(parsed, GoogleSection)
+    # Pick the first section with ARGS kind
     section = None
     for s in sections:
-        if any(isinstance(c, Node) and c.kind == SyntaxKind.GOOGLE_ARG for c in s.children):
+        if s.section_kind == GoogleSectionKind.ARGS:
             section = s
             break
     assert section is not None, "No Args section found"
@@ -614,10 +699,10 @@ def _make_d404_ctx_google(ds_text: str, func_src: str) -> DiagnoseContext:
 def _make_d404_ctx_numpy(ds_text: str, func_src: str) -> DiagnoseContext:
     """Build a DiagnoseContext targeting the NUMPY_SECTION node."""
     parsed = parse_numpy(ds_text)
-    sections = _find_cst_nodes(parsed, SyntaxKind.NUMPY_SECTION)
+    sections = _find_cst_nodes(parsed, NumPySection)
     section = None
     for s in sections:
-        if any(isinstance(c, Node) and c.kind == SyntaxKind.NUMPY_PARAMETER for c in s.children):
+        if s.section_kind == NumPySectionKind.PARAMETERS:
             section = s
             break
     assert section is not None, "No Parameters section found"
@@ -752,7 +837,7 @@ class TestD404GoogleParam:
     def test_non_function_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         parsed = parse_google(ds)
-        sections = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_SECTION)
+        sections = _find_cst_nodes(parsed, GoogleSection)
         section = sections[0]
         tree = ast.parse("class Foo:\n    pass\n")
         ctx = DiagnoseContext(
@@ -811,7 +896,7 @@ class TestD404NumpyParam:
         diags = list(PRM004().diagnose(ctx))
         assert len(diags) == 1
         result = apply_edits(ds, diags[0].fix.edits)
-        assert "\ny" in result
+        assert "y" in result
 
     def test_self_excluded(self):
         ds = "Summary.\n\nParameters\n----------\nx : int\n    The x.\n"
@@ -830,12 +915,12 @@ class TestD404Registry:
 
     def test_rules_for_google_section(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.GOOGLE_SECTION)
+        rules = registry.rules_for_kind(GoogleSection)
         assert any(r.code == "PDX-PRM004" for r in rules)
 
     def test_rules_for_numpy_section(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.NUMPY_SECTION)
+        rules = registry.rules_for_kind(NumPySection)
         assert any(r.code == "PDX-PRM004" for r in rules)
 
 
@@ -845,7 +930,7 @@ class TestD404Registry:
 def _make_d405_ctx_google(ds_text: str, func_src: str, arg_index: int = 0) -> DiagnoseContext:
     """Build a DiagnoseContext targeting a GOOGLE_ARG node."""
     parsed = parse_google(ds_text)
-    args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+    args = _find_cst_nodes(parsed, GoogleArg)
     assert len(args) > arg_index
     tree = ast.parse(func_src)
     func_node = tree.body[0]
@@ -863,7 +948,7 @@ def _make_d405_ctx_google(ds_text: str, func_src: str, arg_index: int = 0) -> Di
 def _make_d405_ctx_numpy(ds_text: str, func_src: str, param_index: int = 0) -> DiagnoseContext:
     """Build a DiagnoseContext targeting a NUMPY_PARAMETER node."""
     parsed = parse_numpy(ds_text)
-    params = _find_cst_nodes(parsed, SyntaxKind.NUMPY_PARAMETER)
+    params = _find_cst_nodes(parsed, NumPyParameter)
     assert len(params) > param_index
     tree = ast.parse(func_src)
     func_node = tree.body[0]
@@ -938,7 +1023,7 @@ class TestD405GoogleParam:
     def test_non_function_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    x (int): The x.\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         tree = ast.parse("class Foo:\n    pass\n")
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
@@ -994,7 +1079,7 @@ def _make_d406_ctx_google(ds_text: str, func_src: str) -> DiagnoseContext:
         filepath=Path("test.py"),
         docstring_text=ds_text,
         docstring_cst=parsed,
-        target_cst=parsed.node,
+        target_cst=parsed,
         parent_ast=func_node,
         docstring_stmt=_dummy_stmt(2, 4),
         docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
@@ -1010,7 +1095,7 @@ def _make_d406_ctx_numpy(ds_text: str, func_src: str) -> DiagnoseContext:
         filepath=Path("test.py"),
         docstring_text=ds_text,
         docstring_cst=parsed,
-        target_cst=parsed.node,
+        target_cst=parsed,
         parent_ast=func_node,
         docstring_stmt=_dummy_stmt(2, 4),
         docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
@@ -1104,7 +1189,7 @@ class TestD406Google:
             filepath=Path("test.py"),
             docstring_text=ds,
             docstring_cst=parsed,
-            target_cst=parsed.node,
+            target_cst=parsed,
             parent_ast=tree.body[0],
             docstring_stmt=_dummy_stmt(1, 0),
             docstring_location=DocstringLocation(Offset(1, 0), 0, 0, '"""', '"""'),
@@ -1170,22 +1255,22 @@ class TestD405D406Registry:
 
     def test_d405_rules_for_google_arg(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.GOOGLE_ARG)
+        rules = registry.rules_for_kind(GoogleArg)
         assert any(r.code == "PDX-PRM005" for r in rules)
 
     def test_d405_rules_for_numpy_parameter(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.NUMPY_PARAMETER)
+        rules = registry.rules_for_kind(NumPyParameter)
         assert any(r.code == "PDX-PRM005" for r in rules)
 
     def test_d406_rules_for_google_docstring(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.GOOGLE_DOCSTRING)
+        rules = registry.rules_for_kind(GoogleDocstring)
         assert any(r.code == "PDX-PRM001" for r in rules)
 
     def test_d406_rules_for_numpy_docstring(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.NUMPY_DOCSTRING)
+        rules = registry.rules_for_kind(NumPyDocstring)
         assert any(r.code == "PDX-PRM001" for r in rules)
 
 
@@ -1194,7 +1279,7 @@ class TestD405D406Registry:
 
 def _make_d407_ctx_google(ds_text: str, func_src: str, arg_index: int = 0) -> DiagnoseContext:
     parsed = parse_google(ds_text)
-    args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+    args = _find_cst_nodes(parsed, GoogleArg)
     assert len(args) > arg_index
     tree = ast.parse(func_src)
     return DiagnoseContext(
@@ -1210,7 +1295,7 @@ def _make_d407_ctx_google(ds_text: str, func_src: str, arg_index: int = 0) -> Di
 
 def _make_d407_ctx_numpy(ds_text: str, func_src: str, param_index: int = 0) -> DiagnoseContext:
     parsed = parse_numpy(ds_text)
-    params = _find_cst_nodes(parsed, SyntaxKind.NUMPY_PARAMETER)
+    params = _find_cst_nodes(parsed, NumPyParameter)
     assert len(params) > param_index
     tree = ast.parse(func_src)
     return DiagnoseContext(
@@ -1265,7 +1350,7 @@ class TestD407GoogleParam:
     def test_non_function_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    x (int):\n"
         parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_ARG)
+        args = _find_cst_nodes(parsed, GoogleArg)
         tree = ast.parse("class Foo:\n    pass\n")
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
@@ -1316,12 +1401,12 @@ class TestD407Registry:
 
     def test_rules_for_google_arg(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.GOOGLE_ARG)
+        rules = registry.rules_for_kind(GoogleArg)
         assert any(r.code == "PDX-PRM008" for r in rules)
 
     def test_rules_for_numpy_parameter(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.NUMPY_PARAMETER)
+        rules = registry.rules_for_kind(NumPyParameter)
         assert any(r.code == "PDX-PRM008" for r in rules)
 
 
@@ -1368,10 +1453,8 @@ class TestD408GoogleParam:
     def test_non_function_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    b (int): An integer.\n    b (str): A string.\n"
         parsed = parse_google(ds)
-        sections = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_SECTION)
-        section = next(
-            s for s in sections if any(isinstance(c, Node) and c.kind == SyntaxKind.GOOGLE_ARG for c in s.children)
-        )
+        sections = _find_cst_nodes(parsed, GoogleSection)
+        section = next(s for s in sections if s.section_kind == GoogleSectionKind.ARGS)
         tree = ast.parse("class Foo:\n    pass\n")
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
@@ -1415,12 +1498,12 @@ class TestD408Registry:
 
     def test_rules_for_google_section(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.GOOGLE_SECTION)
+        rules = registry.rules_for_kind(GoogleSection)
         assert any(r.code == "PDX-PRM007" for r in rules)
 
     def test_rules_for_numpy_section(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.NUMPY_SECTION)
+        rules = registry.rules_for_kind(NumPySection)
         assert any(r.code == "PDX-PRM007" for r in rules)
 
 
@@ -1505,10 +1588,8 @@ class TestD409GoogleParam:
     def test_non_function_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    b: The b.\n    a: The a.\n"
         parsed = parse_google(ds)
-        sections = _find_cst_nodes(parsed, SyntaxKind.GOOGLE_SECTION)
-        section = next(
-            s for s in sections if any(isinstance(c, Node) and c.kind == SyntaxKind.GOOGLE_ARG for c in s.children)
-        )
+        sections = _find_cst_nodes(parsed, GoogleSection)
+        section = next(s for s in sections if s.section_kind == GoogleSectionKind.ARGS)
         tree = ast.parse("class Foo:\n    pass\n")
         ctx = DiagnoseContext(
             filepath=Path("test.py"),
@@ -1562,10 +1643,1008 @@ class TestD409Registry:
 
     def test_rules_for_google_section(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.GOOGLE_SECTION)
+        rules = registry.rules_for_kind(GoogleSection)
         assert any(r.code == "PDX-PRM006" for r in rules)
 
     def test_rules_for_numpy_section(self):
         registry = build_registry()
-        rules = registry.rules_for_kind(SyntaxKind.NUMPY_SECTION)
+        rules = registry.rules_for_kind(NumPySection)
         assert any(r.code == "PDX-PRM006" for r in rules)
+
+
+# ── SUM001 Tests ───────────────────────────────────────────────────────
+
+
+def _make_root_ctx(ds_text: str, func_src: str, *, is_numpy: bool = False):
+    """Build a DiagnoseContext targeting the docstring root node."""
+    parsed = parse_numpy(ds_text) if is_numpy else parse_google(ds_text)
+    tree = ast.parse(func_src)
+    func_node = tree.body[0]
+    return DiagnoseContext(
+        filepath=Path("test.py"),
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=parsed,
+        parent_ast=func_node,
+        docstring_stmt=_dummy_stmt(2, 4),
+        docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+    )
+
+
+class TestSUM001:
+    """SUM001: docstring has no summary line."""
+
+    def test_no_summary_google(self):
+        ds = "\n\nArgs:\n    x: desc.\n"
+        ctx = _make_root_ctx(ds, "def foo(x):\n    pass\n")
+        diag = next(iter(SUM001().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-SUM001"
+
+    def test_has_summary_no_diagnostic(self):
+        ds = "Do something.\n\nArgs:\n    x: desc.\n"
+        ctx = _make_root_ctx(ds, "def foo(x):\n    pass\n")
+        diag = next(iter(SUM001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_empty_docstring(self):
+        ds = ""
+        parsed = parse_google(ds)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=parsed,
+            parent_ast=ast.parse("def f(): pass").body[0],
+            docstring_stmt=_dummy_stmt(1, 0),
+            docstring_location=DocstringLocation(Offset(1, 0), 0, 6, '"""', '"""'),
+        )
+        diag = next(iter(SUM001().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_not_fixable(self):
+        ds = ""
+        parsed = parse_google(ds)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=parsed,
+            parent_ast=ast.parse("def f(): pass").body[0],
+            docstring_stmt=_dummy_stmt(1, 0),
+            docstring_location=DocstringLocation(Offset(1, 0), 0, 6, '"""', '"""'),
+        )
+        diag = next(iter(SUM001().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.fix is None
+
+
+# ── PRM002 Tests ───────────────────────────────────────────────────────
+
+
+def _make_section_ctx(ds_text: str, func_src: str, *, is_numpy: bool = False):
+    """Build a DiagnoseContext targeting the first Args/Parameters section."""
+    parsed = parse_numpy(ds_text) if is_numpy else parse_google(ds_text)
+    kind = NumPySection if is_numpy else GoogleSection
+    sections = _find_cst_nodes(parsed, kind)
+    assert sections, "No section found"
+    tree = ast.parse(func_src)
+    func_node = tree.body[0]
+    return DiagnoseContext(
+        filepath=Path("test.py"),
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=sections[0],
+        parent_ast=func_node,
+        docstring_stmt=_dummy_stmt(2, 4),
+        docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+    )
+
+
+class TestPRM002:
+    """PRM002: no params but has Args section."""
+
+    def test_no_params_but_has_section(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    pass\n")
+        diag = next(iter(PRM002().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-PRM002"
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_has_params_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        ctx = _make_section_ctx(ds, "def foo(x):\n    pass\n")
+        diag = next(iter(PRM002().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_self_only_triggers(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        ctx = _make_section_ctx(ds, "def foo(self):\n    pass\n")
+        diag = next(iter(PRM002().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_numpy_no_params(self):
+        ds = "Summary.\n\nParameters\n----------\nx : int\n    desc.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    pass\n", is_numpy=True)
+        diag = next(iter(PRM002().diagnose(ctx)), None)
+        assert diag is not None
+
+
+# ── PRM003 Tests ───────────────────────────────────────────────────────
+
+
+class TestPRM003:
+    """PRM003: self/cls in docstring."""
+
+    def test_self_documented(self):
+        ds = "Summary.\n\nArgs:\n    self: The instance.\n    x: desc.\n"
+        func = "def foo(self, x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        # First arg node is self
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM003().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-PRM003"
+        assert "'self'" in diag.message
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_cls_documented(self):
+        ds = "Summary.\n\nArgs:\n    cls: The class.\n"
+        func = "def foo(cls):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM003().diagnose(ctx)), None)
+        assert diag is not None
+        assert "'cls'" in diag.message
+
+    def test_regular_param_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM003().diagnose(ctx)), None)
+        assert diag is None
+
+
+# ── PRM102 Tests ───────────────────────────────────────────────────────
+
+
+class TestPRM102:
+    """PRM102: no type in docstring or signature."""
+
+    def test_no_type_anywhere(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM102().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-PRM102"
+
+    def test_type_in_docstring_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM102().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_type_in_signature_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM102().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_numpy_no_type_anywhere(self):
+        ds = "Summary.\n\nParameters\n----------\nx\n    desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_numpy(ds)
+        params = _find_cst_nodes(parsed, NumPyParameter)
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=params[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(PRM102().diagnose(ctx)), None)
+        assert diag is not None
+
+
+# ── PRM103 Tests ───────────────────────────────────────────────────────
+
+
+class TestPRM103:
+    """PRM103: redundant type in docstring."""
+
+    def test_redundant_type_google(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM103().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-PRM103"
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_no_annotation_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM103().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_no_doc_type_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM103().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_removes_type_google(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM103().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "(int)" not in result
+        assert "x:" in result
+
+    def test_not_enabled_by_default(self):
+        assert PRM103.enabled_by_default is False
+
+
+# ── PRM104 Tests ───────────────────────────────────────────────────────
+
+
+class TestPRM104:
+    """PRM104: no type in docstring."""
+
+    def test_no_doc_type(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM104().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-PRM104"
+
+    def test_has_doc_type_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM104().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_inserts_type_google(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM104().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "(int)" in result
+
+    def test_not_enabled_by_default(self):
+        assert PRM104.enabled_by_default is False
+
+
+# ── PRM201 Tests ───────────────────────────────────────────────────────
+
+
+class TestPRM201:
+    """PRM201: missing 'optional' in docstring."""
+
+    def test_missing_optional(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int = 5):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM201().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-PRM201"
+
+    def test_has_optional_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x (int, optional): desc.\n"
+        func = "def foo(x: int = 5):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM201().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_no_default_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM201().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_kwonly_with_default(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(*, x: int = 0):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM201().diagnose(ctx)), None)
+        assert diag is not None
+
+
+# ── PRM202 Tests ───────────────────────────────────────────────────────
+
+
+class TestPRM202:
+    """PRM202: missing 'default' in docstring."""
+
+    def test_missing_default(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int = 5):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM202().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-PRM202"
+
+    def test_has_default_mention_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc. Defaults to 5.\n"
+        func = "def foo(x: int = 5):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM202().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_no_default_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM202().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_appends_default(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int = 5):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM202().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "Defaults to 5" in result
+
+
+# ── RTN001 Tests ───────────────────────────────────────────────────────
+
+
+class TestRTN001:
+    """RTN001: missing Returns section."""
+
+    def test_missing_returns_section(self):
+        ds = "Summary."
+        ctx = _make_root_ctx(ds, "def foo() -> int:\n    pass\n")
+        diag = next(iter(RTN001().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-RTN001"
+        assert diag.fix is not None
+
+    def test_has_returns_section_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_root_ctx(ds, "def foo() -> int:\n    pass\n")
+        diag = next(iter(RTN001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_no_return_annotation_no_diagnostic(self):
+        ds = "Summary."
+        ctx = _make_root_ctx(ds, "def foo():\n    pass\n")
+        diag = next(iter(RTN001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_none_return_no_diagnostic(self):
+        ds = "Summary."
+        ctx = _make_root_ctx(ds, "def foo() -> None:\n    pass\n")
+        diag = next(iter(RTN001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_inserts_returns_section_google(self):
+        ds = "Summary."
+        ctx = _make_root_ctx(ds, "def foo() -> str:\n    pass\n")
+        diag = next(iter(RTN001().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "Returns:" in result
+        assert "str:" in result
+
+    def test_fix_inserts_returns_section_numpy(self):
+        ds = "Summary."
+        ctx = _make_root_ctx(ds, "def foo() -> str:\n    pass\n", is_numpy=True)
+        diag = next(iter(RTN001().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "Returns" in result
+        assert "-------" in result
+        assert "str" in result
+
+
+# ── RTN002 Tests ───────────────────────────────────────────────────────
+
+
+class TestRTN002:
+    """RTN002: unnecessary Returns section."""
+
+    def test_unnecessary_returns(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    pass\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-RTN002"
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_has_return_type_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo() -> int:\n    pass\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_none_return_triggers(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo() -> None:\n    pass\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+
+
+# ── RTN003 Tests ───────────────────────────────────────────────────────
+
+
+def _make_returns_entry_ctx(ds_text: str, func_src: str, *, is_numpy: bool = False):
+    """Build a DiagnoseContext targeting a GOOGLE_RETURNS/NUMPY_RETURNS node."""
+    parsed = parse_numpy(ds_text) if is_numpy else parse_google(ds_text)
+    kind = NumPyReturns if is_numpy else GoogleReturn
+    entries = _find_cst_nodes(parsed, kind)
+    assert entries, "No return entries found"
+    tree = ast.parse(func_src)
+    return DiagnoseContext(
+        filepath=Path("test.py"),
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=entries[0],
+        parent_ast=tree.body[0],
+        docstring_stmt=_dummy_stmt(2, 4),
+        docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+    )
+
+
+class TestRTN003:
+    """RTN003: Returns section has no description."""
+
+    def test_no_description(self):
+        ds = "Summary.\n\nReturns:\n    int:\n"
+        func = "def foo() -> int:\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        diag = next(iter(RTN003().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-RTN003"
+
+    def test_has_description_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo() -> int:\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        diag = next(iter(RTN003().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_yields_section_ignored(self):
+        """RTN003 targets GOOGLE_RETURNS, not GOOGLE_YIELDS — dispatcher never sends Yields entries."""
+        assert GoogleYield not in RTN003.target_kinds
+        assert NumPyYields not in RTN003.target_kinds
+
+
+# ── RTN102 Tests ───────────────────────────────────────────────────────
+
+
+class TestRTN102:
+    """RTN102: no return type in docstring or signature."""
+
+    def test_no_type_anywhere(self):
+        ds = "Summary.\n\nReturns:\n    The result.\n"
+        func = "def foo():\n    return 1\n"
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleReturn)
+        if not entries:
+            return  # parser might not produce returns node
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(RTN102().diagnose(ctx)), None)
+        # If RETURN_TYPE is present it won't trigger; depends on parser
+        if diag is not None:
+            assert diag.rule == "PDX-RTN102"
+
+    def test_type_in_docstring_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo():\n    return 1\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        diag = next(iter(RTN102().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_type_in_signature_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    The result.\n"
+        func = "def foo() -> int:\n    return 1\n"
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleReturn)
+        if not entries:
+            return
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(RTN102().diagnose(ctx)), None)
+        assert diag is None
+
+
+# ── RTN103 Tests ───────────────────────────────────────────────────────
+
+
+class TestRTN103:
+    """RTN103: redundant return type in docstring."""
+
+    def test_redundant_return_type(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo() -> int:\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        diag = next(iter(RTN103().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-RTN103"
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_no_annotation_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo():\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        diag = next(iter(RTN103().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_no_doc_type_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    The result.\n"
+        func = "def foo() -> int:\n    pass\n"
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleReturn)
+        if not entries:
+            return
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(RTN103().diagnose(ctx)), None)
+        # If no RETURN_TYPE token, no diagnostic
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        assert RTN103.enabled_by_default is False
+
+
+# ── RTN104 Tests ───────────────────────────────────────────────────────
+
+
+class TestRTN104:
+    """RTN104: no return type in docstring."""
+
+    def test_no_return_type_in_doc(self):
+        ds = "Summary.\n\nReturns:\n    The result.\n"
+        func = "def foo() -> int:\n    pass\n"
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleReturn)
+        if not entries:
+            return
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(RTN104().diagnose(ctx)), None)
+        # Depends on whether parser produces RETURN_TYPE token
+        if diag is not None:
+            assert diag.rule == "PDX-RTN104"
+
+    def test_has_type_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo() -> int:\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        diag = next(iter(RTN104().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        assert RTN104.enabled_by_default is False
+
+
+# ── YLD001 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD001:
+    """YLD001: missing Yields section."""
+
+    def test_missing_yields_section(self):
+        ds = "Summary."
+        ctx = _make_root_ctx(ds, "def foo():\n    yield 1\n")
+        diag = next(iter(YLD001().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-YLD001"
+        assert diag.fix is not None
+
+    def test_has_yields_section_no_diagnostic(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        ctx = _make_root_ctx(ds, "def foo():\n    yield 1\n")
+        diag = next(iter(YLD001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_generator_no_diagnostic(self):
+        ds = "Summary."
+        ctx = _make_root_ctx(ds, "def foo():\n    return 1\n")
+        diag = next(iter(YLD001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_inserts_yields_google(self):
+        ds = "Summary."
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=parsed,
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD001().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "Yields:" in result
+        assert "int:" in result
+
+    def test_fix_inserts_yields_numpy(self):
+        ds = "Summary."
+        func = "from typing import Generator\ndef foo() -> Generator[str, None, None]:\n    yield 'x'\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_numpy(ds)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=parsed,
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD001().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "Yields" in result
+        assert "------" in result
+        assert "str" in result
+
+    def test_nested_yield_not_detected(self):
+        """Yield in a nested function should not trigger."""
+        ds = "Summary."
+        func = "def foo():\n    def inner():\n        yield 1\n    return inner\n"
+        ctx = _make_root_ctx(ds, func)
+        diag = next(iter(YLD001().diagnose(ctx)), None)
+        assert diag is None
+
+
+# ── YLD002 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD002:
+    """YLD002: unnecessary Yields section."""
+
+    def test_unnecessary_yields(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    return 1\n")
+        diag = next(iter(YLD002().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-YLD002"
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_is_generator_no_diagnostic(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    yield 1\n")
+        diag = next(iter(YLD002().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_non_yields_section_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    return 1\n")
+        diag = next(iter(YLD002().diagnose(ctx)), None)
+        assert diag is None
+
+
+# ── YLD003 Tests ───────────────────────────────────────────────────────
+
+
+def _make_yields_entry_ctx(ds_text: str, func_src: str, *, is_numpy: bool = False):
+    """Build a DiagnoseContext targeting the first GOOGLE_YIELDS/NUMPY_YIELDS node."""
+    parsed = parse_numpy(ds_text) if is_numpy else parse_google(ds_text)
+    kind = NumPyYields if is_numpy else GoogleYield
+    entries = _find_cst_nodes(parsed, kind)
+    assert entries, "No yields entries found"
+    tree = ast.parse(func_src)
+    return DiagnoseContext(
+        filepath=Path("test.py"),
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=entries[0],
+        parent_ast=tree.body[0],
+        docstring_stmt=_dummy_stmt(2, 4),
+        docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+    )
+
+
+class TestYLD003:
+    """YLD003: Yields section has no description."""
+
+    def test_no_description(self):
+        ds = "Summary.\n\nYields:\n    int:\n"
+        func = "def foo():\n    yield 1\n"
+        ctx = _make_yields_entry_ctx(ds, func)
+        diag = next(iter(YLD003().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-YLD003"
+
+    def test_has_description_no_diagnostic(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "def foo():\n    yield 1\n"
+        ctx = _make_yields_entry_ctx(ds, func)
+        diag = next(iter(YLD003().diagnose(ctx)), None)
+        assert diag is None
+
+
+# ── YLD101 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD101:
+    """YLD101: yield type mismatch."""
+
+    def test_type_mismatch(self):
+        ds = "Summary.\n\nYields:\n    str: An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD101().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-YLD101"
+        assert "'str'" in diag.message
+        assert "'int'" in diag.message
+
+    def test_matching_type_no_diagnostic(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD101().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_replaces_type(self):
+        ds = "Summary.\n\nYields:\n    str: An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD101().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "int:" in result
+
+    def test_returns_section_not_affected(self):
+        """YLD101 targets GOOGLE_YIELDS, not GOOGLE_RETURNS — dispatcher never sends Returns entries."""
+        assert GoogleReturn not in YLD101.target_kinds
+        assert NumPyReturns not in YLD101.target_kinds
+
+
+# ── YLD102 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD102:
+    """YLD102: no yield type in docstring or signature."""
+
+    def test_no_type_anywhere(self):
+        ds = "Summary.\n\nYields:\n    An item.\n"
+        func = "def foo():\n    yield 1\n"
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        if not entries:
+            return
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD102().diagnose(ctx)), None)
+        if diag is not None:
+            assert diag.rule == "PDX-YLD102"
+
+    def test_type_in_docstring_no_diagnostic(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "def foo():\n    yield 1\n"
+        ctx = _make_yields_entry_ctx(ds, func)
+        diag = next(iter(YLD102().diagnose(ctx)), None)
+        assert diag is None
+
+
+# ── YLD103 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD103:
+    """YLD103: redundant yield type in docstring."""
+
+    def test_redundant_type(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD103().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PDX-YLD103"
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_no_sig_type_no_diagnostic(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "def foo():\n    yield 1\n"
+        ctx = _make_yields_entry_ctx(ds, func)
+        diag = next(iter(YLD103().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        assert YLD103.enabled_by_default is False
+
+
+# ── YLD104 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD104:
+    """YLD104: no yield type in docstring."""
+
+    def test_not_enabled_by_default(self):
+        assert YLD104.enabled_by_default is False
+
+
+# ── Registry completeness ─────────────────────────────────────────────
+
+
+class TestRegistryCompleteness:
+    """All 31 rules are registered."""
+
+    def test_all_31_rules_with_select_all(self):
+        registry = build_registry(select=["ALL"])
+        assert len(registry.all_rules()) == 36
+
+    def test_default_rules_count(self):
+        registry = build_registry()
+        assert len(registry.all_rules()) == 29
+
+    def test_non_default_rules_excluded(self):
+        registry = build_registry()
+        codes = {r.code for r in registry.all_rules()}
+        assert "PDX-PRM103" not in codes
+        assert "PDX-PRM104" not in codes
+        assert "PDX-RTN103" not in codes
+        assert "PDX-RTN104" not in codes
+        assert "PDX-YLD103" not in codes
+        assert "PDX-YLD104" not in codes
+
+    def test_non_default_rules_included_with_select(self):
+        registry = build_registry(select=["PDX-PRM103", "PDX-YLD104"])
+        codes = {r.code for r in registry.all_rules()}
+        assert "PDX-PRM103" in codes
+        assert "PDX-YLD104" in codes

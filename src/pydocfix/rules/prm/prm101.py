@@ -6,7 +6,7 @@ import ast
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
-from pydocstring import Node, SyntaxKind, Token
+from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, replace_token
 
@@ -20,8 +20,8 @@ class PRM101(BaseRule):
     code = "PDX-PRM101"
     message = "Docstring parameter type does not match type hint."
     target_kinds = {
-        SyntaxKind.GOOGLE_ARG,
-        SyntaxKind.NUMPY_PARAMETER,
+        GoogleArg,
+        NumPyParameter,
     }
 
     def __init__(self, config: Config | None = None):
@@ -56,20 +56,17 @@ class PRM101(BaseRule):
         self._ann_cache = (node_id, result)
         return result
 
-    def _find_child_token(self, node: Node, kind: SyntaxKind) -> Token | None:
-        """Find the first child token with the given kind."""
-        for child in node.children:
-            if isinstance(child, Token) and child.kind == kind:
-                return child
-        return None
-
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
-        if not isinstance(cst_node, Node):
+        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
             return
 
-        name_token = self._find_child_token(cst_node, SyntaxKind.NAME)
-        type_token = self._find_child_token(cst_node, SyntaxKind.TYPE)
+        if isinstance(cst_node, GoogleArg):
+            name_token = cst_node.name
+            type_token = cst_node.type
+        else:
+            name_token = cst_node.names[0] if cst_node.names else None
+            type_token = cst_node.type
         if name_token is None or type_token is None:
             return
 

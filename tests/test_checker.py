@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from pydocfix.checker import build_rules_map, check_file
-from pydocfix.rules import SUM002, PRM101, RTN101
+from pydocfix.rules import PRM101, RTN101, SUM002
 
 
 def _diagnose(filepath: Path, kind_map) -> list:

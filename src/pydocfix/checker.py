@@ -10,7 +10,24 @@ from pathlib import Path
 from typing import Final, NamedTuple
 
 import pydocstring
-from pydocstring import SyntaxKind
+from pydocstring import (
+    GoogleArg,
+    GoogleAttribute,
+    GoogleDocstring,
+    GoogleException,
+    GoogleReturn,
+    GoogleSectionKind,
+    GoogleYield,
+    NumPyAttribute,
+    NumPyDocstring,
+    NumPyException,
+    NumPyParameter,
+    NumPyReturns,
+    NumPySectionKind,
+    NumPyYields,
+    PlainDocstring,
+    Visitor,
+)
 
 from pydocfix.config import Config
 from pydocfix.rules import (
@@ -60,7 +77,7 @@ def _extract_docstrings(source: str, filepath: Path) -> Iterator[_DocstringInfo]
         )
 
 
-_REGEX_OPENING_QUOTES: Final = re.compile(r"(?P<prefix>[rRuUfFbB]{0,2})(?P<quote>\"\"\"|'''|\"|')")
+_REGEX_OPENING_QUOTES: Final = re.compile(r"(?P<prefix>[rRuUfFbB]{0,2})(?P<quote>\"\"\"|\'{3}|\"|\')")
 
 
 def _locate_docstring(
@@ -101,9 +118,25 @@ def _locate_docstring(
     )
 
 
-def build_rules_map(rules: Iterable[BaseRule]) -> dict[SyntaxKind, list[BaseRule]]:
+# Mapping from CST node type to the section-level "parent" types,
+# for use in entry-level dispatching.
+_ENTRY_TYPE_TO_SECTION_KIND = {
+    GoogleArg: GoogleSectionKind.ARGS,
+    GoogleReturn: GoogleSectionKind.RETURNS,
+    GoogleException: GoogleSectionKind.RAISES,
+    GoogleYield: GoogleSectionKind.YIELDS,
+    GoogleAttribute: GoogleSectionKind.ATTRIBUTES,
+    NumPyParameter: NumPySectionKind.PARAMETERS,
+    NumPyReturns: NumPySectionKind.RETURNS,
+    NumPyException: NumPySectionKind.RAISES,
+    NumPyYields: NumPySectionKind.YIELDS,
+    NumPyAttribute: NumPySectionKind.ATTRIBUTES,
+}
+
+
+def build_rules_map(rules: Iterable[BaseRule]) -> dict[type, list[BaseRule]]:
     """Build cst->rules dispatch map."""
-    kind_map: dict[SyntaxKind, list[BaseRule]] = {}
+    kind_map: dict[type, list[BaseRule]] = {}
     for rule in rules:
         for kind in rule.target_kinds:
             kind_map.setdefault(kind, []).append(rule)
@@ -119,10 +152,128 @@ def _has_overlap(accepted: Iterable[Edit], candidate: Fix) -> bool:
     return False
 
 
+class _DiagnosticCollector(Visitor):
+    """Walk the CST and collect diagnostics from matching rules."""
+
+    def __init__(
+        self,
+        kind_map: dict[type, list[BaseRule]],
+        filepath: Path,
+        ds_content: str,
+        parsed: GoogleDocstring | NumPyDocstring | PlainDocstring,
+        parent_ast: ast.AST,
+        ds_stmt: ast.stmt,
+        ds_loc: DocstringLocation,
+        config: Config | None,
+    ) -> None:
+        self._kind_map = kind_map
+        self._filepath = filepath
+        self._ds_content = ds_content
+        self._parsed = parsed
+        self._parent_ast = parent_ast
+        self._ds_stmt = ds_stmt
+        self._ds_loc = ds_loc
+        self._config = config
+        self.diagnostics: list[Diagnostic] = []
+        # Track current section's entries for context
+        self._current_section_entries: list = []
+
+    def _dispatch(self, node, section_entries=None):
+        """Dispatch a node to matching rules."""
+        matching = self._kind_map.get(type(node), [])
+        if not matching:
+            return
+        ctx = DiagnoseContext(
+            filepath=self._filepath,
+            docstring_text=self._ds_content,
+            docstring_cst=self._parsed,
+            target_cst=node,
+            parent_ast=self._parent_ast,
+            docstring_stmt=self._ds_stmt,
+            docstring_location=self._ds_loc,
+            config=self._config,
+            section_entries=section_entries or [],
+        )
+        for rule in matching:
+            self.diagnostics.extend(rule.diagnose(ctx))
+
+    def _dispatch_summary_token(self, docstring):
+        """Dispatch the summary Token for rules targeting Token."""
+        if docstring.summary is None:
+            return
+        token = docstring.summary
+        matching = self._kind_map.get(type(token), [])
+        if not matching:
+            return
+        ctx = DiagnoseContext(
+            filepath=self._filepath,
+            docstring_text=self._ds_content,
+            docstring_cst=self._parsed,
+            target_cst=token,
+            parent_ast=self._parent_ast,
+            docstring_stmt=self._ds_stmt,
+            docstring_location=self._ds_loc,
+            config=self._config,
+        )
+        for rule in matching:
+            self.diagnostics.extend(rule.diagnose(ctx))
+
+    # Google style
+    def enter_google_docstring(self, node, ctx):
+        self._dispatch(node)
+        self._dispatch_summary_token(node)
+
+    def enter_google_section(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_google_arg(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_google_return(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_google_exception(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_google_yield(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_google_attribute(self, node, ctx):
+        self._dispatch(node)
+
+    # NumPy style
+    def enter_numpy_docstring(self, node, ctx):
+        self._dispatch(node)
+        self._dispatch_summary_token(node)
+
+    def enter_numpy_section(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_parameter(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_returns(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_exception(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_yields(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_attribute(self, node, ctx):
+        self._dispatch(node)
+
+    # Plain
+    def enter_plain_docstring(self, node, ctx):
+        self._dispatch(node)
+        self._dispatch_summary_token(node)
+
+
 def check_file(
     source: str,
     filepath: Path,
-    kind_map: dict[SyntaxKind, list[BaseRule]],
+    kind_map: dict[type, list[BaseRule]],
     *,
     fix: bool = False,
     unsafe_fixes: bool = False,
@@ -151,24 +302,19 @@ def check_file(
         if ds_loc is None:
             continue
 
-        # Walk the CST and dispatch to matching rules
-        ds_diagnostics: list[Diagnostic] = []
-        for cst in pydocstring.walk(parsed.node):
-            matching_rules = kind_map.get(cst.kind, [])
-            if not matching_rules:
-                continue
-            ctx = DiagnoseContext(
-                filepath=filepath,
-                docstring_text=ds_content,
-                docstring_cst=parsed,
-                target_cst=cst,
-                parent_ast=parent_ast,
-                docstring_stmt=ds_stmt,
-                docstring_location=ds_loc,
-                config=config,
-            )
-            for rule in matching_rules:
-                ds_diagnostics.extend(rule.diagnose(ctx))
+        # Walk the CST and dispatch to matching rules via Visitor
+        collector = _DiagnosticCollector(
+            kind_map=kind_map,
+            filepath=filepath,
+            ds_content=ds_content,
+            parsed=parsed,
+            parent_ast=parent_ast,
+            ds_stmt=ds_stmt,
+            ds_loc=ds_loc,
+            config=config,
+        )
+        pydocstring.walk(parsed, collector)
+        ds_diagnostics = collector.diagnostics
 
         base_idx = len(all_diagnostics)
         all_diagnostics.extend(ds_diagnostics)
@@ -201,9 +347,8 @@ def check_file(
 
     fixed_source: str | None = None
     if file_edits:
-        file_edits.sort(key=lambda e: e[0], reverse=True)
         buf = source_bytes
-        for start, end, replacement in file_edits:
+        for start, end, replacement in sorted(file_edits, key=lambda t: t[0], reverse=True):
             buf = buf[:start] + replacement + buf[end:]
         fixed_source = buf.decode("utf-8")
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator
 
-from pydocstring import Node, SyntaxKind, Token
+from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, replace_token
 
@@ -16,8 +16,8 @@ class PRM009(BaseRule):
     code = "PDX-PRM009"
     message = "Docstring parameter name missing '*' or '**' prefix."
     target_kinds = {
-        SyntaxKind.GOOGLE_ARG,
-        SyntaxKind.NUMPY_PARAMETER,
+        GoogleArg,
+        NumPyParameter,
     }
 
     def _get_vararg_kwarg_names(self, ast_node: ast.AST) -> dict[str, str]:
@@ -31,23 +31,16 @@ class PRM009(BaseRule):
             result[ast_node.args.kwarg.arg] = f"**{ast_node.args.kwarg.arg}"
         return result
 
-    def _find_child_token(self, node: Node, kind: SyntaxKind) -> Token | None:
-        for child in node.children:
-            if isinstance(child, Token) and child.kind == kind:
-                return child
-        return None
-
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
-        if not isinstance(cst_node, Node):
+        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
             return
 
-        name_token = self._find_child_token(cst_node, SyntaxKind.NAME)
+        name_token = cst_node.name if isinstance(cst_node, GoogleArg) else cst_node.names[0] if cst_node.names else None
         if name_token is None:
             return
 
         param_name = name_token.text
-        # Already has prefix — nothing to do
         if param_name.startswith("*"):
             return
 

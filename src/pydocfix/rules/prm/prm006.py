@@ -5,7 +5,15 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator
 
-from pydocstring import Node, SyntaxKind, Token
+import pydocstring
+from pydocstring import (
+    GoogleArg,
+    GoogleSection,
+    GoogleSectionKind,
+    NumPySection,
+    NumPySectionKind,
+    Visitor,
+)
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
 
@@ -21,30 +29,33 @@ class PRM006(BaseRule):
     code = "PDX-PRM006"
     message = "Docstring parameters are not in the same order as the function signature."
     target_kinds = {
-        SyntaxKind.GOOGLE_SECTION,
-        SyntaxKind.NUMPY_SECTION,
+        GoogleSection,
+        NumPySection,
     }
 
     @staticmethod
-    def _is_param_section(section: Node) -> bool:
-        return any(
-            isinstance(c, Node) and c.kind in (SyntaxKind.GOOGLE_ARG, SyntaxKind.NUMPY_PARAMETER)
-            for c in section.children
-        )
+    def _is_param_section(section) -> bool:
+        if isinstance(section, GoogleSection):
+            return section.section_kind == GoogleSectionKind.ARGS
+        if isinstance(section, NumPySection):
+            return section.section_kind == NumPySectionKind.PARAMETERS
+        return False
 
     @staticmethod
-    def _get_documented_param_nodes(section: Node) -> list[tuple[str, Node]]:
+    def _get_documented_param_nodes(parsed, section) -> list[tuple[str, object]]:
         """Return ``(bare_name, node)`` pairs for each documented parameter, in order."""
-        result: list[tuple[str, Node]] = []
-        for child in section.children:
-            if not isinstance(child, Node):
-                continue
-            if child.kind not in (SyntaxKind.GOOGLE_ARG, SyntaxKind.NUMPY_PARAMETER):
-                continue
-            for token in child.children:
-                if isinstance(token, Token) and token.kind == SyntaxKind.NAME:
-                    result.append((_bare_name(token.text), child))
-                    break
+        result: list[tuple[str, object]] = []
+
+        class _Collector(Visitor):
+            def enter_google_arg(self, node, ctx):
+                if node.range.start >= section.range.start and node.range.end <= section.range.end and node.name:
+                    result.append((_bare_name(node.name.text), node))
+
+            def enter_numpy_parameter(self, node, ctx):
+                if node.range.start >= section.range.start and node.range.end <= section.range.end and node.names:
+                    result.append((_bare_name(node.names[0].text), node))
+
+        pydocstring.walk(parsed, _Collector())
         return result
 
     @staticmethod
@@ -66,15 +77,8 @@ class PRM006(BaseRule):
         return result
 
     @staticmethod
-    def _find_child_token(node: Node, kind: SyntaxKind) -> Token | None:
-        for child in node.children:
-            if isinstance(child, Token) and child.kind == kind:
-                return child
-        return None
-
-    @staticmethod
-    def _entry_span(ds_bytes: bytes, param_node: Node) -> tuple[int, int]:
-        """Return ``(start, end)`` byte positions for a full parameter entry (including trailing newline)."""
+    def _entry_span(ds_bytes: bytes, param_node) -> tuple[int, int]:
+        """Return ``(start, end)`` byte positions for a full parameter entry."""
         nl_before = ds_bytes.rfind(b"\n", 0, param_node.range.start)
         start = nl_before + 1 if nl_before != -1 else param_node.range.start
         nl_after = ds_bytes.find(b"\n", param_node.range.end)
@@ -84,15 +88,11 @@ class PRM006(BaseRule):
     def _build_reorder_fix(
         self,
         ds_text: str,
-        doc_params: list[tuple[str, Node]],
+        doc_params: list[tuple[str, object]],
         sig_order: list[str],
     ) -> Fix:
         ds_bytes = ds_text.encode("utf-8")
-
-        # Collect (name, start, end) for each entry
         entries = [(name, *self._entry_span(ds_bytes, node)) for name, node in doc_params]
-
-        # Desired order: signature order first, then unknown params in their original relative order
         sig_index = {name: i for i, name in enumerate(sig_order)}
         sig_set = set(sig_order)
         in_sig = sorted(
@@ -101,11 +101,9 @@ class PRM006(BaseRule):
         )
         not_in_sig = [(name, s, e) for name, s, e in entries if name not in sig_set]
         desired = in_sig + not_in_sig
-
         new_text = "".join(ds_bytes[s:e].decode("utf-8") for _, s, e in desired)
         block_start = entries[0][1]
         block_end = entries[-1][2]
-
         return Fix(
             edits=[Edit(start=block_start, end=block_end, new_text=new_text)],
             applicability=Applicability.UNSAFE,
@@ -113,20 +111,18 @@ class PRM006(BaseRule):
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
-        if not isinstance(section, Node):
+        if not isinstance(section, (GoogleSection, NumPySection)):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
         if not self._is_param_section(section):
             return
 
-        doc_params = self._get_documented_param_nodes(section)
+        doc_params = self._get_documented_param_nodes(ctx.docstring_cst, section)
         sig_order = self._get_signature_order(ctx.parent_ast)
 
-        # Only consider params that appear in both signature and docstring
         sig_set = set(sig_order)
         doc_names = [name for name, _ in doc_params if name in sig_set]
-        # The expected order is sig_order filtered to those present in doc_names
         doc_name_set = set(doc_names)
         expected = [name for name in sig_order if name in doc_name_set]
 
@@ -135,13 +131,17 @@ class PRM006(BaseRule):
 
         fix = self._build_reorder_fix(ctx.docstring_text, doc_params, sig_order)
 
-        # Report diagnostics for each parameter that is out of position;
-        # attach the (single) reorder fix only to the first violation.
+        # Filter to only params that exist in the signature for position comparison
+        doc_in_sig = [(name, node) for name, node in doc_params if name in sig_set]
+
         first = True
-        for (doc_name, param_node), exp_name in zip(doc_params, expected):
-            if doc_name == exp_name or doc_name not in sig_set:
+        for (doc_name, param_node), exp_name in zip(doc_in_sig, expected, strict=False):
+            if doc_name == exp_name:
                 continue
-            name_token = self._find_child_token(param_node, SyntaxKind.NAME)
+            if isinstance(param_node, GoogleArg):
+                name_token = param_node.name
+            else:
+                name_token = param_node.names[0] if hasattr(param_node, "names") and param_node.names else None
             message = f"Parameter '{doc_name}' is in the wrong order (expected '{exp_name}' at this position)."
             yield self._make_diagnostic(
                 ctx,

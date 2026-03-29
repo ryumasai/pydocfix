@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from pydocfix.config import Config, find_pyproject_toml, load_config
+from pydocfix.config import find_pyproject_toml, load_config
 
 
 class TestFindPyprojectToml:

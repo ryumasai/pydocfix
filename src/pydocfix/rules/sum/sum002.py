@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Final
 
-from pydocstring import SyntaxKind, Token
+from pydocstring import Token
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
 
@@ -21,7 +21,7 @@ class SUM002(BaseRule):
 
     code = "PDX-SUM002"
     message = "Summary should end with a period."
-    target_kinds = {SyntaxKind.SUMMARY}
+    target_kinds = {Token}
 
     def __init__(self, config: Config | None = None) -> None:
         super().__init__(config)

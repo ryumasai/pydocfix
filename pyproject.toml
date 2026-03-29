@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
-    "pydocstring-rs>=0.1.4",
+    "pydocstring-rs>=0.1.6",
     "click>=8.0",
 ]
 
@@ -53,4 +53,4 @@ testpaths = ["tests"]
 
 [tool.pydocfix]
 period = "."
-ignore = ["PDX-PRM001"]
+ignore = ["PDX-PRM001", "PDX-RTN001", "PDX-YLD001"]

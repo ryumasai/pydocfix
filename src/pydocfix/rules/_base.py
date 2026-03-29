@@ -8,15 +8,12 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from itertools import pairwise
-from typing import TYPE_CHECKING, Final, NamedTuple
+from typing import TYPE_CHECKING, Any, Final, NamedTuple
 
 from pydocstring import (
     GoogleDocstring,
-    LineColumn,
-    Node,
     NumPyDocstring,
     PlainDocstring,
-    SyntaxKind,
     Token,
 )
 
@@ -114,6 +111,15 @@ class DocstringLocation(NamedTuple):
     closing: str  # closing quote string
 
 
+def _byte_offset_to_line_col(text_bytes: bytes, offset: int) -> tuple[int, int]:
+    """Convert a byte offset within docstring text to (1-based line, 0-based col)."""
+    before = text_bytes[:offset]
+    lineno = before.count(b"\n") + 1
+    last_nl = before.rfind(b"\n")
+    col = offset - (last_nl + 1)
+    return lineno, col
+
+
 @dataclass
 class DiagnoseContext:
     """Information passed to a rule's diagnose method."""
@@ -121,27 +127,29 @@ class DiagnoseContext:
     filepath: Path
     docstring_text: str
     docstring_cst: GoogleDocstring | NumPyDocstring | PlainDocstring
-    target_cst: Node | Token
+    target_cst: Any
     parent_ast: ast.AST
     docstring_stmt: ast.stmt
     docstring_location: DocstringLocation
     config: Config | None = None
+    section_entries: list[Any] = field(default_factory=list)
 
-    def cst_node_range(self, cst: Node | Token | None = None) -> Range:
+    def cst_node_range(self, cst: Any = None) -> Range:
         """Convert a CST node/token byte range to a file-level Range."""
         if cst is None:
             cst = self.target_cst
         ds_offset: Final[Offset] = self.docstring_location.content_offset
-        start_lc: Final[LineColumn] = self.docstring_cst.line_col(cst.range.start)
-        end_lc: Final[LineColumn] = self.docstring_cst.line_col(cst.range.end)
+        ds_bytes: Final[bytes] = self.docstring_text.encode("utf-8")
+        start_line, start_col = _byte_offset_to_line_col(ds_bytes, cst.range.start)
+        end_line, end_col = _byte_offset_to_line_col(ds_bytes, cst.range.end)
         return Range(
             start=Offset(
-                ds_offset.lineno + start_lc.lineno - 1,
-                ds_offset.col + start_lc.col if start_lc.lineno == 1 else start_lc.col,
+                ds_offset.lineno + start_line - 1,
+                ds_offset.col + start_col if start_line == 1 else start_col,
             ),
             end=Offset(
-                ds_offset.lineno + end_lc.lineno - 1,
-                ds_offset.col + end_lc.col if end_lc.lineno == 1 else end_lc.col,
+                ds_offset.lineno + end_line - 1,
+                ds_offset.col + end_col if end_line == 1 else end_col,
             ),
         )
 
@@ -195,7 +203,7 @@ class BaseRule:
     code: str = ""
     message: str = ""
     enabled_by_default: bool = True
-    target_kinds: set[SyntaxKind] = set()
+    target_kinds: set[type] = set()
 
     def __init__(self, config: Config | None = None) -> None:
         self.config = config
@@ -210,7 +218,7 @@ class BaseRule:
         message: str,
         *,
         fix: Fix | None = None,
-        target: Node | Token | None = None,
+        target: Any = None,
     ) -> Diagnostic:
         """Helper to create a Diagnostic with correct filepath and range."""
         return Diagnostic(
@@ -228,7 +236,7 @@ class RuleRegistry:
     """Manages available rules."""
 
     _rules: dict[str, BaseRule] = field(default_factory=dict)
-    _by_kind: dict[SyntaxKind, list[BaseRule]] = field(default_factory=lambda: defaultdict(list))
+    _by_kind: dict[type, list[BaseRule]] = field(default_factory=lambda: defaultdict(list))
 
     def register(self, rule: BaseRule) -> None:
         self._rules[rule.code] = rule
@@ -238,12 +246,12 @@ class RuleRegistry:
     def get(self, code: str) -> BaseRule | None:
         return self._rules.get(code)
 
-    def rules_for_kind(self, kind: SyntaxKind) -> list[BaseRule]:
+    def rules_for_kind(self, kind: type) -> list[BaseRule]:
         return self._by_kind.get(kind, [])
 
     def all_rules(self) -> list[BaseRule]:
         return list(self._rules.values())
 
     @property
-    def kind_map(self) -> dict[SyntaxKind, list[BaseRule]]:
+    def kind_map(self) -> dict[type, list[BaseRule]]:
         return dict(self._by_kind)

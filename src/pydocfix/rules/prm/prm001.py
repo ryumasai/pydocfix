@@ -5,7 +5,15 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator
 
-from pydocstring import Node, SyntaxKind, Token
+from pydocstring import (
+    GoogleDocstring,
+    GoogleSection,
+    GoogleSectionKind,
+    NumPyDocstring,
+    NumPySection,
+    NumPySectionKind,
+    PlainDocstring,
+)
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
 
@@ -16,8 +24,9 @@ class PRM001(BaseRule):
     code = "PDX-PRM001"
     message = "Missing Args/Parameters section in docstring."
     target_kinds = {
-        SyntaxKind.GOOGLE_DOCSTRING,
-        SyntaxKind.NUMPY_DOCSTRING,
+        GoogleDocstring,
+        NumPyDocstring,
+        PlainDocstring,
     }
 
     # -- helpers -------------------------------------------------------
@@ -47,49 +56,33 @@ class PRM001(BaseRule):
         return result
 
     @staticmethod
-    def _has_param_section(root: Node) -> bool:
+    def _has_param_section(root: GoogleDocstring | NumPyDocstring) -> bool:
         """Return True if the docstring already contains a parameter section."""
-        for child in root.children:
-            if not isinstance(child, Node):
-                continue
-            if child.kind not in (SyntaxKind.GOOGLE_SECTION, SyntaxKind.NUMPY_SECTION):
-                continue
-            for gc in child.children:
-                if isinstance(gc, Node) and gc.kind in (SyntaxKind.GOOGLE_ARG, SyntaxKind.NUMPY_PARAMETER):
-                    return True
+        for section in root.sections:
+            if isinstance(section, GoogleSection) and section.section_kind == GoogleSectionKind.ARGS:
+                return True
+            if isinstance(section, NumPySection) and section.section_kind == NumPySectionKind.PARAMETERS:
+                return True
         return False
 
     @staticmethod
-    def _detect_indent(ds_text: str, root: Node) -> str:
+    def _detect_indent(ds_text: str, root: GoogleDocstring | NumPyDocstring) -> str:
         """Guess indentation from existing sections or default to 4 spaces."""
-        ds_bytes = ds_text.encode("utf-8")
-        for child in root.children:
-            if isinstance(child, Node) and child.kind in (SyntaxKind.GOOGLE_SECTION, SyntaxKind.NUMPY_SECTION):
-                # Use leading whitespace of first section entry after header
-                for gc in child.children:
-                    if isinstance(gc, Node) and gc.kind not in (
-                        SyntaxKind.GOOGLE_SECTION_HEADER,
-                        SyntaxKind.NUMPY_SECTION_HEADER,
-                    ):
-                        nl = ds_bytes.rfind(b"\n", 0, gc.range.start)
-                        if nl != -1:
-                            return ds_bytes[nl + 1 : gc.range.start].decode("utf-8")
         return "    "
 
     @staticmethod
-    def _build_section_stub(
-        params: list[tuple[str, str | None]],
-        *,
-        is_numpy: bool,
-        indent: str,
+    def _build_stub(
+        params: list[tuple[str, str | None]], *, is_numpy: bool, indent: str
     ) -> str:
-        """Build a full Args/Parameters section string."""
         lines: list[str] = []
         if is_numpy:
             lines.append("Parameters")
             lines.append("----------")
             for name, ann in params:
-                lines.append(f"{name} : {ann}" if ann else name)
+                if ann:
+                    lines.append(f"{name} : {ann}")
+                else:
+                    lines.append(name)
         else:
             lines.append("Args:")
             for name, ann in params:
@@ -99,29 +92,29 @@ class PRM001(BaseRule):
                     lines.append(f"{indent}{name}:")
         return "\n".join(lines)
 
-    # -- entry point ---------------------------------------------------
-
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         root = ctx.target_cst
-        if not isinstance(root, Node):
+        if not isinstance(root, (GoogleDocstring, NumPyDocstring, PlainDocstring)):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
-        params = self._get_signature_params(ctx.parent_ast)
-        if not params:
+        sig_params = self._get_signature_params(ctx.parent_ast)
+        if not sig_params:
+            return
+        if isinstance(root, PlainDocstring):
+            # Plain docstrings never have sections
+            pass
+        elif self._has_param_section(root):
             return
 
-        if self._has_param_section(root):
-            return
+        is_numpy = isinstance(root, NumPyDocstring)
+        indent = self._detect_indent(ctx.docstring_text, root) if not isinstance(root, PlainDocstring) else "    "
+        stub = self._build_stub(sig_params, is_numpy=is_numpy, indent=indent)
 
-        is_numpy = root.kind == SyntaxKind.NUMPY_DOCSTRING
-        indent = self._detect_indent(ctx.docstring_text, root)
-        stub = self._build_section_stub(params, is_numpy=is_numpy, indent=indent)
-        insert_text = "\n\n" + stub + "\n"
         fix = Fix(
-            edits=[insert_at(root.range.end, insert_text)],
+            edits=[insert_at(root.range.end, f"\n\n{stub}\n")],
             applicability=Applicability.UNSAFE,
         )
-        message = "Missing Args/Parameters section in docstring."
-        yield self._make_diagnostic(ctx, message, fix=fix, target=root)
+        summary_token = root.summary
+        yield self._make_diagnostic(ctx, self.message, fix=fix, target=summary_token or root)

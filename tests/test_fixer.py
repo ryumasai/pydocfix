@@ -6,10 +6,7 @@ from pathlib import Path
 
 from pydocfix.checker import build_rules_map, check_file
 from pydocfix.rules import (
-    Applicability,
     SUM002,
-    Edit,
-    Fix,
 )
 
 
