@@ -270,6 +270,64 @@ class _DiagnosticCollector(Visitor):
         self._dispatch_summary_token(node)
 
 
+_MAX_FIX_ITERATIONS: Final[int] = 10
+"""Maximum number of fix iterations per docstring before giving up."""
+
+
+def _diagnose_docstring(
+    kind_map: dict[type, list[BaseRule]],
+    filepath: Path,
+    ds_content: str,
+    parent_ast: ast.AST,
+    ds_stmt: ast.stmt,
+    ds_loc: DocstringLocation,
+    config: Config | None,
+) -> list[Diagnostic]:
+    """Parse and diagnose a single docstring, returning diagnostics."""
+    parsed = pydocstring.parse(ds_content)
+    collector = _DiagnosticCollector(
+        kind_map=kind_map,
+        filepath=filepath,
+        ds_content=ds_content,
+        parsed=parsed,
+        parent_ast=parent_ast,
+        ds_stmt=ds_stmt,
+        ds_loc=ds_loc,
+        config=config,
+    )
+    pydocstring.walk(parsed, collector)
+    return collector.diagnostics
+
+
+def _apply_nonoverlapping_fixes(
+    ds_content: str,
+    ds_diagnostics: list[Diagnostic],
+    unsafe_fixes: bool,
+) -> tuple[str | None, int]:
+    """Apply non-overlapping fixes to a docstring.
+
+    Returns (new_content_or_none, count_of_applied_fixes).
+    """
+    accepted_edits: list[Edit] = []
+    applied = 0
+    for d in ds_diagnostics:
+        if not is_applicable(d, unsafe_fixes):
+            continue
+        assert d.fix is not None
+        if _has_overlap(accepted_edits, d.fix):
+            logger.warning(
+                "skipping fix from rule %s (overlapping edits)",
+                d.rule,
+            )
+            continue
+        accepted_edits.extend(d.fix.edits)
+        applied += 1
+
+    if not accepted_edits:
+        return None, 0
+    return apply_edits(ds_content, accepted_edits), applied
+
+
 def check_file(
     source: str,
     filepath: Path,
@@ -279,7 +337,7 @@ def check_file(
     unsafe_fixes: bool = False,
     config: Config | None = None,
 ) -> tuple[list[Diagnostic], str | None, frozenset[int]]:
-    """Diagnose and optionally fix all docstrings in one pass.
+    """Diagnose and optionally fix all docstrings, iterating until stable.
 
     Returns (all_diagnostics, fixed_source_or_none, indices_of_fixed_diagnostics).
     """
@@ -295,54 +353,73 @@ def check_file(
     file_edits: list[tuple[int, int, bytes]] = []
 
     for ds_content, parent_ast, ds_stmt in _extract_docstrings(source, filepath):
-        parsed = pydocstring.parse(ds_content)
-
         # Determine where the docstring content starts (after opening triple-quote).
         ds_loc = _locate_docstring(ds_stmt, lines, line_offsets, source_bytes)
         if ds_loc is None:
             continue
 
-        # Walk the CST and dispatch to matching rules via Visitor
-        collector = _DiagnosticCollector(
-            kind_map=kind_map,
-            filepath=filepath,
-            ds_content=ds_content,
-            parsed=parsed,
-            parent_ast=parent_ast,
-            ds_stmt=ds_stmt,
-            ds_loc=ds_loc,
-            config=config,
+        ds_diagnostics = _diagnose_docstring(
+            kind_map,
+            filepath,
+            ds_content,
+            parent_ast,
+            ds_stmt,
+            ds_loc,
+            config,
         )
-        pydocstring.walk(parsed, collector)
-        ds_diagnostics = collector.diagnostics
 
         base_idx = len(all_diagnostics)
         all_diagnostics.extend(ds_diagnostics)
 
-        # Fix phase (per-docstring)
+        # Fix phase (per-docstring) — iterate until stable
         if fix and ds_diagnostics:
-            accepted_edits: list[Edit] = []
-            for i, d in enumerate(ds_diagnostics):
-                if not is_applicable(d, unsafe_fixes):
-                    continue
-                assert d.fix is not None
-                if _has_overlap(accepted_edits, d.fix):
-                    logger.warning(
-                        "skipping fix from rule %s (overlapping edits)",
-                        d.rule,
-                    )
-                    continue
-                accepted_edits.extend(d.fix.edits)
-                fixed_indices.add(base_idx + i)
+            current_content = ds_content
+            # Track which first-pass diagnostics have been fixed by rule identity
+            first_pass_rules = {(base_idx + i, d.rule, d.range) for i, d in enumerate(ds_diagnostics)}
 
-            if accepted_edits:
-                new_raw = apply_edits(ds_content, accepted_edits)
+            for iteration in range(_MAX_FIX_ITERATIONS):
+                new_content, applied = _apply_nonoverlapping_fixes(
+                    current_content,
+                    ds_diagnostics,
+                    unsafe_fixes,
+                )
+                if new_content is None:
+                    break  # nothing fixable remains
+                current_content = new_content
+
+                # Re-diagnose the fixed docstring
+                ds_diagnostics = _diagnose_docstring(
+                    kind_map,
+                    filepath,
+                    current_content,
+                    parent_ast,
+                    ds_stmt,
+                    ds_loc,
+                    config,
+                )
+                if not ds_diagnostics or not any(is_applicable(d, unsafe_fixes) for d in ds_diagnostics):
+                    break  # converged — no more fixable diagnostics
+            else:
+                logger.warning(
+                    "%s: fix did not converge after %d iterations, stopping",
+                    filepath,
+                    _MAX_FIX_ITERATIONS,
+                )
+
+            # Determine which first-pass diagnostics were fixed:
+            # any diagnostic from the first pass whose (rule, range) no longer appears
+            remaining_ids = {(d.rule, d.range) for d in ds_diagnostics}
+            for idx, rule, rng in first_pass_rules:
+                if (rule, rng) not in remaining_ids:
+                    fixed_indices.add(idx)
+
+            if current_content != ds_content:
                 file_edits.append(
                     (
                         ds_loc.byte_start,
                         ds_loc.byte_end,
-                        (ds_loc.opening + new_raw + ds_loc.closing).encode("utf-8"),
-                    )
+                        (ds_loc.opening + current_content + ds_loc.closing).encode("utf-8"),
+                    ),
                 )
 
     fixed_source: str | None = None

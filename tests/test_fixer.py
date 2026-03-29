@@ -6,6 +6,8 @@ from pathlib import Path
 
 from pydocfix.checker import build_rules_map, check_file
 from pydocfix.rules import (
+    PRM005,
+    PRM006,
     SUM002,
 )
 
@@ -52,3 +54,97 @@ class TestCheckFileFix:
         assert len(diags) == 1
         assert diags[0].rule == "PDX-SUM002"
         assert result is not None
+
+
+class TestIterativeFix:
+    """Tests for the iterative fix loop that resolves overlapping edits."""
+
+    def test_overlapping_fixes_resolved_across_iterations(self, tmp_path: Path):
+        """PRM005 (delete undocumented param) and PRM006 (reorder) overlap.
+
+        Pass 1: PRM005 deletes ``c`` (not in signature).
+        Pass 2: PRM006 reorders ``b, a`` → ``a, b``.
+        """
+        f = tmp_path / "example.py"
+        src = (
+            "def foo(a: int, b: str) -> bool:\n"
+            '    """Do something.\n'
+            "\n"
+            "    Args:\n"
+            "        c: Not in signature.\n"
+            "        b: A string argument.\n"
+            "        a: An integer argument.\n"
+            "\n"
+            '    """\n'
+            "    return True\n"
+        )
+        f.write_text(src)
+        diags, result, fixed = check_file(
+            src,
+            f,
+            build_rules_map([PRM005(), PRM006()]),
+            fix=True,
+            unsafe_fixes=True,
+        )
+        assert result is not None
+        # Both PRM005 and PRM006 should be fixed
+        assert len(fixed) >= 2
+        # ``c`` should be gone and ``a`` should come before ``b``
+        assert "c: Not in signature" not in result
+        a_pos = result.index("a: An integer argument")
+        b_pos = result.index("b: A string argument")
+        assert a_pos < b_pos
+
+    def test_single_pass_sufficient(self, tmp_path: Path):
+        """When fixes don't overlap, one pass is enough."""
+        f = tmp_path / "example.py"
+        src = (
+            "def foo(a: int, b: str) -> bool:\n"
+            '    """Do something.\n'
+            "\n"
+            "    Args:\n"
+            "        b: A string argument.\n"
+            "        a: An integer argument.\n"
+            "\n"
+            '    """\n'
+            "    return True\n"
+        )
+        f.write_text(src)
+        diags, result, fixed = check_file(
+            src,
+            f,
+            build_rules_map([PRM006()]),
+            fix=True,
+            unsafe_fixes=True,
+        )
+        assert result is not None
+        assert len(fixed) >= 1
+        a_pos = result.index("a: An integer argument")
+        b_pos = result.index("b: A string argument")
+        assert a_pos < b_pos
+
+    def test_no_infinite_loop(self, tmp_path: Path):
+        """Ensure the loop converges even if fixes keep producing new diagnostics."""
+        f = tmp_path / "example.py"
+        # A simple case that should converge quickly
+        src = (
+            "def foo(a: int) -> bool:\n"
+            '    """Do something.\n'
+            "\n"
+            "    Args:\n"
+            "        x: Not in signature.\n"
+            "\n"
+            '    """\n'
+            "    return True\n"
+        )
+        f.write_text(src)
+        diags, result, fixed = check_file(
+            src,
+            f,
+            build_rules_map([PRM005()]),
+            fix=True,
+            unsafe_fixes=True,
+        )
+        # Should converge and fix without hanging
+        assert result is not None
+        assert "x: Not in signature" not in result
