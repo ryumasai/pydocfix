@@ -26,11 +26,27 @@ def cli() -> None:
 @click.option("--fix", is_flag=True, help="Automatically fix docstring issues.")
 @click.option("--diff", is_flag=True, help="Show diff of fixes without applying.")
 @click.option("--unsafe-fixes", is_flag=True, help="Also apply unsafe fixes.")
+@click.option(
+    "--select",
+    "select_codes",
+    multiple=True,
+    metavar="CODES",
+    help="Comma-separated rule codes to enable (e.g. PRM001,RTN101). Overrides config. Use ALL to enable every rule.",
+)
+@click.option(
+    "--ignore",
+    "ignore_codes",
+    multiple=True,
+    metavar="CODES",
+    help="Comma-separated rule codes to ignore (e.g. SUM001,PRM002). Overrides config.",
+)
 def check(
     paths: tuple[str, ...],
     fix: bool,
     diff: bool,
     unsafe_fixes: bool,
+    select_codes: tuple[str, ...],
+    ignore_codes: tuple[str, ...],
 ) -> None:
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
@@ -40,7 +56,15 @@ def check(
     from pydocfix.rules import build_registry
 
     config = load_config()
-    registry: Final = build_registry(ignore=config.ignore, select=config.select, config=config)
+
+    # CLI --select / --ignore override config file values when provided
+    def _parse_codes(raw: tuple[str, ...]) -> list[str]:
+        return [code.strip() for group in raw for code in group.split(",") if code.strip()]
+
+    effective_select = _parse_codes(select_codes) if select_codes else config.select
+    effective_ignore = _parse_codes(ignore_codes) if ignore_codes else config.ignore
+
+    registry: Final = build_registry(ignore=effective_ignore, select=effective_select, config=config)
     kind_map: Final = registry.kind_map
 
     targets: Final = _collect_files(list(paths) or ["."])
