@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
-    "pydocstring-rs>=0.1.6",
+    "pydocstring-rs>=0.1.7",
     "click>=8.0",
 ]
 

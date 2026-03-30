@@ -15,15 +15,23 @@ from pydocstring import (
     GoogleAttribute,
     GoogleDocstring,
     GoogleException,
+    GoogleMethod,
     GoogleReturn,
     GoogleSectionKind,
+    GoogleSeeAlsoItem,
+    GoogleWarning,
     GoogleYield,
     NumPyAttribute,
+    NumPyDeprecation,
     NumPyDocstring,
     NumPyException,
+    NumPyMethod,
     NumPyParameter,
+    NumPyReference,
     NumPyReturns,
     NumPySectionKind,
+    NumPySeeAlsoItem,
+    NumPyWarning,
     NumPyYields,
     PlainDocstring,
     Visitor,
@@ -126,11 +134,18 @@ _ENTRY_TYPE_TO_SECTION_KIND = {
     GoogleException: GoogleSectionKind.RAISES,
     GoogleYield: GoogleSectionKind.YIELDS,
     GoogleAttribute: GoogleSectionKind.ATTRIBUTES,
+    GoogleWarning: GoogleSectionKind.WARNINGS,
+    GoogleSeeAlsoItem: GoogleSectionKind.SEE_ALSO,
+    GoogleMethod: GoogleSectionKind.METHODS,
     NumPyParameter: NumPySectionKind.PARAMETERS,
     NumPyReturns: NumPySectionKind.RETURNS,
     NumPyException: NumPySectionKind.RAISES,
     NumPyYields: NumPySectionKind.YIELDS,
     NumPyAttribute: NumPySectionKind.ATTRIBUTES,
+    NumPyWarning: NumPySectionKind.WARNINGS,
+    NumPySeeAlsoItem: NumPySectionKind.SEE_ALSO,
+    NumPyReference: NumPySectionKind.REFERENCES,
+    NumPyMethod: NumPySectionKind.METHODS,
 }
 
 
@@ -241,6 +256,15 @@ class _DiagnosticCollector(Visitor):
     def enter_google_attribute(self, node, ctx):
         self._dispatch(node)
 
+    def enter_google_warning(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_google_see_also_item(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_google_method(self, node, ctx):
+        self._dispatch(node)
+
     # NumPy style
     def enter_numpy_docstring(self, node, ctx):
         self._dispatch(node)
@@ -262,6 +286,21 @@ class _DiagnosticCollector(Visitor):
         self._dispatch(node)
 
     def enter_numpy_attribute(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_deprecation(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_warning(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_see_also_item(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_reference(self, node, ctx):
+        self._dispatch(node)
+
+    def enter_numpy_method(self, node, ctx):
         self._dispatch(node)
 
     # Plain
