@@ -6,6 +6,8 @@ from pathlib import Path
 
 from pydocfix.checker import build_rules_map, check_file
 from pydocfix.rules import PRM101, RTN101, SUM002
+from pydocfix.rules.prm.prm001 import PRM001
+from pydocfix.rules.rtn.rtn001 import RTN001
 
 
 def _diagnose(filepath: Path, kind_map) -> list:
@@ -112,3 +114,29 @@ class TestSyntaxErrorHandling:
         # Should not raise
         diags = _diagnose(f, build_rules_map([SUM002()]))
         assert diags == []
+
+
+class TestMultiSectionSimultaneousFix:
+    def test_no_extra_blank_line_between_sections(self, tmp_path: Path):
+        """Two section-insertion fixes applied at once must not produce a
+        whitespace-only line between the two new sections."""
+        import re
+
+        src = (
+            "def add(a: int, b: int) -> int:\n"
+            '    """Add two numbers."""\n'
+            "    return a + b\n"
+        )
+        _, fixed, _ = check_file(
+            src,
+            tmp_path / "add.py",
+            build_rules_map([PRM001(), RTN001()]),
+            fix=True,
+            unsafe_fixes=True,
+        )
+        assert fixed is not None
+        # Must not contain a whitespace-only line immediately followed by a
+        # blank line (the artifact of two section_append_edit inserts).
+        assert not re.search(r"\n[ \t]+\n\n", fixed)
+        # Each section separator must be exactly one blank line.
+        assert "\n\n\n" not in fixed

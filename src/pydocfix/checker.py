@@ -363,7 +363,13 @@ def _apply_nonoverlapping_fixes(
 
     if not accepted_edits:
         return None, 0
-    return apply_edits(ds_content, accepted_edits), applied
+    content = apply_edits(ds_content, accepted_edits)
+    # When multiple sections are appended simultaneously to a single-line
+    # docstring, each edit adds a trailing "\n<indent>" that becomes a
+    # whitespace-only line immediately before the next section's "\n\n"
+    # separator.  Normalize "\n<whitespace-only line>\n\n" → "\n\n".
+    content = re.sub(r"\n[ \t]+\n\n", "\n\n", content)
+    return content, applied
 
 
 def check_file(
