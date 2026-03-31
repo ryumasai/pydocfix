@@ -1,5 +1,11 @@
 # pydocfixのルール一覧
 
+## Docstring
+
+| code       | default | auto-fix | description | option |
+|------------|:-------:|:--------:|-------------|--------|
+| PDX-DOC001 | ✔       | unsafe   | セクションの順番が規定の順序と一致しない | |
+
 ## Summary
 
 | code       | default | auto-fix | description | option |

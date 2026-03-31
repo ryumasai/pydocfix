@@ -28,6 +28,7 @@ from pydocstring import (
 )
 
 from pydocfix.rules import (
+    DOC001,
     PRM001,
     PRM002,
     PRM003,
@@ -2619,19 +2620,106 @@ class TestYLD104:
         assert YLD104.enabled_by_default is False
 
 
+# ── DOC001 ────────────────────────────────────────────────────────────
+
+
+def _make_doc001_ctx(ds_text: str) -> DiagnoseContext:
+    """Create a DiagnoseContext targeting the GoogleDocstring root for DOC001."""
+    parsed = parse_google(ds_text)
+    return DiagnoseContext(
+        filepath=Path("test.py"),
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=parsed,
+        parent_ast=ast.parse("pass").body[0],
+        docstring_stmt=_dummy_stmt(1, 0),
+        docstring_location=DocstringLocation(Offset(1, 0), 0, len(ds_text) + 6, '"""', '"""'),
+    )
+
+
+class TestDOC001:
+    DS_WRONG = "Summary.\n\n    Returns:\n        int: Result.\n\n    Args:\n        x: A value.\n"
+    DS_CORRECT = "Summary.\n\n    Args:\n        x: A value.\n\n    Returns:\n        int: Result.\n"
+
+    def test_correct_order_no_diagnostic(self):
+        ctx = _make_doc001_ctx(self.DS_CORRECT)
+        assert list(DOC001().diagnose(ctx)) == []
+
+    def test_wrong_order_emits_diagnostic(self):
+        ctx = _make_doc001_ctx(self.DS_WRONG)
+        diags = list(DOC001().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "PDX-DOC001"
+        assert diags[0].fixable is True
+        assert diags[0].fix is not None
+        assert diags[0].fix.applicability == Applicability.UNSAFE
+
+    def test_single_section_no_diagnostic(self):
+        ds = "Summary.\n\n    Returns:\n        int: Result.\n"
+        ctx = _make_doc001_ctx(ds)
+        assert list(DOC001().diagnose(ctx)) == []
+
+    def test_fix_reorders_returns_before_args(self):
+        ctx = _make_doc001_ctx(self.DS_WRONG)
+        diag = next(iter(DOC001().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(self.DS_WRONG, diag.fix.edits)
+        assert result.index("Args:") < result.index("Returns:")
+
+    def test_fix_preserves_section_texts(self):
+        ctx = _make_doc001_ctx(self.DS_WRONG)
+        diag = next(iter(DOC001().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(self.DS_WRONG, diag.fix.edits)
+        assert "Returns:\n        int: Result." in result
+        assert "Args:\n        x: A value." in result
+
+    def test_fix_preserves_separator(self):
+        ctx = _make_doc001_ctx(self.DS_WRONG)
+        diag = next(iter(DOC001().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(self.DS_WRONG, diag.fix.edits)
+        # Sections must be separated by a blank line
+        assert "\n\n" in result
+        assert "\n\n\n" not in result
+
+    def test_three_sections_wrong_order(self):
+        ds = (
+            "Summary.\n\n"
+            "    Raises:\n        ValueError: If bad.\n\n"
+            "    Returns:\n        int: Result.\n\n"
+            "    Args:\n        x: A value.\n"
+        )
+        ctx = _make_doc001_ctx(ds)
+        diags = list(DOC001().diagnose(ctx))
+        assert len(diags) == 1
+        result = apply_edits(ds, diags[0].fix.edits)
+        args_pos = result.index("Args:")
+        returns_pos = result.index("Returns:")
+        raises_pos = result.index("Raises:")
+        assert args_pos < returns_pos < raises_pos
+
+    def test_idempotent_after_fix(self):
+        ctx = _make_doc001_ctx(self.DS_WRONG)
+        diag = next(iter(DOC001().diagnose(ctx)))
+        fixed = apply_edits(self.DS_WRONG, diag.fix.edits)
+        fixed_ctx = _make_doc001_ctx(fixed)
+        assert list(DOC001().diagnose(fixed_ctx)) == []
+
+
 # ── Registry completeness ─────────────────────────────────────────────
 
 
 class TestRegistryCompleteness:
-    """All 31 rules are registered."""
+    """All rules are registered."""
 
-    def test_all_31_rules_with_select_all(self):
+    def test_all_rules_with_select_all(self):
         registry = build_registry(select=["ALL"])
-        assert len(registry.all_rules()) == 36
+        assert len(registry.all_rules()) == 37
 
     def test_default_rules_count(self):
         registry = build_registry()
-        assert len(registry.all_rules()) == 29
+        assert len(registry.all_rules()) == 30
 
     def test_non_default_rules_excluded(self):
         registry = build_registry()

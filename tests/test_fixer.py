@@ -6,8 +6,11 @@ from pathlib import Path
 
 from pydocfix.checker import build_rules_map, check_file
 from pydocfix.rules import (
+    DOC001,
+    PRM001,
     PRM005,
     PRM006,
+    RTN001,
     SUM002,
 )
 
@@ -148,3 +151,49 @@ class TestIterativeFix:
         # Should converge and fix without hanging
         assert result is not None
         assert "x: Not in signature" not in result
+
+
+class TestDOC001Integration:
+    def test_fix_reorders_returns_before_args(self, tmp_path: Path):
+        """DOC001 auto-fix puts Args before Returns in a multiline docstring."""
+        f = tmp_path / "example.py"
+        src = (
+            "def add(a: int, b: int) -> int:\n"
+            '    """Add two numbers.\n'
+            "\n"
+            "    Returns:\n"
+            "        int: The sum.\n"
+            "\n"
+            "    Args:\n"
+            "        a (int): First operand.\n"
+            "        b (int): Second operand.\n"
+            '    """\n'
+            "    return a + b\n"
+        )
+        f.write_text(src)
+        _, result, fixed = check_file(
+            src, f, build_rules_map([DOC001()]), fix=True, unsafe_fixes=True
+        )
+        assert result is not None
+        assert len(fixed) == 1
+        assert result.index("Args:") < result.index("Returns:")
+
+    def test_prm001_rtn001_doc001_all_together(self, tmp_path: Path):
+        """PRM001 + RTN001 insert sections; DOC001 then reorders them."""
+        f = tmp_path / "example.py"
+        src = (
+            "def add(a: int, b: int) -> int:\n"
+            '    """Add two numbers."""\n'
+            "    return a + b\n"
+        )
+        f.write_text(src)
+        _, result, _ = check_file(
+            src,
+            f,
+            build_rules_map([PRM001(), RTN001(), DOC001()]),
+            fix=True,
+            unsafe_fixes=True,
+        )
+        assert result is not None
+        # Regardless of insertion order, DOC001 should sort Args before Returns
+        assert result.index("Args:") < result.index("Returns:")
