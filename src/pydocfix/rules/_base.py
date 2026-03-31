@@ -228,6 +228,9 @@ def apply_edits(source: str, edits: Iterable[Edit]) -> str:
     """Apply Edits to a docstring, in reverse-offset order.
 
     Edit offsets are UTF-8 byte positions (as returned by pydocstring-rs).
+
+    Raises:
+        ValueError:
     """
     sorted_edits: Final[list[Edit]] = sorted(edits, key=lambda e: e.start, reverse=True)
     # Validate no overlaps
@@ -264,7 +267,11 @@ class BaseRule:
         self.config = config
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        """Yield zero or more Diagnostics for the given context."""
+        """Yield zero or more Diagnostics for the given context.
+
+        Raises:
+            NotImplementedError:
+        """
         raise NotImplementedError
 
     def _make_diagnostic(

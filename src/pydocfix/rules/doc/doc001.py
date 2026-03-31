@@ -78,6 +78,51 @@ def _order_key(section_kind, order: list) -> int:
         return len(order)
 
 
+def _section_clean_end(section_bytes: bytes) -> int:
+    """Return the byte offset within *section_bytes* of the end of the last entry-level line.
+
+    Under Google/NumPy style, entry lines are indented deeper than the section
+    header line (which is at offset 0 within *section_bytes*).  Content that
+    appears after the last entry-depth line but is shallower than entry depth is
+    "stray" text that was absorbed into the section range by the parser.
+
+    We exclude that trailing stray content by returning the position just after
+    the last line whose indent equals the maximum across all non-header,
+    non-blank lines.
+    """
+    lines = section_bytes.split(b"\n")
+    if len(lines) <= 1:
+        return len(section_bytes)
+
+    # Find the maximum indent depth among non-blank, non-header lines.
+    max_indent = 0
+    for line in lines[1:]:
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip(b" \t"))
+        if indent > max_indent:
+            max_indent = indent
+
+    if max_indent == 0:
+        # No entries found; keep only the header line.
+        return len(lines[0])
+
+    # Walk lines again to find the byte position after the *last* line at
+    # max_indent (or deeper — for continuation text).
+    clean_end = len(lines[0])  # at minimum, keep the header
+    pos = len(lines[0])
+    for line in lines[1:]:
+        pos += 1  # newline separator
+        line_end = pos + len(line)
+        if line.strip():
+            indent = len(line) - len(line.lstrip(b" \t"))
+            if indent >= max_indent:
+                clean_end = line_end
+        pos = line_end
+
+    return clean_end
+
+
 class DOC001(BaseRule):
     """Docstring sections are not in canonical order."""
 
@@ -109,14 +154,6 @@ class DOC001(BaseRule):
 
         ds_bytes = ctx.docstring_text.encode("utf-8")
 
-        # Detect the section-level indent from the whitespace that precedes the
-        # first section header (everything after the last newline before it).
-        first_sec = sections[0]
-        prefix = ds_bytes[: first_sec.range.start]
-        last_nl = prefix.rfind(b"\n")
-        section_indent = prefix[last_nl + 1 :].decode("utf-8") if last_nl != -1 else ""
-        separator = f"\n\n{section_indent}"
-
         # Sort sections by canonical order; for equal keys (e.g. two UNKNOWN
         # sections), preserve their original relative order via the enumerate
         # index.
@@ -126,18 +163,35 @@ class DOC001(BaseRule):
         )
         sorted_sections = [s for _, s in sorted_indexed]
 
-        new_text = separator.join(ds_bytes[s.range.start : s.range.end].decode("utf-8") for s in sorted_sections)
+        # Reorder by swapping the "clean" section texts in-place.
+        # Each slot sections[i] is replaced only up to its own clean_end
+        # (the end of its last entry-depth line).  Any trailing content at
+        # shallower indent ("stray" lines absorbed into the section range by
+        # the parser) is left untouched in the gap, preventing it from being
+        # moved to a different section where other rules might misinterpret it.
+        edits = []
+        for i in range(len(sections)):
+            if sections[i] is sorted_sections[i]:
+                continue
+            src_section = sorted_sections[i]
+            src_bytes = ds_bytes[src_section.range.start : src_section.range.end]
+            clean_len = _section_clean_end(src_bytes)
+            new_text = src_bytes[:clean_len].decode("utf-8")
 
-        fix = Fix(
-            edits=[
+            # Replace only the clean part of the target slot; any stray
+            # trailing content in sections[i] is left at its byte position.
+            tgt_section = sections[i]
+            tgt_bytes = ds_bytes[tgt_section.range.start : tgt_section.range.end]
+            tgt_clean_end = tgt_section.range.start + _section_clean_end(tgt_bytes)
+            edits.append(
                 Edit(
-                    start=sections[0].range.start,
-                    end=sections[-1].range.end,
+                    start=tgt_section.range.start,
+                    end=tgt_clean_end,
                     new_text=new_text,
                 )
-            ],
-            applicability=Applicability.UNSAFE,
-        )
+            )
+
+        fix = Fix(edits=edits, applicability=Applicability.UNSAFE)
 
         # Report at the first section whose position differs from the sorted
         # order, so the user can see exactly where the disorder begins.

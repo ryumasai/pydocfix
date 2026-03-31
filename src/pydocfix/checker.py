@@ -482,3 +482,18 @@ def check_file(
         fixed_source = buf.decode("utf-8")
 
     return all_diagnostics, fixed_source, frozenset(fixed_indices)
+
+
+def foo(a) -> bool:
+    """Example.
+
+    Args:
+        a: Any. Ignored.
+    Returns:
+        bool: Always True.
+    stray line2
+    Raises:
+        NotImplementedError: Always.
+    """
+    raise NotImplementedError("TODO")
+    return True

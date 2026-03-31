@@ -2706,6 +2706,29 @@ class TestDOC001:
         fixed_ctx = _make_doc001_ctx(fixed)
         assert list(DOC001().diagnose(fixed_ctx)) == []
 
+    def test_stray_line_preserved_after_fix(self):
+        """Stray content between sections is preserved in-place after reorder."""
+        ds = "Summary.\n\n    Returns:\n        int: Result.\n\n    stray line\n\n    Args:\n        x: A value.\n"
+        ctx = _make_doc001_ctx(ds)
+        diag = next(iter(DOC001().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        # Sections are reordered
+        assert result.index("Args:") < result.index("Returns:")
+        # Stray line is not lost
+        assert "stray line" in result
+
+    def test_stray_line_inside_section_range_preserved(self):
+        """Stray content absorbed into a section range (no blank-line separator)
+        stays in position rather than moving with the section."""
+        ds = "Summary.\n\n    Returns:\n        int: Result.\n    stray line\n    Args:\n        x: A value.\n"
+        ctx = _make_doc001_ctx(ds)
+        diag = next(iter(DOC001().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert result.index("Args:") < result.index("Returns:")
+        assert "stray line" in result
+
 
 # ── Registry completeness ─────────────────────────────────────────────
 
