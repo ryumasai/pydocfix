@@ -368,7 +368,15 @@ def _apply_nonoverlapping_fixes(
     # docstring, each edit adds a trailing "\n<indent>" that becomes a
     # whitespace-only line immediately before the next section's "\n\n"
     # separator.  Normalize "\n<whitespace-only line>\n\n" → "\n\n".
-    content = re.sub(r"\n[ \t]+\n\n", "\n\n", content)
+    # Guard: only normalise when the *original* content had no newlines — that
+    # is, it was a single-line docstring.  For multiline docstrings the
+    # section-insertion edits are non-overlapping (multiline path in
+    # section_append_edit), so the artifact never occurs and running the
+    # substitution could incorrectly remove legitimate whitespace-only lines
+    # (e.g. inside a code-example block with trailing spaces before a blank
+    # line).
+    if "\n" not in ds_content:
+        content = re.sub(r"\n[ \t]+\n\n", "\n\n", content)
     return content, applied
 
 
