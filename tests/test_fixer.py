@@ -171,9 +171,7 @@ class TestDOC001Integration:
             "    return a + b\n"
         )
         f.write_text(src)
-        _, result, fixed = check_file(
-            src, f, build_rules_map([DOC001()]), fix=True, unsafe_fixes=True
-        )
+        _, result, fixed = check_file(src, f, build_rules_map([DOC001()]), fix=True, unsafe_fixes=True)
         assert result is not None
         assert len(fixed) == 1
         assert result.index("Args:") < result.index("Returns:")
@@ -181,11 +179,7 @@ class TestDOC001Integration:
     def test_prm001_rtn001_doc001_all_together(self, tmp_path: Path):
         """PRM001 + RTN001 insert sections; DOC001 then reorders them."""
         f = tmp_path / "example.py"
-        src = (
-            "def add(a: int, b: int) -> int:\n"
-            '    """Add two numbers."""\n'
-            "    return a + b\n"
-        )
+        src = 'def add(a: int, b: int) -> int:\n    """Add two numbers."""\n    return a + b\n'
         f.write_text(src)
         _, result, _ = check_file(
             src,

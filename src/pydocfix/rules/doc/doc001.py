@@ -126,10 +126,7 @@ class DOC001(BaseRule):
         )
         sorted_sections = [s for _, s in sorted_indexed]
 
-        new_text = separator.join(
-            ds_bytes[s.range.start : s.range.end].decode("utf-8")
-            for s in sorted_sections
-        )
+        new_text = separator.join(ds_bytes[s.range.start : s.range.end].decode("utf-8") for s in sorted_sections)
 
         fix = Fix(
             edits=[
@@ -145,8 +142,6 @@ class DOC001(BaseRule):
         # Report at the first section whose position differs from the sorted
         # order, so the user can see exactly where the disorder begins.
         first_wrong = next(
-            sections[i]
-            for i, (actual, expected) in enumerate(zip(sections, sorted_sections))
-            if actual is not expected
+            sections[i] for i, (actual, expected) in enumerate(zip(sections, sorted_sections)) if actual is not expected
         )
         yield self._make_diagnostic(ctx, self.message, fix=fix, target=first_wrong)

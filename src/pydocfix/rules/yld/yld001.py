@@ -13,7 +13,15 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, detect_section_indent, section_append_edit
+from pydocfix.rules._base import (
+    Applicability,
+    BaseRule,
+    DiagnoseContext,
+    Diagnostic,
+    Fix,
+    detect_section_indent,
+    section_append_edit,
+)
 from pydocfix.rules.yld._helpers import get_yield_type, is_generator_function
 
 

@@ -122,11 +122,7 @@ class TestMultiSectionSimultaneousFix:
         whitespace-only line between the two new sections."""
         import re
 
-        src = (
-            "def add(a: int, b: int) -> int:\n"
-            '    """Add two numbers."""\n'
-            "    return a + b\n"
-        )
+        src = 'def add(a: int, b: int) -> int:\n    """Add two numbers."""\n    return a + b\n'
         _, fixed, _ = check_file(
             src,
             tmp_path / "add.py",
