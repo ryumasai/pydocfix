@@ -1166,8 +1166,8 @@ class TestD406Google:
         diag = next(iter(PRM001().diagnose(ctx)), None)
         assert diag is not None
         result = apply_edits(ds, diag.fix.edits)
-        assert "\n    x:" in result
-        assert "\n    y:" in result
+        assert "\n        x:" in result
+        assert "\n        y:" in result
         assert "Description." not in result
 
     def test_fix_includes_varargs(self):

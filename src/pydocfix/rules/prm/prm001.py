@@ -11,7 +11,7 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
+from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, detect_section_indent, section_append_edit
 from pydocfix.rules.prm._helpers import get_signature_params, is_param_section
 
 
@@ -29,23 +29,24 @@ class PRM001(BaseRule):
     # -- helpers -------------------------------------------------------
 
     @staticmethod
-    def _build_stub(params: list[tuple[str, str | None]], *, is_numpy: bool, indent: str) -> str:
+    def _build_stub(params: list[tuple[str, str | None]], *, is_numpy: bool, section_indent: str) -> str:
+        entry_indent = section_indent + "    "
         lines: list[str] = []
         if is_numpy:
-            lines.append("Parameters")
-            lines.append("----------")
+            lines.append(f"{section_indent}Parameters")
+            lines.append(f"{section_indent}----------")
             for name, ann in params:
                 if ann:
-                    lines.append(f"{name} : {ann}")
+                    lines.append(f"{section_indent}{name} : {ann}")
                 else:
-                    lines.append(name)
+                    lines.append(f"{section_indent}{name}")
         else:
-            lines.append("Args:")
+            lines.append(f"{section_indent}Args:")
             for name, ann in params:
                 if ann:
-                    lines.append(f"{indent}{name} ({ann}):")
+                    lines.append(f"{entry_indent}{name} ({ann}):")
                 else:
-                    lines.append(f"{indent}{name}:")
+                    lines.append(f"{entry_indent}{name}:")
         return "\n".join(lines)
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
@@ -65,11 +66,11 @@ class PRM001(BaseRule):
             return
 
         is_numpy = isinstance(root, NumPyDocstring)
-        indent = "    "
-        stub = self._build_stub(sig_params, is_numpy=is_numpy, indent=indent)
+        section_indent = detect_section_indent(ctx.docstring_text, ctx.docstring_stmt.col_offset)
+        stub = self._build_stub(sig_params, is_numpy=is_numpy, section_indent=section_indent)
 
         fix = Fix(
-            edits=[insert_at(root.range.end, f"\n\n{stub}\n")],
+            edits=[section_append_edit(ctx.docstring_text, root.range.end, stub)],
             applicability=Applicability.UNSAFE,
         )
         summary_token = root.summary

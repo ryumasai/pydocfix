@@ -13,7 +13,7 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
+from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, detect_section_indent, section_append_edit
 from pydocfix.rules.yld._helpers import get_yield_type, is_generator_function
 
 
@@ -54,13 +54,21 @@ class YLD001(BaseRule):
 
         is_numpy = isinstance(root, NumPyDocstring)
         yield_type = get_yield_type(ctx.parent_ast)
+        section_indent = detect_section_indent(ctx.docstring_text, ctx.docstring_stmt.col_offset)
+        entry_indent = section_indent + "    "
         if is_numpy:
-            stub = f"\n\nYields\n------\n{yield_type}\n" if yield_type else "\n\nYields\n------\n"
+            if yield_type:
+                stub = f"{section_indent}Yields\n{section_indent}------\n{section_indent}{yield_type}"
+            else:
+                stub = f"{section_indent}Yields\n{section_indent}------"
         else:
-            stub = f"\n\nYields:\n    {yield_type}:\n" if yield_type else "\n\nYields:\n"
+            if yield_type:
+                stub = f"{section_indent}Yields:\n{entry_indent}{yield_type}:"
+            else:
+                stub = f"{section_indent}Yields:"
 
         fix = Fix(
-            edits=[insert_at(root.range.end, stub)],
+            edits=[section_append_edit(ctx.docstring_text, root.range.end, stub)],
             applicability=Applicability.UNSAFE,
         )
         summary_token = root.summary

@@ -13,7 +13,7 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
+from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, detect_section_indent, section_append_edit
 from pydocfix.rules.rtn._helpers import has_return_annotation
 
 
@@ -54,10 +54,15 @@ class RTN001(BaseRule):
 
         is_numpy = isinstance(root, NumPyDocstring)
         ret_ann = ast.unparse(ctx.parent_ast.returns)  # type: ignore[union-attr]
-        stub = f"\n\nReturns\n-------\n{ret_ann}\n" if is_numpy else f"\n\nReturns:\n    {ret_ann}:\n"
+        section_indent = detect_section_indent(ctx.docstring_text, ctx.docstring_stmt.col_offset)
+        entry_indent = section_indent + "    "
+        if is_numpy:
+            stub = f"{section_indent}Returns\n{section_indent}-------\n{section_indent}{ret_ann}"
+        else:
+            stub = f"{section_indent}Returns:\n{entry_indent}{ret_ann}:"
 
         fix = Fix(
-            edits=[insert_at(root.range.end, stub)],
+            edits=[section_append_edit(ctx.docstring_text, root.range.end, stub)],
             applicability=Applicability.UNSAFE,
         )
         summary_token = root.summary

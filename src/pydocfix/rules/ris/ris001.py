@@ -13,7 +13,7 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
+from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, detect_section_indent, section_append_edit
 from pydocfix.rules.ris._helpers import get_raised_exceptions
 
 
@@ -42,22 +42,18 @@ class RIS001(BaseRule):
         return False
 
     @staticmethod
-    def _detect_indent(ds_text: str, root) -> str:
-        """Guess indentation from existing sections, defaulting to 4 spaces."""
-        return "    "
-
-    @staticmethod
-    def _build_stub(exc_names: list[str], *, is_numpy: bool, indent: str) -> str:
+    def _build_stub(exc_names: list[str], *, is_numpy: bool, section_indent: str) -> str:
+        entry_indent = section_indent + "    "
         lines: list[str] = []
         if is_numpy:
-            lines.append("Raises")
-            lines.append("------")
+            lines.append(f"{section_indent}Raises")
+            lines.append(f"{section_indent}------")
             for name in exc_names:
-                lines.append(name)
+                lines.append(f"{section_indent}{name}")
         else:
-            lines.append("Raises:")
+            lines.append(f"{section_indent}Raises:")
             for name in exc_names:
-                lines.append(f"{indent}{name}:")
+                lines.append(f"{entry_indent}{name}:")
         return "\n".join(lines)
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
@@ -75,11 +71,11 @@ class RIS001(BaseRule):
             return
 
         is_numpy = isinstance(root, NumPyDocstring)
-        indent = self._detect_indent(ctx.docstring_text, root)
-        stub = self._build_stub(raised, is_numpy=is_numpy, indent=indent)
+        section_indent = detect_section_indent(ctx.docstring_text, ctx.docstring_stmt.col_offset)
+        stub = self._build_stub(raised, is_numpy=is_numpy, section_indent=section_indent)
 
         fix = Fix(
-            edits=[insert_at(root.range.end, f"\n\n{stub}\n")],
+            edits=[section_append_edit(ctx.docstring_text, root.range.end, stub)],
             applicability=Applicability.UNSAFE,
         )
         summary_token = root.summary
