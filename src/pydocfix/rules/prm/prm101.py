@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, replace_token
+from pydocfix.rules.prm._helpers import get_annotation_map, get_param_name_token
 
 if TYPE_CHECKING:
     from pydocfix.config import Config
@@ -29,30 +30,13 @@ class PRM101(BaseRule):
         self._ann_cache: tuple[int, dict[str, str]] = (0, {})
 
     def _get_annotation_map(self, ast_node: ast.AST) -> dict[str, str]:
-        """Build a mapping of parameter name -> unparsed type annotation."""
+        """Return annotation map for ast_node, with per-call caching."""
         node_id = id(ast_node)
         if self._ann_cache[0] == node_id:
             return self._ann_cache[1]
         if not isinstance(ast_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return {}
-        result: dict[str, str] = {}
-        for arg in (
-            *ast_node.args.args,
-            *ast_node.args.posonlyargs,
-            *ast_node.args.kwonlyargs,
-        ):
-            if arg.annotation is not None:
-                result[arg.arg] = ast.unparse(arg.annotation)
-        if ast_node.args.vararg and ast_node.args.vararg.annotation is not None:
-            ann = ast.unparse(ast_node.args.vararg.annotation)
-            name = ast_node.args.vararg.arg
-            result[name] = ann
-            result[f"*{name}"] = ann
-        if ast_node.args.kwarg and ast_node.args.kwarg.annotation is not None:
-            ann = ast.unparse(ast_node.args.kwarg.annotation)
-            name = ast_node.args.kwarg.arg
-            result[name] = ann
-            result[f"**{name}"] = ann
+        result = get_annotation_map(ast_node)
         self._ann_cache = (node_id, result)
         return result
 
@@ -62,10 +46,10 @@ class PRM101(BaseRule):
             return
 
         if isinstance(cst_node, GoogleArg):
-            name_token = cst_node.name
+            name_token = get_param_name_token(cst_node)
             type_token = cst_node.type
         else:
-            name_token = cst_node.names[0] if cst_node.names else None
+            name_token = get_param_name_token(cst_node)
             type_token = cst_node.type
         if name_token is None or type_token is None:
             return

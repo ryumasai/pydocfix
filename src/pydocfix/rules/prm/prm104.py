@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
+from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token
 
 
 class PRM104(BaseRule):
@@ -20,17 +21,6 @@ class PRM104(BaseRule):
         GoogleArg,
         NumPyParameter,
     }
-
-    @staticmethod
-    def _get_annotation(func: ast.FunctionDef | ast.AsyncFunctionDef, bare_name: str) -> str | None:
-        for arg in (*func.args.args, *func.args.posonlyargs, *func.args.kwonlyargs):
-            if arg.arg == bare_name and arg.annotation is not None:
-                return ast.unparse(arg.annotation)
-        if func.args.vararg and func.args.vararg.arg == bare_name and func.args.vararg.annotation is not None:
-            return ast.unparse(func.args.vararg.annotation)
-        if func.args.kwarg and func.args.kwarg.arg == bare_name and func.args.kwarg.annotation is not None:
-            return ast.unparse(func.args.kwarg.annotation)
-        return None
 
     def _build_insert_type_fix(self, cst_node, ann: str, ds_text: str) -> Fix:
         """Build a fix that inserts the type annotation into the docstring entry."""
@@ -68,21 +58,21 @@ class PRM104(BaseRule):
             return
 
         if isinstance(cst_node, GoogleArg):
-            name_token = cst_node.name
+            name_token = get_param_name_token(cst_node)
             type_token = cst_node.type
         else:
-            name_token = cst_node.names[0] if cst_node.names else None
+            name_token = get_param_name_token(cst_node)
             type_token = cst_node.type
         if name_token is None:
             return
         if type_token is not None and type_token.text.strip():
             return
 
-        bare_name = name_token.text.lstrip("*")
-        ann = self._get_annotation(ctx.parent_ast, bare_name)
+        b = bare_name(name_token.text)
+        ann = get_annotation_map(ctx.parent_ast).get(b)
         fix = None
         if ann:
             fix = self._build_insert_type_fix(cst_node, ann, ctx.docstring_text)
 
-        message = f"Parameter \'{name_token.text}\' has no type in docstring."
+        message = f"Parameter '{name_token.text}' has no type in docstring."
         yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)

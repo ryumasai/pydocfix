@@ -7,12 +7,11 @@ from collections.abc import Iterator
 
 from pydocstring import (
     GoogleSection,
-    GoogleSectionKind,
     NumPySection,
-    NumPySectionKind,
 )
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
+from pydocfix.rules.rtn._helpers import has_return_annotation, is_returns_section
 
 
 class RTN002(BaseRule):
@@ -25,23 +24,6 @@ class RTN002(BaseRule):
         NumPySection,
     }
 
-    @staticmethod
-    def _has_return_annotation(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-        if func.returns is None:
-            return False
-        if isinstance(func.returns, ast.Constant) and func.returns.value is None:
-            return False
-        ann = ast.unparse(func.returns)
-        return ann not in ("None",)
-
-    @staticmethod
-    def _is_returns_section(section) -> bool:
-        if isinstance(section, GoogleSection):
-            return section.section_kind == GoogleSectionKind.RETURNS
-        if isinstance(section, NumPySection):
-            return section.section_kind == NumPySectionKind.RETURNS
-        return False
-
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
         if not isinstance(section, (GoogleSection, NumPySection)):
@@ -49,10 +31,10 @@ class RTN002(BaseRule):
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
-        if not self._is_returns_section(section):
+        if not is_returns_section(section):
             return
 
-        if self._has_return_annotation(ctx.parent_ast):
+        if has_return_annotation(ctx.parent_ast):
             return
 
         # Delete the entire Returns section

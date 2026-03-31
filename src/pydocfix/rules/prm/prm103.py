@@ -4,14 +4,11 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
 
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
-
-if TYPE_CHECKING:
-    pass
+from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token
 
 
 class PRM103(BaseRule):
@@ -24,15 +21,6 @@ class PRM103(BaseRule):
         GoogleArg,
         NumPyParameter,
     }
-
-    @staticmethod
-    def _has_annotation(func: ast.FunctionDef | ast.AsyncFunctionDef, bare_name: str) -> bool:
-        for arg in (*func.args.args, *func.args.posonlyargs, *func.args.kwonlyargs):
-            if arg.arg == bare_name and arg.annotation is not None:
-                return True
-        if func.args.vararg and func.args.vararg.arg == bare_name and func.args.vararg.annotation is not None:
-            return True
-        return bool(func.args.kwarg and func.args.kwarg.arg == bare_name and func.args.kwarg.annotation is not None)
 
     def _build_delete_type_fix(self, cst_node, ds_text: str) -> Fix:
         """Build a fix that removes the type annotation from the docstring entry."""
@@ -63,16 +51,16 @@ class PRM103(BaseRule):
             return
 
         if isinstance(cst_node, GoogleArg):
-            name_token = cst_node.name
+            name_token = get_param_name_token(cst_node)
             type_token = cst_node.type
         else:
-            name_token = cst_node.names[0] if cst_node.names else None
+            name_token = get_param_name_token(cst_node)
             type_token = cst_node.type
         if name_token is None or type_token is None:
             return
 
-        bare_name = name_token.text.lstrip("*")
-        if not self._has_annotation(ctx.parent_ast, bare_name):
+        b = bare_name(name_token.text)
+        if not get_annotation_map(ctx.parent_ast).get(b):
             return
 
         fix = self._build_delete_type_fix(cst_node, ctx.docstring_text)

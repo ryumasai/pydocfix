@@ -7,12 +7,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
-
-
-def _bare_name(name: str) -> str:
-    """Strip leading ``*`` or ``**`` from a parameter name."""
-    return name.lstrip("*")
+from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.rules.prm._helpers import bare_name, delete_entry_fix, get_param_name_token
 
 
 class PRM005(BaseRule):
@@ -27,7 +23,7 @@ class PRM005(BaseRule):
 
     @staticmethod
     def _get_signature_names(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
-        """Return bare parameter names from the function signature."""
+        """Return bare parameter names from the function signature (includes self/cls)."""
         names: set[str] = set()
         for arg in (*func.args.posonlyargs, *func.args.args, *func.args.kwonlyargs):
             names.add(arg.arg)
@@ -37,19 +33,6 @@ class PRM005(BaseRule):
             names.add(func.args.kwarg.arg)
         return names
 
-    @staticmethod
-    def _build_delete_fix(ds_text: str, param_node) -> Fix:
-        """Build a fix that deletes the parameter entry line(s)."""
-        ds_bytes = ds_text.encode("utf-8")
-        nl_before = ds_bytes.rfind(b"\n", 0, param_node.range.start)
-        start = nl_before + 1 if nl_before != -1 else param_node.range.start
-        nl_after = ds_bytes.find(b"\n", param_node.range.end)
-        end = nl_after + 1 if nl_after != -1 else param_node.range.end
-        return Fix(
-            edits=[delete_range(start, end)],
-            applicability=Applicability.UNSAFE,
-        )
-
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
         if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
@@ -57,15 +40,15 @@ class PRM005(BaseRule):
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
-        name_token = cst_node.name if isinstance(cst_node, GoogleArg) else cst_node.names[0] if cst_node.names else None
+        name_token = get_param_name_token(cst_node)
         if name_token is None:
             return
 
         sig_names = self._get_signature_names(ctx.parent_ast)
-        bare = _bare_name(name_token.text)
-        if bare in sig_names:
+        b = bare_name(name_token.text)
+        if b in sig_names:
             return
 
-        fix = self._build_delete_fix(ctx.docstring_text, cst_node)
+        fix = delete_entry_fix(ctx.docstring_text, cst_node, Applicability.UNSAFE)
         message = f"Parameter '{name_token.text}' not in function signature."
         yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)

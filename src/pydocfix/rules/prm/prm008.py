@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.rules.prm._helpers import get_param_name_token
 
 
 class PRM008(BaseRule):
@@ -27,7 +28,7 @@ class PRM008(BaseRule):
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
-        name_token = cst_node.name if isinstance(cst_node, GoogleArg) else cst_node.names[0] if cst_node.names else None
+        name_token = get_param_name_token(cst_node)
         if name_token is None:
             return
 

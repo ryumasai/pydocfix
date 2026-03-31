@@ -7,12 +7,11 @@ from collections.abc import Iterator
 
 from pydocstring import (
     GoogleSection,
-    GoogleSectionKind,
     NumPySection,
-    NumPySectionKind,
 )
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
+from pydocfix.rules.prm._helpers import get_signature_params, is_param_section
 
 
 class PRM002(BaseRule):
@@ -25,34 +24,15 @@ class PRM002(BaseRule):
         NumPySection,
     }
 
-    @staticmethod
-    def _is_param_section(section: GoogleSection | NumPySection) -> bool:
-        if isinstance(section, GoogleSection):
-            return section.section_kind == GoogleSectionKind.ARGS
-        return section.section_kind == NumPySectionKind.PARAMETERS
-
-    @staticmethod
-    def _has_real_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-        """Return True if the function has any parameters besides self/cls."""
-        all_positional = [*func.args.posonlyargs, *func.args.args]
-        skip_first = bool(all_positional) and all_positional[0].arg in ("self", "cls")
-        real_count = len(all_positional) - (1 if skip_first else 0)
-        real_count += len(func.args.kwonlyargs)
-        if func.args.vararg:
-            real_count += 1
-        if func.args.kwarg:
-            real_count += 1
-        return real_count > 0
-
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
         if not isinstance(section, (GoogleSection, NumPySection)):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
-        if not self._is_param_section(section):
+        if not is_param_section(section):
             return
-        if self._has_real_params(ctx.parent_ast):
+        if bool(get_signature_params(ctx.parent_ast)):
             return
 
         # Delete the entire param section

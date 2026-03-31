@@ -14,6 +14,7 @@ from pydocstring import (
 )
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
+from pydocfix.rules.rtn._helpers import has_return_annotation
 
 
 class RTN001(BaseRule):
@@ -26,15 +27,6 @@ class RTN001(BaseRule):
         NumPyDocstring,
         PlainDocstring,
     }
-
-    @staticmethod
-    def _has_return_annotation(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-        if func.returns is None:
-            return False
-        if isinstance(func.returns, ast.Constant) and func.returns.value is None:
-            return False
-        ann = ast.unparse(func.returns)
-        return ann not in ("None",)
 
     @staticmethod
     def _has_returns_section(root) -> bool:
@@ -55,7 +47,7 @@ class RTN001(BaseRule):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
-        if not self._has_return_annotation(ctx.parent_ast):
+        if not has_return_annotation(ctx.parent_ast):
             return
         if self._has_returns_section(root):
             return

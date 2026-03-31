@@ -5,22 +5,19 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator
 
-import pydocstring
 from pydocstring import (
     GoogleArg,
     GoogleSection,
-    GoogleSectionKind,
     NumPySection,
-    NumPySectionKind,
-    Visitor,
 )
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
-
-
-def _bare_name(name: str) -> str:
-    """Strip leading ``*`` or ``**`` from a parameter name."""
-    return name.lstrip("*")
+from pydocfix.rules.prm._helpers import (
+    bare_name,
+    get_documented_param_nodes,
+    get_signature_params,
+    is_param_section,
+)
 
 
 class PRM006(BaseRule):
@@ -32,49 +29,6 @@ class PRM006(BaseRule):
         GoogleSection,
         NumPySection,
     }
-
-    @staticmethod
-    def _is_param_section(section) -> bool:
-        if isinstance(section, GoogleSection):
-            return section.section_kind == GoogleSectionKind.ARGS
-        if isinstance(section, NumPySection):
-            return section.section_kind == NumPySectionKind.PARAMETERS
-        return False
-
-    @staticmethod
-    def _get_documented_param_nodes(parsed, section) -> list[tuple[str, object]]:
-        """Return ``(bare_name, node)`` pairs for each documented parameter, in order."""
-        result: list[tuple[str, object]] = []
-
-        class _Collector(Visitor):
-            def enter_google_arg(self, node, ctx):
-                if node.range.start >= section.range.start and node.range.end <= section.range.end and node.name:
-                    result.append((_bare_name(node.name.text), node))
-
-            def enter_numpy_parameter(self, node, ctx):
-                if node.range.start >= section.range.start and node.range.end <= section.range.end and node.names:
-                    result.append((_bare_name(node.names[0].text), node))
-
-        pydocstring.walk(parsed, _Collector())
-        return result
-
-    @staticmethod
-    def _get_signature_order(func: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
-        """Return bare parameter names in signature order, excluding ``self``/``cls``."""
-        result: list[str] = []
-        all_positional = [*func.args.posonlyargs, *func.args.args]
-        skip_first = bool(all_positional) and all_positional[0].arg in ("self", "cls")
-        for i, arg in enumerate(all_positional):
-            if i == 0 and skip_first:
-                continue
-            result.append(arg.arg)
-        for arg in func.args.kwonlyargs:
-            result.append(arg.arg)
-        if func.args.vararg:
-            result.append(func.args.vararg.arg)
-        if func.args.kwarg:
-            result.append(func.args.kwarg.arg)
-        return result
 
     @staticmethod
     def _entry_span(ds_bytes: bytes, param_node) -> tuple[int, int]:
@@ -115,11 +69,11 @@ class PRM006(BaseRule):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
-        if not self._is_param_section(section):
+        if not is_param_section(section):
             return
 
-        doc_params = self._get_documented_param_nodes(ctx.docstring_cst, section)
-        sig_order = self._get_signature_order(ctx.parent_ast)
+        doc_params = [(bare_name(name), node) for name, node in get_documented_param_nodes(ctx.docstring_cst, section)]
+        sig_order = [bare_name(name) for name, _ in get_signature_params(ctx.parent_ast)]
 
         sig_set = set(sig_order)
         doc_names = [name for name, _ in doc_params if name in sig_set]

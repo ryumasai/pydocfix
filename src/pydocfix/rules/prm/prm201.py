@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
+from pydocfix.rules.prm._helpers import bare_name, get_param_name_token
 
 
 class PRM201(BaseRule):
@@ -42,19 +43,19 @@ class PRM201(BaseRule):
             return
 
         if isinstance(cst_node, GoogleArg):
-            name_token = cst_node.name
+            name_token = get_param_name_token(cst_node)
             type_token = cst_node.type
             optional_token = cst_node.optional
         else:
-            name_token = cst_node.names[0] if cst_node.names else None
+            name_token = get_param_name_token(cst_node)
             type_token = cst_node.type
             optional_token = cst_node.optional
         if name_token is None:
             return
 
-        bare_name = name_token.text.lstrip("*")
+        b = bare_name(name_token.text)
         default_params = self._get_default_params(ctx.parent_ast)
-        if bare_name not in default_params:
+        if b not in default_params:
             return
 
         if optional_token is not None:
