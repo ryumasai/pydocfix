@@ -41,7 +41,7 @@ class Applicability(enum.Enum):
 
 @dataclass(frozen=True)
 class Offset:
-    """A source position (1-based line, 0-based column)."""
+    """A source position (1-based line, 1-based column)."""
 
     lineno: int
     col: int
@@ -49,7 +49,7 @@ class Offset:
 
 @dataclass(frozen=True)
 class Range:
-    """Source location range (1-based lines, 0-based columns)."""
+    """Source location range (1-based lines, 1-based columns)."""
 
     start: Offset
     end: Offset
@@ -112,11 +112,11 @@ class DocstringLocation(NamedTuple):
 
 
 def _byte_offset_to_line_col(text_bytes: bytes, offset: int) -> tuple[int, int]:
-    """Convert a byte offset within docstring text to (1-based line, 0-based col)."""
+    """Convert a byte offset within docstring text to (1-based line, 1-based col)."""
     before = text_bytes[:offset]
     lineno = before.count(b"\n") + 1
     last_nl = before.rfind(b"\n")
-    col = offset - (last_nl + 1)
+    col = offset - (last_nl + 1) + 1
     return lineno, col
 
 

@@ -22,7 +22,6 @@ from pydocstring import (
     GoogleWarning,
     GoogleYield,
     NumPyAttribute,
-    NumPyDeprecation,
     NumPyDocstring,
     NumPyException,
     NumPyMethod,
@@ -62,7 +61,7 @@ class _DocstringInfo(NamedTuple):
 
 
 def _extract_docstrings(source: str, filepath: Path) -> Iterator[_DocstringInfo]:
-    """Yield :class:`_DocstringInfo` for every docstring in *source*."""
+    """Yield `_DocstringInfo` for every docstring in *source*."""
     try:
         tree: Final[ast.AST] = ast.parse(source, filename=str(filepath))
     except SyntaxError:

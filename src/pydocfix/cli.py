@@ -40,6 +40,13 @@ def cli() -> None:
     metavar="CODES",
     help="Comma-separated rule codes to ignore (e.g. SUM001,PRM002). Overrides config.",
 )
+@click.option(
+    "--exclude",
+    "exclude_dirs",
+    multiple=True,
+    metavar="DIRS",
+    help="Comma-separated directory names to exclude (e.g. build,dist). Added to default exclusions.",
+)
 def check(
     paths: tuple[str, ...],
     fix: bool,
@@ -47,13 +54,14 @@ def check(
     unsafe_fixes: bool,
     select_codes: tuple[str, ...],
     ignore_codes: tuple[str, ...],
+    exclude_dirs: tuple[str, ...],
 ) -> None:
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
 
     from pydocfix.checker import check_file
-    from pydocfix.config import load_config
-    from pydocfix.rules import build_registry
+    from pydocfix.config import DEFAULT_EXCLUDE, load_config
+    from pydocfix.rules import Applicability, build_registry
 
     config = load_config()
 
@@ -64,16 +72,24 @@ def check(
     effective_select = _parse_codes(select_codes) if select_codes else config.select
     effective_ignore = _parse_codes(ignore_codes) if ignore_codes else config.ignore
 
+    # Build effective exclude set: defaults + config + CLI
+    cli_excludes = [d.strip() for group in exclude_dirs for d in group.split(",") if d.strip()]
+    effective_exclude: frozenset[str] = DEFAULT_EXCLUDE | frozenset(config.exclude) | frozenset(cli_excludes)
+
     registry: Final = build_registry(ignore=effective_ignore, select=effective_select, config=config)
     kind_map: Final = registry.kind_map
 
-    targets: Final = _collect_files(list(paths) or ["."])
+    targets: Final = _collect_files(list(paths) or ["."], exclude=effective_exclude)
     if not targets:
         logger.warning("no Python files found.")
         sys.exit(0)
 
     total_violations = 0
     total_fixed = 0
+    total_would_fix = 0
+    total_safe_fixable = 0
+    total_unsafe_fixable = 0
+    remaining_diagnostics: list = []
 
     for filepath in sorted(targets):
         source = filepath.read_text(encoding="utf-8")
@@ -85,9 +101,17 @@ def check(
 
         total_violations += len(diagnostics)
 
+        for d in diagnostics:
+            if d.fix is not None:
+                if d.fix.applicability == Applicability.SAFE:
+                    total_safe_fixable += 1
+                elif d.fix.applicability == Applicability.UNSAFE:
+                    total_unsafe_fixable += 1
+
         if new_source is not None:
             if diff:
                 _print_diff(filepath, source, new_source)
+                total_would_fix += len(fixed_indices)
             if fix:
                 filepath.write_text(new_source, encoding="utf-8")
                 total_fixed += len(fixed_indices)
@@ -95,24 +119,36 @@ def check(
 
         for d in diagnostics:
             hint = _fixable_hint(d, unsafe_fixes)
-            print(f"{d.filepath}:{d.lineno}:{d.col}: {d.rule} {d.message}{hint}")
+            click.echo(f"{d.filepath}:{d.lineno}:{d.col}: {d.rule} {d.message}{hint}")
+
+        remaining_diagnostics.extend(diagnostics)
 
     remaining = total_violations - total_fixed
 
-    if fix and total_fixed:
-        print(f"\nFixed {total_fixed} violation(s).")
+    if total_violations > 0:
+        click.echo("")
+
+    if total_violations == 0:
+        click.echo(click.style("All checks passed.", fg="green") + f" ({len(targets)} file(s) checked)")
+    elif fix:
+        _summarize_fix(total_fixed, remaining, remaining_diagnostics, unsafe_fixes)
+    elif diff:
+        _summarize_diff(total_violations, total_would_fix, total_unsafe_fixable, unsafe_fixes)
+    else:
+        _summarize_check(total_violations, total_safe_fixable, total_unsafe_fixable)
 
     if remaining > 0:
         sys.exit(1)
 
 
-def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe fix)"]:
+def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe fix)", " (display only fix)"]:
     """Return a parenthetical hint about fixability."""
     from pydocfix.rules import Applicability
 
     unfixable: Final = ""
     fixable: Final = " (fixable)"
     unsafe: Final = " (unsafe fix)"
+    display_only: Final = " (display only fix)"
 
     if d.fix is None:
         return unfixable
@@ -120,7 +156,68 @@ def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe 
         return fixable
     if d.fix.applicability == Applicability.UNSAFE:
         return unsafe if not unsafe_fixes else fixable
+    if d.fix.applicability == Applicability.DISPLAY_ONLY:
+        return display_only
     return unfixable
+
+
+def _summarize_check(total: int, safe: int, unsafe: int) -> None:
+    """Print summary for check mode (no --fix)."""
+    if safe and unsafe:
+        click.echo(
+            f"Found {total} violation(s). "
+            f"Run --fix to auto-fix {safe} of them "
+            f"({unsafe} more with --fix --unsafe-fixes)."
+        )
+    elif safe:
+        click.echo(f"Found {total} violation(s). Run --fix to auto-fix {safe} of them.")
+    elif unsafe:
+        click.echo(f"Found {total} violation(s). Run --fix --unsafe-fixes to fix {unsafe} of them.")
+    else:
+        click.echo(f"Found {total} violation(s). No auto-fixes available.")
+
+
+def _summarize_fix(total_fixed: int, remaining: int, remaining_diagnostics: list, unsafe_fixes: bool) -> None:
+    """Print summary for --fix mode."""
+    from pydocfix.rules import Applicability
+
+    if total_fixed and not remaining:
+        click.echo(click.style(f"Fixed {total_fixed} violation(s). No issues remaining.", fg="green"))
+    elif total_fixed and remaining:
+        remaining_unsafe = sum(
+            1 for d in remaining_diagnostics if d.fix is not None and d.fix.applicability == Applicability.UNSAFE
+        )
+        msg = f"Fixed {total_fixed} violation(s). {remaining} remaining"
+        if remaining_unsafe and not unsafe_fixes:
+            msg += f" ({remaining_unsafe} fixable with --unsafe-fixes)"
+        msg += "."
+        click.echo(msg)
+    else:
+        remaining_unsafe = sum(
+            1 for d in remaining_diagnostics if d.fix is not None and d.fix.applicability == Applicability.UNSAFE
+        )
+        if remaining_unsafe and not unsafe_fixes:
+            click.echo(f"Found {remaining} violation(s). Run --fix --unsafe-fixes to fix {remaining_unsafe} of them.")
+        else:
+            click.echo(f"Found {remaining} violation(s). No auto-fixes available.")
+
+
+def _summarize_diff(total: int, would_fix: int, unsafe_fixable: int, unsafe_fixes: bool) -> None:
+    """Print summary for --diff mode."""
+    remaining = total - would_fix
+    if would_fix:
+        msg = f"Would fix {would_fix} violation(s)."
+        if remaining > 0:
+            if unsafe_fixable and not unsafe_fixes:
+                msg += f" {remaining} remaining ({unsafe_fixable} fixable with --diff --unsafe-fixes)."
+            else:
+                msg += f" {remaining} remaining."
+        click.echo(msg)
+    else:
+        if unsafe_fixable and not unsafe_fixes:
+            click.echo(f"Found {total} violation(s). Run --diff --unsafe-fixes to fix {unsafe_fixable} of them.")
+        else:
+            click.echo(f"Found {total} violation(s). No auto-fixes available.")
 
 
 def _print_diff(filepath: Path, original: str, new_source: str) -> None:
@@ -134,20 +231,31 @@ def _print_diff(filepath: Path, original: str, new_source: str) -> None:
     sys.stdout.writelines(diff_lines)
 
 
-def _collect_files(paths: list[str]) -> list[Path]:
-    """Resolve paths to a flat list of Python files."""
+def _collect_files(
+    paths: list[str],
+    exclude: frozenset[str] = frozenset(),
+) -> list[Path]:
+    """Resolve paths to a flat list of Python files, skipping excluded directories."""
 
     suffixes: Final = {".py", ".pyi"}
+
+    def _walk(directory: Path) -> list[Path]:
+        found: list[Path] = []
+        for entry in directory.iterdir():
+            if entry.is_dir():
+                if entry.name not in exclude:
+                    found.extend(_walk(entry))
+            elif entry.is_file() and entry.suffix in suffixes:
+                found.append(entry)
+        return found
 
     result: list[Path] = []
     for p in paths:
         path = Path(p)
-        # TODO: exclude some dirs like __pycache__?
         if path.is_file() and path.suffix in suffixes:
             result.append(path)
         elif path.is_dir():
-            for suffix in suffixes:
-                result.extend(path.rglob(f"*{suffix}"))
+            result.extend(_walk(path))
         else:
             logger.warning("path not found or not a Python file: %s", p)
     return result

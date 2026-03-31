@@ -9,6 +9,27 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_EXCLUDE: frozenset[str] = frozenset(
+    {
+        ".git",
+        ".svn",
+        ".venv",
+        "venv",
+        ".tox",
+        ".nox",
+        "__pycache__",
+        "__pypackages__",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".eggs",
+        "build",
+        "dist",
+        "node_modules",
+        "site-packages",
+    }
+)
+
 
 @dataclass
 class Config:
@@ -18,6 +39,7 @@ class Config:
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)
     type_annotation_style: str | None = None
+    exclude: list[str] = field(default_factory=list)
 
 
 def find_pyproject_toml(start: Path | None = None) -> Path | None:
@@ -52,4 +74,7 @@ def load_config(start: Path | None = None) -> Config:
     ignore: list[str] = [str(code) for code in section.get("ignore", [])]
     select: list[str] = [str(code) for code in section.get("select", [])]
     type_annotation_style: str | None = section.get("type_annotation_style") or None
-    return Config(ignore=ignore, period=period, select=select, type_annotation_style=type_annotation_style)
+    exclude: list[str] = [str(p) for p in section.get("exclude", [])]
+    return Config(
+        ignore=ignore, period=period, select=select, type_annotation_style=type_annotation_style, exclude=exclude
+    )

@@ -180,18 +180,7 @@ def build_registry(
     select: list[str] | None = None,
     config: Config | None = None,
 ) -> RuleRegistry:
-    """Create a registry populated with built-in rules.
-
-    Args:
-        ignore: Rule codes to exclude (e.g. ``["PDX-SUM002", "PDX-PRM101"]``).
-        select: Rule codes to explicitly enable. ``["ALL"]`` enables every rule
-            including those with ``enabled_by_default = False``.  When empty,
-            only rules whose ``enabled_by_default`` is ``True`` are active.
-        config: Resolved configuration passed to each rule instance.
-
-    Returns:
-        A registry containing the selected rules.
-    """
+    """Create a registry populated with built-in rules."""
     ignored: frozenset[str] = frozenset(ignore or [])
     selected: frozenset[str] = frozenset(select or [])
     select_all: bool = "ALL" in selected

@@ -28,9 +28,9 @@ class TestDiagnoseFile:
         f.write_text('def foo():\n    """Do something"""\n    pass\n')
         diags = _diagnose(f, build_rules_map([SUM002()]))
         assert len(diags) == 1
-        # "Do something" starts at line 2, col 7 (after triple-quote)
+        # "Do something" starts at line 2, col 8 (after triple-quote, 1-based)
         assert diags[0].lineno == 2
-        assert diags[0].col == 7
+        assert diags[0].col == 8
 
     def test_no_violation_when_period(self, tmp_path: Path):
         f = tmp_path / "example.py"
@@ -62,9 +62,9 @@ class TestD401Integration:
         assert diags[0].rule == "PDX-PRM101"
         assert "'str'" in diags[0].message
         assert "'int'" in diags[0].message
-        # TYPE token "str" is at line 5, col 11 (inside parentheses)
+        # TYPE token "str" is at line 5, col 12 (inside parentheses, 1-based)
         assert diags[0].lineno == 5
-        assert diags[0].col == 11
+        assert diags[0].col == 12
 
     def test_return_type_mismatch(self, tmp_path: Path):
         f = tmp_path / "example.py"
