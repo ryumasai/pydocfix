@@ -48,5 +48,5 @@ class RIS005(BaseRule):
             edits=[delete_range(start, end)],
             applicability=Applicability.UNSAFE,
         )
-        message = f"Raises entry \'{type_token.text}\' not raised in function body."
+        message = f"Raises entry '{type_token.text}' not raised in function body."
         yield self._make_diagnostic(ctx, message, fix=fix, target=type_token)

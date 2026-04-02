@@ -163,35 +163,45 @@ class DOC001(BaseRule):
         )
         sorted_sections = [s for _, s in sorted_indexed]
 
-        # Reorder by swapping the "clean" section texts in-place.
-        # Each slot sections[i] is replaced only up to its own clean_end
-        # (the end of its last entry-depth line).  Any trailing content at
-        # shallower indent ("stray" lines absorbed into the section range by
-        # the parser) is left untouched in the gap, preventing it from being
-        # moved to a different section where other rules might misinterpret it.
-        edits = []
-        for i in range(len(sections)):
-            if sections[i] is sorted_sections[i]:
-                continue
-            src_section = sorted_sections[i]
+        # Build a single Edit covering the entire section block
+        # (from the first section's start to the last section's end).
+        #
+        # For each section, only its "clean" text (up to the last entry-depth
+        # line) is moved.  Any trailing content absorbed by the parser at
+        # shallower indent (stray lines without a blank-line separator) stays
+        # at its original byte position by being included in the inter-section
+        # gap rather than travelling with the section.
+        #
+        # Using one Edit instead of per-slot edits ensures DOC001's edit
+        # geometrically overlaps any edit from other rules (e.g. RIS005) that
+        # touch the same section block, so that the overlap detector serialises
+        # them across iterations rather than applying both simultaneously.
+        n = len(sections)
+        # clean_end byte (absolute) for each section: end of last entry-depth line
+        clean_ends = [
+            sections[i].range.start + _section_clean_end(ds_bytes[sections[i].range.start : sections[i].range.end])
+            for i in range(n)
+        ]
+        # Gaps between sections: from clean_end[i] to sections[i+1].range.start
+        gaps = [
+            ds_bytes[clean_ends[i] : sections[i + 1].range.start].decode("utf-8")
+            for i in range(n - 1)
+        ]
+
+        # Reconstruct the full section block in sorted order, preserving gaps.
+        parts: list[str] = []
+        for i, src_section in enumerate(sorted_sections):
             src_bytes = ds_bytes[src_section.range.start : src_section.range.end]
             clean_len = _section_clean_end(src_bytes)
-            new_text = src_bytes[:clean_len].decode("utf-8")
+            parts.append(src_bytes[:clean_len].decode("utf-8"))
+            if i < n - 1:
+                parts.append(gaps[i])
 
-            # Replace only the clean part of the target slot; any stray
-            # trailing content in sections[i] is left at its byte position.
-            tgt_section = sections[i]
-            tgt_bytes = ds_bytes[tgt_section.range.start : tgt_section.range.end]
-            tgt_clean_end = tgt_section.range.start + _section_clean_end(tgt_bytes)
-            edits.append(
-                Edit(
-                    start=tgt_section.range.start,
-                    end=tgt_clean_end,
-                    new_text=new_text,
-                )
-            )
-
-        fix = Fix(edits=edits, applicability=Applicability.UNSAFE)
+        new_text = "".join(parts)
+        fix = Fix(
+            edits=[Edit(start=sections[0].range.start, end=sections[-1].range.end, new_text=new_text)],
+            applicability=Applicability.UNSAFE,
+        )
 
         # Report at the first section whose position differs from the sorted
         # order, so the user can see exactly where the disorder begins.
