@@ -181,6 +181,11 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
 ]
 
 
+def _matches(code: str, patterns: frozenset[str]) -> bool:
+    """Return True if *code* matches any pattern (exact or prefix)."""
+    return any(code == p or code.startswith(p) for p in patterns)
+
+
 def build_registry(
     ignore: list[str] | None = None,
     select: list[str] | None = None,
@@ -194,12 +199,12 @@ def build_registry(
     registry = RuleRegistry()
     for cls in _BUILTIN_RULES:
         instance = cls(config)
-        if instance.code in ignored:
+        if _matches(instance.code, ignored):
             continue
         if select_all:
             registry.register(instance)
         elif has_select:
-            if instance.code in selected:
+            if _matches(instance.code, selected):
                 registry.register(instance)
         elif instance.enabled_by_default:
             registry.register(instance)

@@ -2759,3 +2759,26 @@ class TestRegistryCompleteness:
         codes = {r.code for r in registry.all_rules()}
         assert "PRM103" in codes
         assert "YLD104" in codes
+
+    def test_select_by_prefix(self):
+        registry = build_registry(select=["RTN"])
+        codes = {r.code for r in registry.all_rules()}
+        assert all(c.startswith("RTN") for c in codes)
+        assert "RTN001" in codes
+        assert "RTN101" in codes
+        assert "SUM001" not in codes
+        assert "PRM001" not in codes
+
+    def test_ignore_by_prefix(self):
+        registry = build_registry(ignore=["PRM"])
+        codes = {r.code for r in registry.all_rules()}
+        assert not any(c.startswith("PRM") for c in codes)
+        assert "SUM001" in codes
+        assert "RTN001" in codes
+
+    def test_select_prefix_includes_non_default(self):
+        """Selecting a prefix also enables non-default rules in that category."""
+        registry = build_registry(select=["YLD"])
+        codes = {r.code for r in registry.all_rules()}
+        assert "YLD103" in codes
+        assert "YLD104" in codes
