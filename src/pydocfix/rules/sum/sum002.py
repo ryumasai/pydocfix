@@ -19,7 +19,7 @@ _PERIOD_SET: Final[frozenset[str]] = frozenset([_DEFAULT_PERIOD, "!", "?"])
 class SUM002(BaseRule):
     """Summary should end with a period."""
 
-    code = "PDX-SUM002"
+    code = "SUM002"
     message = "Summary should end with a period."
     target_kinds = {Token}
 

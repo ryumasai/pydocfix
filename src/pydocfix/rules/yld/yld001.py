@@ -28,7 +28,7 @@ from pydocfix.rules.yld._helpers import get_yield_type, is_generator_function
 class YLD001(BaseRule):
     """Generator function has no Yields section in docstring."""
 
-    code = "PDX-YLD001"
+    code = "YLD001"
     message = "Missing Yields section in docstring."
     target_kinds = {
         GoogleDocstring,

@@ -14,7 +14,7 @@ from pydocfix.rules.yld._helpers import get_yield_type
 class YLD103(BaseRule):
     """Signature has yield type annotation but docstring also specifies type (redundant)."""
 
-    code = "PDX-YLD103"
+    code = "YLD103"
     message = "Redundant yield type in docstring; type annotation exists in signature."
     enabled_by_default = False
     target_kinds = {

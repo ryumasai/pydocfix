@@ -14,7 +14,7 @@ from pydocfix.rules.prm._helpers import delete_entry_fix, get_param_name_token
 class PRM003(BaseRule):
     """Docstring should not document ``self`` or ``cls``."""
 
-    code = "PDX-PRM003"
+    code = "PRM003"
     message = "Docstring should not document 'self' or 'cls'."
     target_kinds = {
         GoogleArg,

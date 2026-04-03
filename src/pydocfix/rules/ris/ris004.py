@@ -19,7 +19,7 @@ from pydocfix.rules.ris._helpers import (
 class RIS004(BaseRule):
     """Raised exception not documented in the Raises section."""
 
-    code = "PDX-RIS004"
+    code = "RIS004"
     message = "Raised exception not documented in Raises section."
     target_kinds = {
         GoogleSection,

@@ -27,7 +27,7 @@ from pydocfix.rules.prm._helpers import (
 class PRM007(BaseRule):
     """Docstring documents a parameter more than once."""
 
-    code = "PDX-PRM007"
+    code = "PRM007"
     message = "Duplicate parameter in docstring."
     target_kinds = {
         GoogleSection,

@@ -17,7 +17,7 @@ from pydocfix.rules.prm._helpers import get_signature_params, is_param_section
 class PRM002(BaseRule):
     """Function has no parameters but docstring has an Args/Parameters section."""
 
-    code = "PDX-PRM002"
+    code = "PRM002"
     message = "Function has no parameters but docstring has Args/Parameters section."
     target_kinds = {
         GoogleSection,

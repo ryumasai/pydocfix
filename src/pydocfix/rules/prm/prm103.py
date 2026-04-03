@@ -14,7 +14,7 @@ from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param
 class PRM103(BaseRule):
     """Signature has type annotation but docstring also specifies type (redundant)."""
 
-    code = "PDX-PRM103"
+    code = "PRM103"
     message = "Redundant type in docstring; type annotation exists in signature."
     enabled_by_default = False
     target_kinds = {

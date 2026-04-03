@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class PRM101(BaseRule):
     """Docstring parameter type does not match type hint."""
 
-    code = "PDX-PRM101"
+    code = "PRM101"
     message = "Docstring parameter type does not match type hint."
     target_kinds = {
         GoogleArg,

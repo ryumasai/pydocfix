@@ -22,7 +22,7 @@ from pydocfix.rules.prm._helpers import (
 class PRM004(BaseRule):
     """Docstring has Args/Parameters section but is missing documented parameters."""
 
-    code = "PDX-PRM004"
+    code = "PRM004"
     message = "Missing parameter in docstring."
     target_kinds = {
         GoogleSection,

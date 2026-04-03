@@ -13,7 +13,7 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 class RTN104(BaseRule):
     """Docstring return entry has no type (type_annotation_style = "docstring")."""
 
-    code = "PDX-RTN104"
+    code = "RTN104"
     message = "Return has no type in docstring."
     enabled_by_default = False
     target_kinds = {

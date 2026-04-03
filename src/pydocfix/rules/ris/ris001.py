@@ -28,7 +28,7 @@ from pydocfix.rules.ris._helpers import get_raised_exceptions
 class RIS001(BaseRule):
     """Function has raise statements but docstring has no Raises section."""
 
-    code = "PDX-RIS001"
+    code = "RIS001"
     message = "Missing Raises section in docstring."
     target_kinds = {
         GoogleDocstring,

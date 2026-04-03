@@ -14,7 +14,7 @@ from pydocfix.rules.prm._helpers import bare_name, delete_entry_fix, get_param_n
 class PRM005(BaseRule):
     """Docstring documents a parameter that does not exist in the function signature."""
 
-    code = "PDX-PRM005"
+    code = "PRM005"
     message = "Docstring has parameter not in function signature."
     target_kinds = {
         GoogleArg,

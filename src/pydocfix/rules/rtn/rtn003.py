@@ -13,7 +13,7 @@ from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 class RTN003(BaseRule):
     """Returns section entry has no description."""
 
-    code = "PDX-RTN003"
+    code = "RTN003"
     message = "Returns section has no description."
     target_kinds = {
         GoogleReturn,

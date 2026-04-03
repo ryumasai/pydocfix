@@ -17,7 +17,7 @@ _DEFAULT_RE = re.compile(r"\bdefault[s]?\b", re.IGNORECASE)
 class PRM202(BaseRule):
     """Parameter has a default value but docstring does not mention ``default``."""
 
-    code = "PDX-PRM202"
+    code = "PRM202"
     message = "Parameter with default value missing 'default' in docstring."
     enabled_by_default = False
     target_kinds = {

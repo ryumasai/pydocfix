@@ -14,7 +14,7 @@ from pydocfix.rules.prm._helpers import bare_name, get_param_name_token
 class PRM201(BaseRule):
     """Parameter has a default value but docstring does not mention ``optional``."""
 
-    code = "PDX-PRM201"
+    code = "PRM201"
     message = "Parameter with default value missing 'optional' in docstring."
     target_kinds = {
         GoogleArg,

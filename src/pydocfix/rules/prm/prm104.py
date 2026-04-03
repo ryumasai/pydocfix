@@ -14,7 +14,7 @@ from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param
 class PRM104(BaseRule):
     """Docstring parameter has no type annotation (type_annotation_style = "docstring")."""
 
-    code = "PDX-PRM104"
+    code = "PRM104"
     message = "Parameter has no type in docstring."
     enabled_by_default = False
     target_kinds = {

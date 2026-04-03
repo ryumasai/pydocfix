@@ -22,7 +22,7 @@ class TestDiagnoseFile:
         f.write_text('def foo():\n    """Do something"""\n    pass\n')
         diags = _diagnose(f, build_rules_map([SUM002()]))
         assert len(diags) == 1
-        assert diags[0].rule == "PDX-SUM002"
+        assert diags[0].rule == "SUM002"
         assert diags[0].fixable is True
 
     def test_precise_range_for_summary(self, tmp_path: Path):
@@ -61,7 +61,7 @@ class TestD401Integration:
         )
         diags = _diagnose(f, build_rules_map([PRM101()]))
         assert len(diags) == 1
-        assert diags[0].rule == "PDX-PRM101"
+        assert diags[0].rule == "PRM101"
         assert "'str'" in diags[0].message
         assert "'int'" in diags[0].message
         # TYPE token "str" is at line 5, col 12 (inside parentheses, 1-based)
@@ -75,7 +75,7 @@ class TestD401Integration:
         )
         diags = _diagnose(f, build_rules_map([RTN101()]))
         assert len(diags) == 1
-        assert diags[0].rule == "PDX-RTN101"
+        assert diags[0].rule == "RTN101"
 
     def test_no_mismatch(self, tmp_path: Path):
         f = tmp_path / "example.py"

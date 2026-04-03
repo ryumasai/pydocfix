@@ -13,7 +13,7 @@ from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 class RIS003(BaseRule):
     """Raises entry has no description."""
 
-    code = "PDX-RIS003"
+    code = "RIS003"
     message = "Raises entry has no description."
     target_kinds = {
         GoogleException,

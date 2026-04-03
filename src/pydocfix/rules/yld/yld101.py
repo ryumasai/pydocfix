@@ -14,7 +14,7 @@ from pydocfix.rules.yld._helpers import get_yield_type
 class YLD101(BaseRule):
     """Docstring yield type does not match type hint."""
 
-    code = "PDX-YLD101"
+    code = "YLD101"
     message = "Docstring yield type does not match type hint."
     target_kinds = {
         GoogleYield,

@@ -23,7 +23,7 @@ from pydocfix.rules.prm._helpers import (
 class PRM006(BaseRule):
     """Docstring parameters are listed in a different order than the function signature."""
 
-    code = "PDX-PRM006"
+    code = "PRM006"
     message = "Docstring parameters are not in the same order as the function signature."
     target_kinds = {
         GoogleSection,

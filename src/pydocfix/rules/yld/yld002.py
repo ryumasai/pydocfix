@@ -14,7 +14,7 @@ from pydocfix.rules.yld._helpers import is_generator_function, is_yields_section
 class YLD002(BaseRule):
     """Function is not a generator but docstring has a Yields section."""
 
-    code = "PDX-YLD002"
+    code = "YLD002"
     message = "Unnecessary Yields section in docstring."
     target_kinds = {
         GoogleSection,

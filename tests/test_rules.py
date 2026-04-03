@@ -132,7 +132,7 @@ class TestEdit:
 class TestDiagnostic:
     def test_fixable_when_fix_present(self):
         d = Diagnostic(
-            rule="PDX-SUM002",
+            rule="SUM002",
             message="test",
             filepath="test.py",
             range=Range(Offset(1, 0), Offset(1, 10)),
@@ -142,7 +142,7 @@ class TestDiagnostic:
 
     def test_not_fixable_when_no_fix(self):
         d = Diagnostic(
-            rule="PDX-SUM002",
+            rule="SUM002",
             message="test",
             filepath="test.py",
             range=Range(Offset(1, 0), Offset(1, 10)),
@@ -151,7 +151,7 @@ class TestDiagnostic:
 
     def test_line_and_col_properties(self):
         d = Diagnostic(
-            rule="PDX-SUM002",
+            rule="SUM002",
             message="test",
             filepath="test.py",
             range=Range(Offset(5, 4), Offset(7, 0)),
@@ -165,7 +165,7 @@ class TestD200:
         ctx = _make_diagnose_ctx("Do something")
         diag = next(iter(SUM002().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-SUM002"
+        assert diag.rule == "SUM002"
         assert diag.fixable is True
         assert diag.fix is not None
 
@@ -208,33 +208,33 @@ class TestD200:
 class TestRegistry:
     def test_build_registry_contains_d200(self):
         registry = build_registry()
-        assert registry.get("PDX-SUM002") is not None
+        assert registry.get("SUM002") is not None
 
     def test_build_registry_contains_d401(self):
         registry = build_registry()
-        assert registry.get("PDX-PRM101") is not None
+        assert registry.get("PRM101") is not None
 
     def test_build_registry_contains_d402(self):
         registry = build_registry()
-        assert registry.get("PDX-RTN101") is not None
+        assert registry.get("RTN101") is not None
 
     def test_all_rules(self):
         registry = build_registry()
         rules = registry.all_rules()
         codes = [r.code for r in rules]
-        assert "PDX-SUM002" in codes
-        assert "PDX-PRM101" in codes
-        assert "PDX-RTN101" in codes
+        assert "SUM002" in codes
+        assert "PRM101" in codes
+        assert "RTN101" in codes
 
     def test_rules_for_kind(self):
         registry = build_registry()
         summary_rules = registry.rules_for_kind(Token)
-        assert any(r.code == "PDX-SUM002" for r in summary_rules)
+        assert any(r.code == "SUM002" for r in summary_rules)
         assert registry.rules_for_kind(type(None)) == []
         google_arg_rules = registry.rules_for_kind(GoogleArg)
-        assert any(r.code == "PDX-PRM101" for r in google_arg_rules)
+        assert any(r.code == "PRM101" for r in google_arg_rules)
         google_return_rules = registry.rules_for_kind(GoogleReturn)
-        assert any(r.code == "PDX-RTN101" for r in google_return_rules)
+        assert any(r.code == "RTN101" for r in google_return_rules)
 
 
 # ── Helpers for PRM101 ─────────────────────────────────────────────────
@@ -338,7 +338,7 @@ class TestD401GoogleParam:
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM101().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM101"
+        assert diag.rule == "PRM101"
         assert "'str'" in diag.message
         assert "'int'" in diag.message
         assert "'x'" in diag.message
@@ -441,7 +441,7 @@ class TestD402GoogleReturn:
         ctx = _make_d401_ctx_google(ds, func, rets[0])
         diag = next(iter(RTN101().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-RTN101"
+        assert diag.rule == "RTN101"
         assert "'str'" in diag.message
         assert "'int'" in diag.message
 
@@ -554,7 +554,7 @@ class TestD403GoogleParam:
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM009().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM009"
+        assert diag.rule == "PRM009"
         assert "'kwargs'" in diag.message
         assert "'**kwargs'" in diag.message
 
@@ -732,7 +732,7 @@ class TestD404GoogleParam:
         ctx = _make_d404_ctx_google(ds, func)
         diags = list(PRM004().diagnose(ctx))
         assert len(diags) == 1
-        assert diags[0].rule == "PDX-PRM004"
+        assert diags[0].rule == "PRM004"
         assert "'y'" in diags[0].message
 
     def test_all_documented_no_diagnostic(self):
@@ -912,17 +912,17 @@ class TestD404Registry:
 
     def test_registry_contains_d404(self):
         registry = build_registry()
-        assert registry.get("PDX-PRM004") is not None
+        assert registry.get("PRM004") is not None
 
     def test_rules_for_google_section(self):
         registry = build_registry()
         rules = registry.rules_for_kind(GoogleSection)
-        assert any(r.code == "PDX-PRM004" for r in rules)
+        assert any(r.code == "PRM004" for r in rules)
 
     def test_rules_for_numpy_section(self):
         registry = build_registry()
         rules = registry.rules_for_kind(NumPySection)
-        assert any(r.code == "PDX-PRM004" for r in rules)
+        assert any(r.code == "PRM004" for r in rules)
 
 
 # ── Helpers for PRM005 ─────────────────────────────────────────────────
@@ -976,7 +976,7 @@ class TestD405GoogleParam:
         ctx = _make_d405_ctx_google(ds, func, arg_index=1)
         diag = next(iter(PRM005().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM005"
+        assert diag.rule == "PRM005"
         assert "'y'" in diag.message
 
     def test_valid_param_no_diagnostic(self):
@@ -1115,7 +1115,7 @@ class TestD406Google:
         ctx = _make_d406_ctx_google(ds, func)
         diag = next(iter(PRM001().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM001"
+        assert diag.rule == "PRM001"
 
     def test_no_params_no_diagnostic(self):
         ds = "Summary."
@@ -1248,31 +1248,31 @@ class TestD405D406Registry:
 
     def test_registry_contains_d405(self):
         registry = build_registry()
-        assert registry.get("PDX-PRM005") is not None
+        assert registry.get("PRM005") is not None
 
     def test_registry_contains_d406(self):
         registry = build_registry()
-        assert registry.get("PDX-PRM001") is not None
+        assert registry.get("PRM001") is not None
 
     def test_d405_rules_for_google_arg(self):
         registry = build_registry()
         rules = registry.rules_for_kind(GoogleArg)
-        assert any(r.code == "PDX-PRM005" for r in rules)
+        assert any(r.code == "PRM005" for r in rules)
 
     def test_d405_rules_for_numpy_parameter(self):
         registry = build_registry()
         rules = registry.rules_for_kind(NumPyParameter)
-        assert any(r.code == "PDX-PRM005" for r in rules)
+        assert any(r.code == "PRM005" for r in rules)
 
     def test_d406_rules_for_google_docstring(self):
         registry = build_registry()
         rules = registry.rules_for_kind(GoogleDocstring)
-        assert any(r.code == "PDX-PRM001" for r in rules)
+        assert any(r.code == "PRM001" for r in rules)
 
     def test_d406_rules_for_numpy_docstring(self):
         registry = build_registry()
         rules = registry.rules_for_kind(NumPyDocstring)
-        assert any(r.code == "PDX-PRM001" for r in rules)
+        assert any(r.code == "PRM001" for r in rules)
 
 
 # ── Helpers for PRM008 ─────────────────────────────────────────────────
@@ -1322,7 +1322,7 @@ class TestD407GoogleParam:
         ctx = _make_d407_ctx_google(ds, func, arg_index=0)
         diag = next(iter(PRM008().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM008"
+        assert diag.rule == "PRM008"
         assert "'x'" in diag.message
 
     def test_has_description_no_diagnostic(self):
@@ -1398,17 +1398,17 @@ class TestD407Registry:
 
     def test_registry_contains_d407(self):
         registry = build_registry()
-        assert registry.get("PDX-PRM008") is not None
+        assert registry.get("PRM008") is not None
 
     def test_rules_for_google_arg(self):
         registry = build_registry()
         rules = registry.rules_for_kind(GoogleArg)
-        assert any(r.code == "PDX-PRM008" for r in rules)
+        assert any(r.code == "PRM008" for r in rules)
 
     def test_rules_for_numpy_parameter(self):
         registry = build_registry()
         rules = registry.rules_for_kind(NumPyParameter)
-        assert any(r.code == "PDX-PRM008" for r in rules)
+        assert any(r.code == "PRM008" for r in rules)
 
 
 # ── PRM007 Tests ───────────────────────────────────────────────────────
@@ -1424,7 +1424,7 @@ class TestD408GoogleParam:
         result = list(PRM007().diagnose(ctx))
         assert result is not None
         assert len(result) == 1
-        assert result[0].rule == "PDX-PRM007"
+        assert result[0].rule == "PRM007"
         assert "'b'" in result[0].message
 
     def test_no_duplicate_no_diagnostic(self):
@@ -1495,17 +1495,17 @@ class TestD408Registry:
 
     def test_registry_contains_d408(self):
         registry = build_registry()
-        assert registry.get("PDX-PRM007") is not None
+        assert registry.get("PRM007") is not None
 
     def test_rules_for_google_section(self):
         registry = build_registry()
         rules = registry.rules_for_kind(GoogleSection)
-        assert any(r.code == "PDX-PRM007" for r in rules)
+        assert any(r.code == "PRM007" for r in rules)
 
     def test_rules_for_numpy_section(self):
         registry = build_registry()
         rules = registry.rules_for_kind(NumPySection)
-        assert any(r.code == "PDX-PRM007" for r in rules)
+        assert any(r.code == "PRM007" for r in rules)
 
 
 # ── PRM006 Tests ───────────────────────────────────────────────────────
@@ -1521,7 +1521,7 @@ class TestD409GoogleParam:
         result = list(PRM006().diagnose(ctx))
         assert result is not None
         assert len(result) >= 1
-        assert result[0].rule == "PDX-PRM006"
+        assert result[0].rule == "PRM006"
         assert "'b'" in result[0].message
 
     def test_correct_order_no_diagnostic(self):
@@ -1640,17 +1640,17 @@ class TestD409Registry:
 
     def test_registry_contains_d409(self):
         registry = build_registry()
-        assert registry.get("PDX-PRM006") is not None
+        assert registry.get("PRM006") is not None
 
     def test_rules_for_google_section(self):
         registry = build_registry()
         rules = registry.rules_for_kind(GoogleSection)
-        assert any(r.code == "PDX-PRM006" for r in rules)
+        assert any(r.code == "PRM006" for r in rules)
 
     def test_rules_for_numpy_section(self):
         registry = build_registry()
         rules = registry.rules_for_kind(NumPySection)
-        assert any(r.code == "PDX-PRM006" for r in rules)
+        assert any(r.code == "PRM006" for r in rules)
 
 
 # ── SUM001 Tests ───────────────────────────────────────────────────────
@@ -1680,7 +1680,7 @@ class TestSUM001:
         ctx = _make_root_ctx(ds, "def foo(x):\n    pass\n")
         diag = next(iter(SUM001().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-SUM001"
+        assert diag.rule == "SUM001"
 
     def test_has_summary_no_diagnostic(self):
         ds = "Do something.\n\nArgs:\n    x: desc.\n"
@@ -1750,7 +1750,7 @@ class TestPRM002:
         ctx = _make_section_ctx(ds, "def foo():\n    pass\n")
         diag = next(iter(PRM002().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM002"
+        assert diag.rule == "PRM002"
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
 
@@ -1788,7 +1788,7 @@ class TestPRM003:
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM003().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM003"
+        assert diag.rule == "PRM003"
         assert "'self'" in diag.message
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
@@ -1827,7 +1827,7 @@ class TestPRM102:
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM102().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM102"
+        assert diag.rule == "PRM102"
 
     def test_type_in_docstring_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
@@ -1880,7 +1880,7 @@ class TestPRM103:
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM103().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM103"
+        assert diag.rule == "PRM103"
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
 
@@ -1932,7 +1932,7 @@ class TestPRM104:
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM104().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM104"
+        assert diag.rule == "PRM104"
 
     def test_has_doc_type_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
@@ -1972,7 +1972,7 @@ class TestPRM201:
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM201().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM201"
+        assert diag.rule == "PRM201"
 
     def test_has_optional_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    x (int, optional): desc.\n"
@@ -2016,7 +2016,7 @@ class TestPRM202:
         ctx = _make_d401_ctx_google(ds, func, args[0])
         diag = next(iter(PRM202().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-PRM202"
+        assert diag.rule == "PRM202"
 
     def test_has_default_mention_no_diagnostic(self):
         ds = "Summary.\n\nArgs:\n    x (int): desc. Defaults to 5.\n"
@@ -2060,7 +2060,7 @@ class TestRTN001:
         ctx = _make_root_ctx(ds, "def foo() -> int:\n    pass\n")
         diag = next(iter(RTN001().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-RTN001"
+        assert diag.rule == "RTN001"
         assert diag.fix is not None
 
     def test_has_returns_section_no_diagnostic(self):
@@ -2112,7 +2112,7 @@ class TestRTN002:
         ctx = _make_section_ctx(ds, "def foo():\n    pass\n")
         diag = next(iter(RTN002().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-RTN002"
+        assert diag.rule == "RTN002"
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
 
@@ -2159,7 +2159,7 @@ class TestRTN003:
         ctx = _make_returns_entry_ctx(ds, func)
         diag = next(iter(RTN003().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-RTN003"
+        assert diag.rule == "RTN003"
 
     def test_has_description_no_diagnostic(self):
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
@@ -2200,7 +2200,7 @@ class TestRTN102:
         diag = next(iter(RTN102().diagnose(ctx)), None)
         # If RETURN_TYPE is present it won't trigger; depends on parser
         if diag is not None:
-            assert diag.rule == "PDX-RTN102"
+            assert diag.rule == "RTN102"
 
     def test_type_in_docstring_no_diagnostic(self):
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
@@ -2242,7 +2242,7 @@ class TestRTN103:
         ctx = _make_returns_entry_ctx(ds, func)
         diag = next(iter(RTN103().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-RTN103"
+        assert diag.rule == "RTN103"
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
 
@@ -2304,7 +2304,7 @@ class TestRTN104:
         diag = next(iter(RTN104().diagnose(ctx)), None)
         # Depends on whether parser produces RETURN_TYPE token
         if diag is not None:
-            assert diag.rule == "PDX-RTN104"
+            assert diag.rule == "RTN104"
 
     def test_has_type_no_diagnostic(self):
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
@@ -2328,7 +2328,7 @@ class TestYLD001:
         ctx = _make_root_ctx(ds, "def foo():\n    yield 1\n")
         diag = next(iter(YLD001().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-YLD001"
+        assert diag.rule == "YLD001"
         assert diag.fix is not None
 
     def test_has_yields_section_no_diagnostic(self):
@@ -2406,7 +2406,7 @@ class TestYLD002:
         ctx = _make_section_ctx(ds, "def foo():\n    return 1\n")
         diag = next(iter(YLD002().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-YLD002"
+        assert diag.rule == "YLD002"
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
 
@@ -2453,7 +2453,7 @@ class TestYLD003:
         ctx = _make_yields_entry_ctx(ds, func)
         diag = next(iter(YLD003().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-YLD003"
+        assert diag.rule == "YLD003"
 
     def test_has_description_no_diagnostic(self):
         ds = "Summary.\n\nYields:\n    int: An item.\n"
@@ -2487,7 +2487,7 @@ class TestYLD101:
         )
         diag = next(iter(YLD101().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-YLD101"
+        assert diag.rule == "YLD101"
         assert "'str'" in diag.message
         assert "'int'" in diag.message
 
@@ -2562,7 +2562,7 @@ class TestYLD102:
         )
         diag = next(iter(YLD102().diagnose(ctx)), None)
         if diag is not None:
-            assert diag.rule == "PDX-YLD102"
+            assert diag.rule == "YLD102"
 
     def test_type_in_docstring_no_diagnostic(self):
         ds = "Summary.\n\nYields:\n    int: An item.\n"
@@ -2596,7 +2596,7 @@ class TestYLD103:
         )
         diag = next(iter(YLD103().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "PDX-YLD103"
+        assert diag.rule == "YLD103"
         assert diag.fix.applicability == Applicability.SAFE
 
     def test_no_sig_type_no_diagnostic(self):
@@ -2649,7 +2649,7 @@ class TestDOC001:
         ctx = _make_doc001_ctx(self.DS_WRONG)
         diags = list(DOC001().diagnose(ctx))
         assert len(diags) == 1
-        assert diags[0].rule == "PDX-DOC001"
+        assert diags[0].rule == "DOC001"
         assert diags[0].fixable is True
         assert diags[0].fix is not None
         assert diags[0].fix.applicability == Applicability.UNSAFE
@@ -2747,15 +2747,15 @@ class TestRegistryCompleteness:
     def test_non_default_rules_excluded(self):
         registry = build_registry()
         codes = {r.code for r in registry.all_rules()}
-        assert "PDX-PRM103" not in codes
-        assert "PDX-PRM104" not in codes
-        assert "PDX-RTN103" not in codes
-        assert "PDX-RTN104" not in codes
-        assert "PDX-YLD103" not in codes
-        assert "PDX-YLD104" not in codes
+        assert "PRM103" not in codes
+        assert "PRM104" not in codes
+        assert "RTN103" not in codes
+        assert "RTN104" not in codes
+        assert "YLD103" not in codes
+        assert "YLD104" not in codes
 
     def test_non_default_rules_included_with_select(self):
-        registry = build_registry(select=["PDX-PRM103", "PDX-YLD104"])
+        registry = build_registry(select=["PRM103", "YLD104"])
         codes = {r.code for r in registry.all_rules()}
-        assert "PDX-PRM103" in codes
-        assert "PDX-YLD104" in codes
+        assert "PRM103" in codes
+        assert "YLD104" in codes

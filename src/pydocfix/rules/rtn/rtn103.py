@@ -13,7 +13,7 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 class RTN103(BaseRule):
     """Signature has return type annotation but docstring also specifies type (redundant)."""
 
-    code = "PDX-RTN103"
+    code = "RTN103"
     message = "Redundant return type in docstring; type annotation exists in signature."
     enabled_by_default = False
     target_kinds = {

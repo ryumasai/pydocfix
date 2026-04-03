@@ -13,7 +13,7 @@ from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 class RTN102(BaseRule):
     """Return type not specified in either docstring or signature."""
 
-    code = "PDX-RTN102"
+    code = "RTN102"
     message = "Return type not in docstring or signature."
     target_kinds = {
         GoogleReturn,

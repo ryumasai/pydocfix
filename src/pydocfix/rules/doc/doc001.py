@@ -126,7 +126,7 @@ def _section_clean_end(section_bytes: bytes) -> int:
 class DOC001(BaseRule):
     """Docstring sections are not in canonical order."""
 
-    code = "PDX-DOC001"
+    code = "DOC001"
     message = "Docstring sections are not in canonical order."
     enabled_by_default = True
     target_kinds = {

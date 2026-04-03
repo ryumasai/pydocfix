@@ -14,7 +14,7 @@ from pydocfix.rules.yld._helpers import get_yield_type
 class YLD104(BaseRule):
     """Docstring yield entry has no type (type_annotation_style = "docstring")."""
 
-    code = "PDX-YLD104"
+    code = "YLD104"
     message = "Yield has no type in docstring."
     enabled_by_default = False
     target_kinds = {

@@ -17,7 +17,7 @@ from pydocfix.rules.rtn._helpers import has_return_annotation, is_returns_sectio
 class RTN002(BaseRule):
     """Function has no return type annotation but docstring has a Returns section."""
 
-    code = "PDX-RTN002"
+    code = "RTN002"
     message = "Unnecessary Returns section in docstring."
     target_kinds = {
         GoogleSection,

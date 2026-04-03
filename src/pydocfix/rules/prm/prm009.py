@@ -14,7 +14,7 @@ from pydocfix.rules.prm._helpers import get_param_name_token
 class PRM009(BaseRule):
     """Docstring parameter name missing '*' or '**' prefix."""
 
-    code = "PDX-PRM009"
+    code = "PRM009"
     message = "Docstring parameter name missing '*' or '**' prefix."
     target_kinds = {
         GoogleArg,

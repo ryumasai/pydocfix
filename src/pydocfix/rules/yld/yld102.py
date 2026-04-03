@@ -14,7 +14,7 @@ from pydocfix.rules.yld._helpers import get_yield_type
 class YLD102(BaseRule):
     """Yield type not specified in either docstring or signature."""
 
-    code = "PDX-YLD102"
+    code = "YLD102"
     message = "Yield type not in docstring or signature."
     target_kinds = {
         GoogleYield,

@@ -13,7 +13,7 @@ from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 class YLD003(BaseRule):
     """Yields section entry has no description."""
 
-    code = "PDX-YLD003"
+    code = "YLD003"
     message = "Yields section has no description."
     target_kinds = {
         GoogleYield,

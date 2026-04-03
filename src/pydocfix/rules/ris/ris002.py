@@ -14,7 +14,7 @@ from pydocfix.rules.ris._helpers import get_raised_exceptions, is_raises_section
 class RIS002(BaseRule):
     """Docstring has a Raises section but function body has no raise statements."""
 
-    code = "PDX-RIS002"
+    code = "RIS002"
     message = "Unnecessary Raises section in docstring."
     target_kinds = {
         GoogleSection,

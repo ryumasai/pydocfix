@@ -12,7 +12,7 @@ from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 class SUM001(BaseRule):
     """Docstring has no summary line."""
 
-    code = "PDX-SUM001"
+    code = "SUM001"
     message = "Docstring has no summary line."
     target_kinds = {
         GoogleDocstring,

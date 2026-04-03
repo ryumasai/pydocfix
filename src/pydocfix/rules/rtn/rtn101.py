@@ -13,7 +13,7 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 class RTN101(BaseRule):
     """Docstring return type does not match type hint."""
 
-    code = "PDX-RTN101"
+    code = "RTN101"
     message = "Docstring return type does not match type hint."
     target_kinds = {
         GoogleReturn,

@@ -55,7 +55,7 @@ class TestCheckFileFix:
         f.write_text(src)
         diags, result, _ = check_file(src, f, build_rules_map([SUM002()]), fix=True)
         assert len(diags) == 1
-        assert diags[0].rule == "PDX-SUM002"
+        assert diags[0].rule == "SUM002"
         assert result is not None
 
 

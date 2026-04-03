@@ -14,7 +14,7 @@ from pydocfix.rules.prm._helpers import get_param_name_token
 class PRM008(BaseRule):
     """Docstring parameter has no description."""
 
-    code = "PDX-PRM008"
+    code = "PRM008"
     message = "Docstring parameter has empty description."
     target_kinds = {
         GoogleArg,

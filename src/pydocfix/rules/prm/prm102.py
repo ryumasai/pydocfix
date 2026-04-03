@@ -14,7 +14,7 @@ from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param
 class PRM102(BaseRule):
     """Parameter has no type annotation in either docstring or signature."""
 
-    code = "PDX-PRM102"
+    code = "PRM102"
     message = "Parameter has no type in docstring or signature."
     target_kinds = {
         GoogleArg,
