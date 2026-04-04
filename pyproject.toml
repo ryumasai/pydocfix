@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pydocfix"
-version = "0.0.1"
+version = "0.1.0a1"
 description = "A Python docstring linter with auto-fix support"
 readme = "README.md"
 license = "MIT"
@@ -52,5 +52,4 @@ extraPaths = ["src"]
 testpaths = ["tests"]
 
 [tool.pydocfix]
-period = "."
 ignore = ["PRM001", "RTN001", "YLD001", "RIS001"]

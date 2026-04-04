@@ -44,6 +44,11 @@ from pydocfix.rules import (
     PRM104,
     PRM201,
     PRM202,
+    RIS001,
+    RIS002,
+    RIS003,
+    RIS004,
+    RIS005,
     RTN001,
     RTN002,
     RTN003,
@@ -2618,6 +2623,456 @@ class TestYLD104:
 
     def test_not_enabled_by_default(self):
         assert YLD104.enabled_by_default is False
+
+    def test_no_type_in_docstring(self):
+        ds = "Summary.\n\nYields:\n    An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        assert entries
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD104().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "YLD104"
+
+    def test_has_type_no_diagnostic(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        assert entries
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD104().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_inserts_type(self):
+        ds = "Summary.\n\nYields:\n    An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        assert entries
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD104().diagnose(ctx)), None)
+        assert diag is not None
+        if diag.fix:
+            result = apply_edits(ds, diag.fix.edits)
+            assert "int" in result
+
+
+# ── RIS001 Tests ───────────────────────────────────────────────────────
+
+
+def _make_raises_section_ctx(ds_text: str, func_src: str, *, is_numpy: bool = False):
+    """Build a DiagnoseContext targeting the first Raises section."""
+    parsed = parse_numpy(ds_text) if is_numpy else parse_google(ds_text)
+    kind = NumPySection if is_numpy else GoogleSection
+    sections = _find_cst_nodes(parsed, kind)
+    # Find the Raises section
+    raises_section = None
+    for sec in sections:
+        if is_numpy:
+            if sec.section_kind == NumPySectionKind.RAISES:
+                raises_section = sec
+                break
+        else:
+            if sec.section_kind == GoogleSectionKind.RAISES:
+                raises_section = sec
+                break
+    assert raises_section is not None, "No Raises section found"
+    tree = ast.parse(func_src)
+    func_node = tree.body[0]
+    return DiagnoseContext(
+        filepath=Path("test.py"),
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=raises_section,
+        parent_ast=func_node,
+        docstring_stmt=_dummy_stmt(2, 4),
+        docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+    )
+
+
+def _make_raises_entry_ctx(ds_text: str, func_src: str, *, is_numpy: bool = False):
+    """Build a DiagnoseContext targeting the first GoogleException/NumPyException node."""
+    parsed = parse_numpy(ds_text) if is_numpy else parse_google(ds_text)
+    kind = NumPyException if is_numpy else GoogleException
+    entries = _find_cst_nodes(parsed, kind)
+    assert entries, "No exception entries found"
+    tree = ast.parse(func_src)
+    func_node = tree.body[0]
+    return DiagnoseContext(
+        filepath=Path("test.py"),
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=entries[0],
+        parent_ast=func_node,
+        docstring_stmt=_dummy_stmt(2, 4),
+        docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+    )
+
+
+class TestRIS001:
+    """RIS001: function raises but no Raises section."""
+
+    def test_missing_raises_section(self):
+        ds = "Summary."
+        func = "def foo():\n    raise ValueError('bad')\n"
+        ctx = _make_root_ctx(ds, func)
+        diag = next(iter(RIS001().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "RIS001"
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.UNSAFE
+
+    def test_has_raises_section_no_diagnostic(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    raise ValueError('bad')\n"
+        ctx = _make_root_ctx(ds, func)
+        diag = next(iter(RIS001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_no_raise_no_diagnostic(self):
+        ds = "Summary."
+        func = "def foo():\n    return 1\n"
+        ctx = _make_root_ctx(ds, func)
+        diag = next(iter(RIS001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_inserts_raises_google(self):
+        ds = "Summary."
+        func = "def foo():\n    raise ValueError('bad')\n"
+        ctx = _make_root_ctx(ds, func)
+        diag = next(iter(RIS001().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "Raises:" in result
+        assert "ValueError" in result
+
+    def test_fix_inserts_raises_numpy(self):
+        ds = "Summary."
+        func = "def foo():\n    raise TypeError('bad')\n"
+        ctx = _make_root_ctx(ds, func, is_numpy=True)
+        diag = next(iter(RIS001().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "Raises" in result
+        assert "------" in result
+        assert "TypeError" in result
+
+    def test_raise_call_form(self):
+        """raise ExcType(...) should be detected."""
+        ds = "Summary."
+        func = "def foo():\n    raise RuntimeError('oops')\n"
+        ctx = _make_root_ctx(ds, func)
+        diag = next(iter(RIS001().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_bare_reraise_no_diagnostic(self):
+        """Bare `raise` (re-raise) should not trigger."""
+        ds = "Summary."
+        func = "def foo():\n    try:\n        pass\n    except:\n        raise\n"
+        ctx = _make_root_ctx(ds, func)
+        diag = next(iter(RIS001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_nested_function_raise_not_detected(self):
+        """Raise in nested function should not trigger on outer."""
+        ds = "Summary."
+        func = "def foo():\n    def inner():\n        raise ValueError()\n    return inner\n"
+        ctx = _make_root_ctx(ds, func)
+        diag = next(iter(RIS001().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_function_no_diagnostic(self):
+        """Non-function parent should not trigger."""
+        ds = "Summary."
+        parsed = parse_google(ds)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=parsed,
+            parent_ast=ast.parse("x = 1").body[0],
+            docstring_stmt=_dummy_stmt(1, 0),
+            docstring_location=DocstringLocation(Offset(1, 0), 0, len(ds) + 6, '"""', '"""'),
+        )
+        diag = next(iter(RIS001().diagnose(ctx)), None)
+        assert diag is None
+
+
+class TestRIS002:
+    """RIS002: unnecessary Raises section."""
+
+    def test_unnecessary_raises_section(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    return 1\n"
+        ctx = _make_raises_section_ctx(ds, func)
+        diag = next(iter(RIS002().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "RIS002"
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_has_raise_no_diagnostic(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    raise ValueError('bad')\n"
+        ctx = _make_raises_section_ctx(ds, func)
+        diag = next(iter(RIS002().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_non_raises_section_no_diagnostic(self):
+        """Args section should not trigger RIS002."""
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        ctx = _make_section_ctx(ds, "def foo(x):\n    pass\n")
+        diag = next(iter(RIS002().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_removes_section(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    return 1\n"
+        ctx = _make_raises_section_ctx(ds, func)
+        diag = next(iter(RIS002().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "Raises:" not in result
+        assert "ValueError" not in result
+
+    def test_not_function_no_diagnostic(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        parsed = parse_google(ds)
+        sections = _find_cst_nodes(parsed, GoogleSection)
+        raises = [s for s in sections if s.section_kind == GoogleSectionKind.RAISES]
+        assert raises
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=raises[0],
+            parent_ast=ast.parse("x = 1").body[0],
+            docstring_stmt=_dummy_stmt(1, 0),
+            docstring_location=DocstringLocation(Offset(1, 0), 0, len(ds) + 6, '"""', '"""'),
+        )
+        diag = next(iter(RIS002().diagnose(ctx)), None)
+        assert diag is None
+
+
+class TestRIS003:
+    """RIS003: Raises entry has no description."""
+
+    def test_no_description(self):
+        ds = "Summary.\n\nRaises:\n    ValueError:\n"
+        func = "def foo():\n    raise ValueError()\n"
+        ctx = _make_raises_entry_ctx(ds, func)
+        diag = next(iter(RIS003().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "RIS003"
+
+    def test_has_description_no_diagnostic(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    raise ValueError()\n"
+        ctx = _make_raises_entry_ctx(ds, func)
+        diag = next(iter(RIS003().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_fixable(self):
+        ds = "Summary.\n\nRaises:\n    ValueError:\n"
+        func = "def foo():\n    raise ValueError()\n"
+        ctx = _make_raises_entry_ctx(ds, func)
+        diag = next(iter(RIS003().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.fix is None
+
+    def test_not_function_no_diagnostic(self):
+        ds = "Summary.\n\nRaises:\n    ValueError:\n"
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleException)
+        assert entries
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=ast.parse("x = 1").body[0],
+            docstring_stmt=_dummy_stmt(1, 0),
+            docstring_location=DocstringLocation(Offset(1, 0), 0, len(ds) + 6, '"""', '"""'),
+        )
+        diag = next(iter(RIS003().diagnose(ctx)), None)
+        assert diag is None
+
+
+class TestRIS004:
+    """RIS004: raised exception missing from Raises section."""
+
+    def test_missing_exception(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    raise ValueError('bad')\n    raise TypeError('oops')\n"
+        ctx = _make_raises_section_ctx(ds, func)
+        diags = list(RIS004().diagnose(ctx))
+        assert any(d.rule == "RIS004" for d in diags)
+        assert any("TypeError" in d.message for d in diags)
+
+    def test_all_documented_no_diagnostic(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n    TypeError: If wrong.\n"
+        func = "def foo():\n    raise ValueError('bad')\n    raise TypeError('oops')\n"
+        ctx = _make_raises_section_ctx(ds, func)
+        diags = list(RIS004().diagnose(ctx))
+        assert not diags
+
+    def test_fix_appends_entry(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    raise ValueError('bad')\n    raise TypeError('oops')\n"
+        ctx = _make_raises_section_ctx(ds, func)
+        diags = list(RIS004().diagnose(ctx))
+        assert diags
+        for d in diags:
+            if "TypeError" in d.message:
+                assert d.fix is not None
+                result = apply_edits(ds, d.fix.edits)
+                assert "TypeError" in result
+
+    def test_non_raises_section_no_diagnostic(self):
+        """Args section should not trigger RIS004."""
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x):\n    raise ValueError()\n"
+        ctx = _make_section_ctx(ds, func)
+        diags = list(RIS004().diagnose(ctx))
+        assert not diags
+
+    def test_not_function_no_diagnostic(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        parsed = parse_google(ds)
+        sections = _find_cst_nodes(parsed, GoogleSection)
+        raises = [s for s in sections if s.section_kind == GoogleSectionKind.RAISES]
+        assert raises
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=raises[0],
+            parent_ast=ast.parse("x = 1").body[0],
+            docstring_stmt=_dummy_stmt(1, 0),
+            docstring_location=DocstringLocation(Offset(1, 0), 0, len(ds) + 6, '"""', '"""'),
+        )
+        diags = list(RIS004().diagnose(ctx))
+        assert not diags
+
+    def test_qualified_exception_name(self):
+        """Attribute-style raise like `raise http.HTTPError()` should match."""
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    raise ValueError('bad')\n    raise http.HTTPError()\n"
+        ctx = _make_raises_section_ctx(ds, func)
+        diags = list(RIS004().diagnose(ctx))
+        assert any("HTTPError" in d.message for d in diags)
+
+
+class TestRIS005:
+    """RIS005: Raises entry documents exception not raised."""
+
+    def test_unnecessary_exception(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n    TypeError: If wrong.\n"
+        func = "def foo():\n    raise ValueError('bad')\n"
+        # Need to target the second entry (TypeError)
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleException)
+        assert len(entries) >= 2
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[1],  # TypeError entry
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(RIS005().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "RIS005"
+        assert "TypeError" in diag.message
+
+    def test_raised_exception_no_diagnostic(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    raise ValueError('bad')\n"
+        ctx = _make_raises_entry_ctx(ds, func)
+        diag = next(iter(RIS005().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_removes_entry(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n    TypeError: If wrong.\n"
+        func = "def foo():\n    raise ValueError('bad')\n"
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleException)
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[1],  # TypeError
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(RIS005().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "TypeError" not in result
+        assert "ValueError" in result
+
+    def test_no_type_token_no_diagnostic(self):
+        """Entry without a type token should not crash."""
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        func = "def foo():\n    raise ValueError('bad')\n"
+        ctx = _make_raises_entry_ctx(ds, func)
+        diag = next(iter(RIS005().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_function_no_diagnostic(self):
+        ds = "Summary.\n\nRaises:\n    ValueError: If bad.\n"
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleException)
+        assert entries
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=ast.parse("x = 1").body[0],
+            docstring_stmt=_dummy_stmt(1, 0),
+            docstring_location=DocstringLocation(Offset(1, 0), 0, len(ds) + 6, '"""', '"""'),
+        )
+        diag = next(iter(RIS005().diagnose(ctx)), None)
+        assert diag is None
 
 
 # ── DOC001 ────────────────────────────────────────────────────────────

@@ -35,7 +35,6 @@ DEFAULT_EXCLUDE: frozenset[str] = frozenset(
 class Config:
     """Resolved pydocfix configuration."""
 
-    period: str | None = None
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)
     type_annotation_style: str | None = None
@@ -70,11 +69,8 @@ def load_config(start: Path | None = None) -> Config:
 
     section: dict = data.get("tool", {}).get("pydocfix", {})
 
-    period: str | None = section.get("period") or None
     ignore: list[str] = [str(code) for code in section.get("ignore", [])]
     select: list[str] = [str(code) for code in section.get("select", [])]
     type_annotation_style: str | None = section.get("type_annotation_style") or None
     exclude: list[str] = [str(p) for p in section.get("exclude", [])]
-    return Config(
-        ignore=ignore, period=period, select=select, type_annotation_style=type_annotation_style, exclude=exclude
-    )
+    return Config(ignore=ignore, select=select, type_annotation_style=type_annotation_style, exclude=exclude)
