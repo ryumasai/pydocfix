@@ -27,6 +27,12 @@ dependencies = [
     "click>=8.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/qraqras/pydocfix"
+Repository = "https://github.com/qraqras/pydocfix"
+Issues = "https://github.com/qraqras/pydocfix/issues"
+Changelog = "https://github.com/qraqras/pydocfix/releases"
+
 [project.scripts]
 pydocfix = "pydocfix.cli:main"
 
