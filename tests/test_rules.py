@@ -2141,9 +2141,10 @@ class TestRTN001:
 
 
 class TestRTN002:
-    """RTN002: unnecessary Returns section."""
+    """RTN002: unnecessary Returns section (function does not return a value)."""
 
-    def test_unnecessary_returns(self):
+    def test_no_return_value_triggers(self):
+        """No return statement → unnecessary Returns section."""
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         ctx = _make_section_ctx(ds, "def foo():\n    pass\n")
         diag = next(iter(RTN002().diagnose(ctx)), None)
@@ -2152,15 +2153,53 @@ class TestRTN002:
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
 
-    def test_has_return_type_no_diagnostic(self):
+    def test_bare_return_triggers(self):
+        """``return`` with no value → unnecessary Returns section."""
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
-        ctx = _make_section_ctx(ds, "def foo() -> int:\n    pass\n")
+        ctx = _make_section_ctx(ds, "def foo():\n    return\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_return_none_triggers(self):
+        """``return None`` → unnecessary Returns section."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    return None\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_returns_value_no_diagnostic(self):
+        """``return <expr>`` → Returns section is warranted."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo() -> int:\n    return 42\n")
         diag = next(iter(RTN002().diagnose(ctx)), None)
         assert diag is None
 
-    def test_none_return_triggers(self):
+    def test_returns_value_without_annotation_no_diagnostic(self):
+        """Unannotated but actually returning → Returns section is warranted."""
+        ds = "Summary.\n\nReturns:\n    The result.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    return 42\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_none_annotation_but_no_return_value_triggers(self):
+        """``-> None`` and no return value → unnecessary Returns section."""
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         ctx = _make_section_ctx(ds, "def foo() -> None:\n    pass\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_has_annotation_but_no_return_value_triggers(self):
+        """``-> int`` annotation but no actual return → unnecessary Returns section."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo() -> int:\n    pass\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_nested_function_return_ignored(self):
+        """Return inside a nested function should not affect outer function."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo():\n    def inner():\n        return 42\n    pass\n"
+        ctx = _make_section_ctx(ds, func)
         diag = next(iter(RTN002().diagnose(ctx)), None)
         assert diag is not None
 
