@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from pydocfix.checker import build_rules_map, check_file
+from pydocfix.config import Config
 from pydocfix.rules import (
     DOC001,
     PRM001,
@@ -181,10 +182,11 @@ class TestDOC001Integration:
         f = tmp_path / "example.py"
         src = 'def add(a: int, b: int) -> int:\n    """Add two numbers."""\n    return a + b\n'
         f.write_text(src)
+        cfg = Config(skip_short_docstrings=False)
         _, result, _ = check_file(
             src,
             f,
-            build_rules_map([PRM001(), RTN001(), DOC001()]),
+            build_rules_map([PRM001(cfg), RTN001(cfg), DOC001()]),
             fix=True,
             unsafe_fixes=True,
         )

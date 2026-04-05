@@ -70,6 +70,9 @@ class RIS001(BaseRule):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
+        if isinstance(root, PlainDocstring):
+            if self.config is None or self.config.skip_short_docstrings:
+                return  # summary-only docstring — skip per skip_short_docstrings
 
         raised = get_raised_exceptions(ctx.parent_ast)
         if not raised:

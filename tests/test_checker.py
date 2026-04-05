@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from pydocfix.checker import build_rules_map, check_file
+from pydocfix.config import Config
 from pydocfix.rules import PRM101, RTN101, SUM002
 from pydocfix.rules.prm.prm001 import PRM001
 from pydocfix.rules.rtn.rtn001 import RTN001
@@ -123,10 +124,11 @@ class TestMultiSectionSimultaneousFix:
         import re
 
         src = 'def add(a: int, b: int) -> int:\n    """Add two numbers."""\n    return a + b\n'
+        cfg = Config(skip_short_docstrings=False)
         _, fixed, _ = check_file(
             src,
             tmp_path / "add.py",
-            build_rules_map([PRM001(), RTN001()]),
+            build_rules_map([PRM001(cfg), RTN001(cfg)]),
             fix=True,
             unsafe_fixes=True,
         )

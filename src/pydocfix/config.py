@@ -35,9 +35,10 @@ DEFAULT_EXCLUDE: frozenset[str] = frozenset(
 class Config:
     """Resolved pydocfix configuration."""
 
+    skip_short_docstrings: bool = True
+    type_annotation_style: str | None = None
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)
-    type_annotation_style: str | None = None
     exclude: list[str] = field(default_factory=list)
 
 
@@ -73,4 +74,12 @@ def load_config(start: Path | None = None) -> Config:
     select: list[str] = [str(code) for code in section.get("select", [])]
     type_annotation_style: str | None = section.get("type_annotation_style") or None
     exclude: list[str] = [str(p) for p in section.get("exclude", [])]
-    return Config(ignore=ignore, select=select, type_annotation_style=type_annotation_style, exclude=exclude)
+    raw_ssd = section.get("skip_short_docstrings")
+    skip_short_docstrings: bool = bool(raw_ssd) if raw_ssd is not None else True
+    return Config(
+        ignore=ignore,
+        select=select,
+        type_annotation_style=type_annotation_style,
+        exclude=exclude,
+        skip_short_docstrings=skip_short_docstrings,
+    )

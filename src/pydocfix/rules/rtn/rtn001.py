@@ -55,6 +55,9 @@ class RTN001(BaseRule):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
+        if isinstance(root, PlainDocstring):
+            if self.config is None or self.config.skip_short_docstrings:
+                return  # summary-only docstring — skip per skip_short_docstrings
         if not has_return_annotation(ctx.parent_ast):
             return
         if self._has_returns_section(root):

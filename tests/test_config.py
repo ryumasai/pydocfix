@@ -65,6 +65,21 @@ class TestLoadConfig:
         config = load_config(tmp_path)
         assert config.select == []
 
+    def test_skip_short_docstrings_default_true(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\n")
+        config = load_config(tmp_path)
+        assert config.skip_short_docstrings is True
+
+    def test_skip_short_docstrings_false(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\nskip_short_docstrings = false\n")
+        config = load_config(tmp_path)
+        assert config.skip_short_docstrings is False
+
+    def test_skip_short_docstrings_true_explicit(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\nskip_short_docstrings = true\n")
+        config = load_config(tmp_path)
+        assert config.skip_short_docstrings is True
+
 
 class TestIgnoreViaConfig:
     """Integration: ignored rules produce no diagnostics."""
@@ -150,3 +165,54 @@ class TestSelectViaConfig:
 
         registry = build_registry(select=["ALL"], ignore=["SUM002"])
         assert registry.get("SUM002") is None
+
+
+class TestSkipShortDocstrings:
+    """Integration: skip_short_docstrings suppresses section-level rules for plain docstrings."""
+
+    # "Summary." is auto-detected as PlainDocstring by the checker.
+    # Rules PRM001, RTN001, RIS001, YLD001 should not fire when the flag is True.
+
+    def test_prm001_skipped_when_flag_true(self, tmp_path: Path):
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm001 import PRM001
+
+        source = 'def foo(x: int):\n    """Summary."""\n    pass\n'
+        cfg = Config(skip_short_docstrings=True)
+        rules_map = build_rules_map([PRM001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert not any(d.rule == "PRM001" for d in diags)
+
+    def test_prm001_fires_when_flag_false(self, tmp_path: Path):
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm001 import PRM001
+
+        source = 'def foo(x: int):\n    """Summary."""\n    pass\n'
+        cfg = Config(skip_short_docstrings=False)
+        rules_map = build_rules_map([PRM001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert any(d.rule == "PRM001" for d in diags)
+
+    def test_rtn001_skipped_when_flag_true(self, tmp_path: Path):
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn001 import RTN001
+
+        source = 'def foo() -> int:\n    """Summary."""\n    pass\n'
+        cfg = Config(skip_short_docstrings=True)
+        rules_map = build_rules_map([RTN001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert not any(d.rule == "RTN001" for d in diags)
+
+    def test_rtn001_fires_when_flag_false(self, tmp_path: Path):
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn001 import RTN001
+
+        source = 'def foo() -> int:\n    """Summary."""\n    pass\n'
+        cfg = Config(skip_short_docstrings=False)
+        rules_map = build_rules_map([RTN001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert any(d.rule == "RTN001" for d in diags)
