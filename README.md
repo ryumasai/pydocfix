@@ -1,5 +1,8 @@
 # pydocfix
 
+[![PyPI - Version](https://img.shields.io/pypi/v/pydocfix?color=0062A8)](https://pypi.org/project/pydocstring-rs/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pydocfix?color=0062A8)](https://devguide.python.org/versions/)
+
 A Python docstring linter that checks **signature ↔ docstring consistency** and **auto-fixes** violations.
 
 > [!WARNING]

@@ -429,7 +429,7 @@ def check_file(
             # Track which first-pass diagnostics have been fixed by rule identity
             first_pass_rules = {(base_idx + i, d.rule, d.range) for i, d in enumerate(ds_diagnostics)}
 
-            for iteration in range(_MAX_FIX_ITERATIONS):
+            for _iteration in range(_MAX_FIX_ITERATIONS):
                 new_content, applied = _apply_nonoverlapping_fixes(
                     current_content,
                     ds_diagnostics,
