@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
+from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic, Edit, Fix
 
 
 class RTN104(BaseRule):
@@ -17,11 +17,13 @@ class RTN104(BaseRule):
     message = "Return has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"RTN103"})
-    requires_config = ("type_annotation_style", "docstring")
-    target_kinds = {
-        GoogleReturn,
-        NumPyReturns,
-    }
+    requires_config = ConfigRequirement("type_annotation_style", "docstring")
+    target_kinds = frozenset(
+        {
+            GoogleReturn,
+            NumPyReturns,
+        }
+    )
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

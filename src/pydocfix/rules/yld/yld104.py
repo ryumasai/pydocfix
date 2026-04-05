@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
+from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic, Edit, Fix
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
@@ -18,11 +18,13 @@ class YLD104(BaseRule):
     message = "Yield has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"YLD103"})
-    requires_config = ("type_annotation_style", "docstring")
-    target_kinds = {
-        GoogleYield,
-        NumPyYields,
-    }
+    requires_config = ConfigRequirement("type_annotation_style", "docstring")
+    target_kinds = frozenset(
+        {
+            GoogleYield,
+            NumPyYields,
+        }
+    )
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

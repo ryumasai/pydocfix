@@ -18,7 +18,7 @@ class SUM002(BaseRule):
 
     code = "SUM002"
     message = "Summary should end with a period."
-    target_kinds = {Token}
+    target_kinds = frozenset({Token})
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         token = ctx.target_cst

@@ -14,11 +14,11 @@ class SUM001(BaseRule):
 
     code = "SUM001"
     message = "Docstring has no summary line."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleDocstring,
         NumPyDocstring,
         PlainDocstring,
-    }
+    })
 
     @staticmethod
     def _has_summary(root: GoogleDocstring | NumPyDocstring | PlainDocstring) -> bool:

@@ -16,10 +16,10 @@ class RIS002(BaseRule):
 
     code = "RIS002"
     message = "Unnecessary Raises section in docstring."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleSection,
         NumPySection,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst

@@ -16,10 +16,10 @@ class YLD002(BaseRule):
 
     code = "YLD002"
     message = "Unnecessary Yields section in docstring."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleSection,
         NumPySection,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst

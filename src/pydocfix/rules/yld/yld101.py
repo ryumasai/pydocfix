@@ -16,10 +16,10 @@ class YLD101(BaseRule):
 
     code = "YLD101"
     message = "Docstring yield type does not match type hint."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleYield,
         NumPyYields,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

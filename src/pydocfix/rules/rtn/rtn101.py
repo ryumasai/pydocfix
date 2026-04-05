@@ -15,10 +15,10 @@ class RTN101(BaseRule):
 
     code = "RTN101"
     message = "Docstring return type does not match type hint."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleReturn,
         NumPyReturns,
-    }
+    })
 
     def _get_return_annotation(self, ast_node: ast.AST) -> str | None:
         if not isinstance(ast_node, (ast.FunctionDef, ast.AsyncFunctionDef)):

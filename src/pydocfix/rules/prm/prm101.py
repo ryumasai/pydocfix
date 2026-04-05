@@ -20,10 +20,10 @@ class PRM101(BaseRule):
 
     code = "PRM101"
     message = "Docstring parameter type does not match type hint."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleArg,
         NumPyParameter,
-    }
+    })
 
     def __init__(self, config: Config | None = None):
         super().__init__(config)

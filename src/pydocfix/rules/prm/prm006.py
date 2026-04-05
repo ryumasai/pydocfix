@@ -25,10 +25,10 @@ class PRM006(BaseRule):
 
     code = "PRM006"
     message = "Docstring parameters are not in the same order as the function signature."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleSection,
         NumPySection,
-    }
+    })
 
     @staticmethod
     def _entry_span(ds_bytes: bytes, param_node) -> tuple[int, int]:

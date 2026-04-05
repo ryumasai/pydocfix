@@ -15,10 +15,10 @@ class RTN003(BaseRule):
 
     code = "RTN003"
     message = "Returns section has no description."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleReturn,
         NumPyReturns,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

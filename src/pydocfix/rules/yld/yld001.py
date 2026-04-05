@@ -30,11 +30,11 @@ class YLD001(BaseRule):
 
     code = "YLD001"
     message = "Missing Yields section in docstring."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleDocstring,
         NumPyDocstring,
         PlainDocstring,
-    }
+    })
 
     @staticmethod
     def _has_yields_section(root) -> bool:

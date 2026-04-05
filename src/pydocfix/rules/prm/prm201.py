@@ -16,10 +16,10 @@ class PRM201(BaseRule):
 
     code = "PRM201"
     message = "Parameter with default value missing 'optional' in docstring."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleArg,
         NumPyParameter,
-    }
+    })
 
     @staticmethod
     def _get_default_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:

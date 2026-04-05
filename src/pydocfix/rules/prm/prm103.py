@@ -7,7 +7,15 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
+from pydocfix.rules._base import (
+    Applicability,
+    BaseRule,
+    ConfigRequirement,
+    DiagnoseContext,
+    Diagnostic,
+    Fix,
+    delete_range,
+)
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token
 
 
@@ -18,11 +26,13 @@ class PRM103(BaseRule):
     message = "Redundant type in docstring; type annotation exists in signature."
     enabled_by_default = False
     conflicts_with = frozenset({"PRM104"})
-    requires_config = ("type_annotation_style", "signature")
-    target_kinds = {
-        GoogleArg,
-        NumPyParameter,
-    }
+    requires_config = ConfigRequirement("type_annotation_style", "signature")
+    target_kinds = frozenset(
+        {
+            GoogleArg,
+            NumPyParameter,
+        }
+    )
 
     def _build_delete_type_fix(self, cst_node, ds_text: str) -> Fix:
         """Build a fix that removes the type annotation from the docstring entry."""

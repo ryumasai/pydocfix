@@ -205,9 +205,8 @@ def _resolve_conflicts(candidates: list[BaseRule], config: Config | None) -> lis
             # In conflict but no resolution condition declared — keep.
             result.append(rule)
         else:
-            cfg_key, cfg_value = rule.requires_config
-            actual = getattr(config, cfg_key, None) if config else None
-            if actual == cfg_value:
+            actual = getattr(config, rule.requires_config.attr, None) if config else None
+            if actual == rule.requires_config.value:
                 result.append(rule)
             else:
                 import logging
@@ -216,8 +215,8 @@ def _resolve_conflicts(candidates: list[BaseRule], config: Config | None) -> lis
                     "%s conflicts with [%s] and '%s' does not equal '%s'; %s excluded.",
                     rule.code,
                     ", ".join(sorted(active_conflicts)),
-                    cfg_key,
-                    cfg_value,
+                    rule.requires_config.attr,
+                    rule.requires_config.value,
                     rule.code,
                 )
     return result

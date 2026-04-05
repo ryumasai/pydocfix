@@ -15,10 +15,10 @@ class RTN102(BaseRule):
 
     code = "RTN102"
     message = "Return type not in docstring or signature."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleReturn,
         NumPyReturns,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

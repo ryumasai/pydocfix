@@ -29,10 +29,10 @@ class PRM007(BaseRule):
 
     code = "PRM007"
     message = "Duplicate parameter in docstring."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleSection,
         NumPySection,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst

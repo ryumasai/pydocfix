@@ -20,10 +20,10 @@ class PRM202(BaseRule):
     code = "PRM202"
     message = "Parameter with default value missing 'default' in docstring."
     enabled_by_default = False
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleArg,
         NumPyParameter,
-    }
+    })
 
     @staticmethod
     def _get_default_values(func: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[str, str]:

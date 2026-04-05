@@ -19,10 +19,10 @@ class PRM002(BaseRule):
 
     code = "PRM002"
     message = "Function has no parameters but docstring has Args/Parameters section."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleSection,
         NumPySection,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst

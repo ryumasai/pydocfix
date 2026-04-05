@@ -30,11 +30,11 @@ class RTN001(BaseRule):
 
     code = "RTN001"
     message = "Missing Returns section in docstring."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleDocstring,
         NumPyDocstring,
         PlainDocstring,
-    }
+    })
 
     @staticmethod
     def _has_returns_section(root) -> bool:

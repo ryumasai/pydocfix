@@ -16,10 +16,10 @@ class PRM102(BaseRule):
 
     code = "PRM102"
     message = "Parameter has no type in docstring or signature."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleArg,
         NumPyParameter,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

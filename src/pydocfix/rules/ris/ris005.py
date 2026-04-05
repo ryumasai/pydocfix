@@ -16,10 +16,10 @@ class RIS005(BaseRule):
 
     code = "RIS005"
     message = "Raises entry documents exception not raised in function body."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleException,
         NumPyException,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

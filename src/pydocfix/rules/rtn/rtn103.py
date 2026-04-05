@@ -7,7 +7,15 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
+from pydocfix.rules._base import (
+    Applicability,
+    BaseRule,
+    ConfigRequirement,
+    DiagnoseContext,
+    Diagnostic,
+    Fix,
+    delete_range,
+)
 
 
 class RTN103(BaseRule):
@@ -17,11 +25,13 @@ class RTN103(BaseRule):
     message = "Redundant return type in docstring; type annotation exists in signature."
     enabled_by_default = False
     conflicts_with = frozenset({"RTN104"})
-    requires_config = ("type_annotation_style", "signature")
-    target_kinds = {
-        GoogleReturn,
-        NumPyReturns,
-    }
+    requires_config = ConfigRequirement("type_annotation_style", "signature")
+    target_kinds = frozenset(
+        {
+            GoogleReturn,
+            NumPyReturns,
+        }
+    )
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

@@ -19,10 +19,10 @@ class RTN002(BaseRule):
 
     code = "RTN002"
     message = "Unnecessary Returns section in docstring."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleSection,
         NumPySection,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
