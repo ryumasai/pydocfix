@@ -17,6 +17,8 @@ class PRM103(BaseRule):
     code = "PRM103"
     message = "Redundant type in docstring; type annotation exists in signature."
     enabled_by_default = False
+    conflicts_with = frozenset({"PRM104"})
+    requires_config = ("type_annotation_style", "signature")
     target_kinds = {
         GoogleArg,
         NumPyParameter,

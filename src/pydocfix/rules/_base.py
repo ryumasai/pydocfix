@@ -259,6 +259,25 @@ class BaseRule:
     message: str = ""
     enabled_by_default: bool = True
     target_kinds: set[type] = set()
+    conflicts_with: frozenset[str] = frozenset()
+    """Rule codes that this rule is mutually exclusive with.
+
+    When two conflicting rules are both selected simultaneously, ``requires_config``
+    is used to decide which one wins.  If only one side is selected, it is always
+    registered regardless of the config value.
+    """
+    requires_config: tuple[str, str] | None = None
+    """Conflict resolution condition as ``(config_attribute_name, required_value)``.
+
+    When this rule is in an active conflict (a rule listed in ``conflicts_with``
+    is also selected), the rule is kept only if
+    ``getattr(config, attribute_name) == required_value``; otherwise it is dropped.
+
+    Example::
+
+        conflicts_with = frozenset({"PRM103"})
+        requires_config = ("type_annotation_style", "docstring")
+    """
 
     def __init__(self, config: Config | None = None) -> None:
         self.config = config

@@ -3192,8 +3192,38 @@ class TestRegistryCompleteness:
     """All rules are registered."""
 
     def test_all_rules_with_select_all(self):
+        # Without type_annotation_style, style-specific rules (103/104 pairs)
+        # are excluded to avoid contradictory enforcement — 6 fewer rules.
         registry = build_registry(select=["ALL"])
-        assert len(registry.all_rules()) == 37
+        assert len(registry.all_rules()) == 31
+
+    def test_all_rules_select_all_signature_style(self):
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="signature")
+        registry = build_registry(select=["ALL"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert len(registry.all_rules()) == 34
+        assert "PRM103" in codes
+        assert "RTN103" in codes
+        assert "YLD103" in codes
+        assert "PRM104" not in codes
+        assert "RTN104" not in codes
+        assert "YLD104" not in codes
+
+    def test_all_rules_select_all_docstring_style(self):
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="docstring")
+        registry = build_registry(select=["ALL"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert len(registry.all_rules()) == 34
+        assert "PRM104" in codes
+        assert "RTN104" in codes
+        assert "YLD104" in codes
+        assert "PRM103" not in codes
+        assert "RTN103" not in codes
+        assert "YLD103" not in codes
 
     def test_default_rules_count(self):
         registry = build_registry()
@@ -3210,10 +3240,33 @@ class TestRegistryCompleteness:
         assert "YLD104" not in codes
 
     def test_non_default_rules_included_with_select(self):
+        # PRM103 and YLD104 are in different conflict groups — no conflict.
         registry = build_registry(select=["PRM103", "YLD104"])
         codes = {r.code for r in registry.all_rules()}
         assert "PRM103" in codes
         assert "YLD104" in codes
+
+    def test_explicit_conflict_both_excluded_without_config(self):
+        # PRM103 and PRM104 are in the same conflict_group and no config resolves it.
+        registry = build_registry(select=["PRM103", "PRM104"])
+        codes = {r.code for r in registry.all_rules()}
+        assert "PRM103" not in codes
+        assert "PRM104" not in codes
+
+    def test_explicit_conflict_resolved_by_config(self):
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="signature")
+        registry = build_registry(select=["PRM103", "PRM104"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert "PRM103" in codes
+        assert "PRM104" not in codes
+
+    def test_single_conflict_group_member_always_registered(self):
+        # Selecting only one side of a conflict group should always work,
+        # regardless of type_annotation_style.
+        registry = build_registry(select=["PRM103"])
+        assert "PRM103" in {r.code for r in registry.all_rules()}
 
     def test_select_by_prefix(self):
         registry = build_registry(select=["RTN"])
@@ -3232,8 +3285,20 @@ class TestRegistryCompleteness:
         assert "RTN001" in codes
 
     def test_select_prefix_includes_non_default(self):
-        """Selecting a prefix also enables non-default rules in that category."""
+        """Selecting a prefix that includes conflicting rules drops both when config is unset."""
         registry = build_registry(select=["YLD"])
         codes = {r.code for r in registry.all_rules()}
-        assert "YLD103" in codes
+        # YLD103 and YLD104 conflict; without type_annotation_style config, both are excluded.
+        assert "YLD103" not in codes
+        assert "YLD104" not in codes
+        # Non-conflicting rules are still included.
+        assert "YLD001" in codes
+
+    def test_select_prefix_conflict_resolved_by_config(self):
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="docstring")
+        registry = build_registry(select=["YLD"], config=config)
+        codes = {r.code for r in registry.all_rules()}
         assert "YLD104" in codes
+        assert "YLD103" not in codes

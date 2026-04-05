@@ -186,6 +186,43 @@ def _matches(code: str, patterns: frozenset[str]) -> bool:
     return any(code == p or code.startswith(p) for p in patterns)
 
 
+def _resolve_conflicts(candidates: list[BaseRule], config: Config | None) -> list[BaseRule]:
+    """Remove conflicting rules from *candidates*, keeping only config-matched winners.
+
+    A rule declares its conflicts via ``conflicts_with`` (a set of rule codes).
+    When a conflicting counterpart is also present in *candidates*, the rule is
+    kept only if its ``requires_config`` condition is satisfied.  When only one
+    side of a conflict is selected, it is kept unconditionally.
+    """
+    candidate_codes: frozenset[str] = frozenset(r.code for r in candidates)
+    result: list[BaseRule] = []
+    for rule in candidates:
+        active_conflicts = rule.conflicts_with & candidate_codes
+        if not active_conflicts:
+            # No active conflict — keep unconditionally.
+            result.append(rule)
+        elif rule.requires_config is None:
+            # In conflict but no resolution condition declared — keep.
+            result.append(rule)
+        else:
+            cfg_key, cfg_value = rule.requires_config
+            actual = getattr(config, cfg_key, None) if config else None
+            if actual == cfg_value:
+                result.append(rule)
+            else:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "%s conflicts with [%s] and '%s' does not equal '%s'; %s excluded.",
+                    rule.code,
+                    ", ".join(sorted(active_conflicts)),
+                    cfg_key,
+                    cfg_value,
+                    rule.code,
+                )
+    return result
+
+
 def build_registry(
     ignore: list[str] | None = None,
     select: list[str] | None = None,
@@ -196,16 +233,25 @@ def build_registry(
     selected: frozenset[str] = frozenset(select or [])
     select_all: bool = "ALL" in selected
     has_select: bool = bool(selected)
-    registry = RuleRegistry()
+
+    # Step 1: collect candidates according to select/ignore/default logic.
+    candidates: list[BaseRule] = []
     for cls in _BUILTIN_RULES:
         instance = cls(config)
         if _matches(instance.code, ignored):
             continue
-        if select_all:
-            registry.register(instance)
-        elif has_select:
-            if _matches(instance.code, selected):
-                registry.register(instance)
-        elif instance.enabled_by_default:
-            registry.register(instance)
+        if (
+            select_all
+            or (has_select and _matches(instance.code, selected))
+            or (not has_select and instance.enabled_by_default)
+        ):
+            candidates.append(instance)
+
+    # Step 2: resolve any mutual-exclusion conflicts among candidates.
+    resolved = _resolve_conflicts(candidates, config)
+
+    # Step 3: register survivors.
+    registry = RuleRegistry()
+    for instance in resolved:
+        registry.register(instance)
     return registry

@@ -16,6 +16,8 @@ class RTN104(BaseRule):
     code = "RTN104"
     message = "Return has no type in docstring."
     enabled_by_default = False
+    conflicts_with = frozenset({"RTN103"})
+    requires_config = ("type_annotation_style", "docstring")
     target_kinds = {
         GoogleReturn,
         NumPyReturns,

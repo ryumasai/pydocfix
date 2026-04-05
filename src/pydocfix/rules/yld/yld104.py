@@ -17,6 +17,8 @@ class YLD104(BaseRule):
     code = "YLD104"
     message = "Yield has no type in docstring."
     enabled_by_default = False
+    conflicts_with = frozenset({"YLD103"})
+    requires_config = ("type_annotation_style", "docstring")
     target_kinds = {
         GoogleYield,
         NumPyYields,

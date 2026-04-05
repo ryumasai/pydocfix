@@ -17,6 +17,8 @@ class PRM104(BaseRule):
     code = "PRM104"
     message = "Parameter has no type in docstring."
     enabled_by_default = False
+    conflicts_with = frozenset({"PRM103"})
+    requires_config = ("type_annotation_style", "docstring")
     target_kinds = {
         GoogleArg,
         NumPyParameter,

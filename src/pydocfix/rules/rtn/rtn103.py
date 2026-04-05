@@ -16,6 +16,8 @@ class RTN103(BaseRule):
     code = "RTN103"
     message = "Redundant return type in docstring; type annotation exists in signature."
     enabled_by_default = False
+    conflicts_with = frozenset({"RTN104"})
+    requires_config = ("type_annotation_style", "signature")
     target_kinds = {
         GoogleReturn,
         NumPyReturns,
