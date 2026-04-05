@@ -56,12 +56,12 @@ def get_signature_params(
             continue
         ann = ast.unparse(arg.annotation) if arg.annotation else None
         result.append((arg.arg, ann))
-    for arg in func.args.kwonlyargs:
-        ann = ast.unparse(arg.annotation) if arg.annotation else None
-        result.append((arg.arg, ann))
     if func.args.vararg:
         ann = ast.unparse(func.args.vararg.annotation) if func.args.vararg.annotation else None
         result.append((f"*{func.args.vararg.arg}", ann))
+    for arg in func.args.kwonlyargs:
+        ann = ast.unparse(arg.annotation) if arg.annotation else None
+        result.append((arg.arg, ann))
     if func.args.kwarg:
         ann = ast.unparse(func.args.kwarg.annotation) if func.args.kwarg.annotation else None
         result.append((f"**{func.args.kwarg.arg}", ann))
