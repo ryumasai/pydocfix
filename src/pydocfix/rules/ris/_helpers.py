@@ -62,7 +62,7 @@ class _RaiseVisitor(ast.NodeVisitor):
 
     def visit_Raise(self, node: ast.Raise) -> None:
         if node.exc is None:
-            return  # bare re-raise
+            return  # bare re-raise — handled by visit_Try
         exc = node.exc
         if isinstance(exc, ast.Call):
             exc = exc.func
@@ -70,6 +70,25 @@ class _RaiseVisitor(ast.NodeVisitor):
             self.raised.append(exc.id)
         elif isinstance(exc, ast.Attribute):
             self.raised.append(exc.attr)
+
+    def visit_Try(self, node: ast.Try) -> None:
+        for stmt in node.body:
+            self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
+        for stmt in node.finalbody:
+            self.visit(stmt)
+        for handler in node.handlers:
+            if handler.type is not None:
+                has_bare = any(isinstance(n, ast.Raise) and n.exc is None for n in ast.walk(handler))
+                if has_bare:
+                    exc = handler.type
+                    if isinstance(exc, ast.Name):
+                        self.raised.append(exc.id)
+                    elif isinstance(exc, ast.Attribute):
+                        self.raised.append(exc.attr)
+            for stmt in handler.body:
+                self.visit(stmt)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         pass

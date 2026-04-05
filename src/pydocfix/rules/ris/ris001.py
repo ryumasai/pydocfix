@@ -30,11 +30,13 @@ class RIS001(BaseRule):
 
     code = "RIS001"
     message = "Missing Raises section in docstring."
-    target_kinds = frozenset({
-        GoogleDocstring,
-        NumPyDocstring,
-        PlainDocstring,
-    })
+    target_kinds = frozenset(
+        {
+            GoogleDocstring,
+            NumPyDocstring,
+            PlainDocstring,
+        }
+    )
 
     @staticmethod
     def _has_raises_section(root) -> bool:

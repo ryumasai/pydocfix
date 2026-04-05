@@ -94,10 +94,18 @@ def find_python_src(target: Path) -> Path:
     src = target / "src"
     if src.is_dir():
         return src
-    for candidate in sorted(target.iterdir()):
-        if candidate.is_dir() and (candidate / "__init__.py").exists():
-            return candidate
-    return target
+    # Pick the candidate with the most .py files to avoid landing in a small
+    # auxiliary directory (e.g. benchmarks/) instead of the main package.
+    best: Path | None = None
+    best_count = -1
+    for candidate in target.iterdir():
+        if not candidate.is_dir() or not (candidate / "__init__.py").exists():
+            continue
+        count = sum(1 for _ in candidate.rglob("*.py"))
+        if count > best_count:
+            best_count = count
+            best = candidate
+    return best if best is not None else target
 
 
 def _timed_runs(cmd: list[str], runs: int) -> tuple[list[float], subprocess.CompletedProcess[str]]:

@@ -28,11 +28,13 @@ class PRM001(BaseRule):
 
     code = "PRM001"
     message = "Missing Args/Parameters section in docstring."
-    target_kinds = frozenset({
-        GoogleDocstring,
-        NumPyDocstring,
-        PlainDocstring,
-    })
+    target_kinds = frozenset(
+        {
+            GoogleDocstring,
+            NumPyDocstring,
+            PlainDocstring,
+        }
+    )
 
     # -- helpers -------------------------------------------------------
 

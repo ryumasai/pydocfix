@@ -33,9 +33,7 @@ def returns_a_value(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
         found = False
 
         def visit_Return(self, node: ast.Return) -> None:
-            if node.value is not None and not (
-                isinstance(node.value, ast.Constant) and node.value.value is None
-            ):
+            if node.value is not None and not (isinstance(node.value, ast.Constant) and node.value.value is None):
                 self.found = True
 
         # Do not descend into nested scopes
