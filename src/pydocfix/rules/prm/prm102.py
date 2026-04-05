@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
-from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token
+from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token, get_signature_params
 
 
 class PRM102(BaseRule):
@@ -41,6 +41,9 @@ class PRM102(BaseRule):
             return  # has type in docstring
 
         b = bare_name(name_token.text)
+        sig_params = {bare_name(n) for n, _ in get_signature_params(ctx.parent_ast)}
+        if b not in sig_params:
+            return  # not a real parameter — PRM002's responsibility
         ann_map = get_annotation_map(ctx.parent_ast)
         if b in ann_map:
             return  # has type in signature

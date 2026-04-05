@@ -1870,6 +1870,37 @@ class TestPRM102:
         diag = next(iter(PRM102().diagnose(ctx)), None)
         assert diag is not None
 
+    def test_numpy_none_param_no_diagnostic(self):
+        """NumPy convention: ``Parameters\\n----------\\nNone`` is not a real param."""
+        ds = "Summary.\n\nParameters\n----------\nNone\n"
+        func = "def foo():\n    pass\n"
+        parsed = parse_numpy(ds)
+        params = _find_cst_nodes(parsed, NumPyParameter)
+        if not params:
+            return  # parser did not produce a param node — nothing to test
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=params[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(PRM102().diagnose(ctx)), None)
+        assert diag is None  # "None" is not in the signature — PRM002's job
+
+    def test_param_not_in_signature_no_diagnostic(self):
+        """Docstring param that does not exist in signature should not trigger PRM102."""
+        ds = "Summary.\n\nArgs:\n    ghost: undocumented param.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM102().diagnose(ctx)), None)
+        assert diag is None  # "ghost" not in signature — PRM002's responsibility
+
 
 # ── PRM103 Tests ───────────────────────────────────────────────────────
 
