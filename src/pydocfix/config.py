@@ -37,6 +37,7 @@ class Config:
 
     skip_short_docstrings: bool = True
     type_annotation_style: str | None = None
+    allow_optional_shorthand: bool = False
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
@@ -76,10 +77,13 @@ def load_config(start: Path | None = None) -> Config:
     exclude: list[str] = [str(p) for p in section.get("exclude", [])]
     raw_ssd = section.get("skip_short_docstrings")
     skip_short_docstrings: bool = bool(raw_ssd) if raw_ssd is not None else True
+    raw_aos = section.get("allow_optional_shorthand")
+    allow_optional_shorthand: bool = bool(raw_aos) if raw_aos is not None else False
     return Config(
         ignore=ignore,
         select=select,
         type_annotation_style=type_annotation_style,
         exclude=exclude,
         skip_short_docstrings=skip_short_docstrings,
+        allow_optional_shorthand=allow_optional_shorthand,
     )

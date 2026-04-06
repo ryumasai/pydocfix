@@ -2612,6 +2612,151 @@ class TestYLD101:
         assert NumPyReturns not in YLD101.target_kinds
 
 
+# ── allow_optional_shorthand Tests ─────────────────────────────────────
+
+
+class TestAllowOptionalShorthand:
+    """PRM101/RTN101/YLD101: allow_optional_shorthand normalises Optional[T] before comparison."""
+
+    # ── PRM101 ──
+
+    def test_prm101_optional_fires_by_default(self):
+        """Optional[int] sig vs int doc → PRM101 fires (default off)."""
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "from typing import Optional\ndef foo(x: Optional[int]):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM101().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM101"
+
+    def test_prm101_optional_suppressed_when_flag_true(self):
+        """Optional[int] sig vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "from typing import Optional\ndef foo(x: Optional[int]):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(PRM101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_prm101_pipe_none_suppressed_when_flag_true(self):
+        """int | None sig vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int | None):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(PRM101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_prm101_union_none_suppressed_when_flag_true(self):
+        """Union[int, None] sig vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "from typing import Union\ndef foo(x: Union[int, None]):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(PRM101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_prm101_genuine_mismatch_still_fires(self):
+        """Optional[str] sig vs int doc → PRM101 still fires (after normalisation, str != int)."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "from typing import Optional\ndef foo(x: Optional[str]):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(PRM101(cfg).diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM101"
+
+    # ── RTN101 ──
+
+    def test_rtn101_optional_suppressed_when_flag_true(self):
+        """Optional[int] return vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "from typing import Optional\ndef foo() -> Optional[int]:\n    pass\n"
+        parsed = parse_google(ds)
+        rets = _find_cst_nodes(parsed, GoogleReturn)
+        ctx = _make_d401_ctx_google(ds, func, rets[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(RTN101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_rtn101_optional_fires_by_default(self):
+        """Optional[int] return vs int doc → RTN101 fires (default off)."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "from typing import Optional\ndef foo() -> Optional[int]:\n    pass\n"
+        parsed = parse_google(ds)
+        rets = _find_cst_nodes(parsed, GoogleReturn)
+        ctx = _make_d401_ctx_google(ds, func, rets[0])
+        diag = next(iter(RTN101().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "RTN101"
+
+    # ── YLD101 ──
+
+    def test_yld101_optional_suppressed_when_flag_true(self):
+        """Optional[int] yield vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Optional, Generator\ndef foo() -> Generator[Optional[int], None, None]:\n    yield None\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(YLD101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_yld101_optional_fires_by_default(self):
+        """Optional[int] yield vs int doc → YLD101 fires (default off)."""
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Optional, Generator\ndef foo() -> Generator[Optional[int], None, None]:\n    yield None\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD101().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "YLD101"
+
+
 # ── YLD102 Tests ───────────────────────────────────────────────────────
 
 

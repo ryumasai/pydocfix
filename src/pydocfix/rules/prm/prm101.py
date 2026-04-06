@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, replace_token
+from pydocfix.rules._type_helpers import normalize_optional
 from pydocfix.rules.prm._helpers import get_annotation_map, get_param_name_token
 
 if TYPE_CHECKING:
@@ -20,10 +21,12 @@ class PRM101(BaseRule):
 
     code = "PRM101"
     message = "Docstring parameter type does not match type hint."
-    target_kinds = frozenset({
-        GoogleArg,
-        NumPyParameter,
-    })
+    target_kinds = frozenset(
+        {
+            GoogleArg,
+            NumPyParameter,
+        }
+    )
 
     def __init__(self, config: Config | None = None):
         super().__init__(config)
@@ -61,7 +64,12 @@ class PRM101(BaseRule):
             return
 
         doc_type = type_token.text
-        if doc_type == hint_type:
+        cmp_hint = hint_type
+        cmp_doc = doc_type
+        if self.config is not None and self.config.allow_optional_shorthand:
+            cmp_hint = normalize_optional(hint_type)
+            cmp_doc = normalize_optional(doc_type)
+        if cmp_doc == cmp_hint:
             return
 
         fix = Fix(

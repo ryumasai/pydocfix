@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from pydocstring import GoogleYield, NumPyYields
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, replace_token
+from pydocfix.rules._type_helpers import normalize_optional
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
@@ -16,10 +17,12 @@ class YLD101(BaseRule):
 
     code = "YLD101"
     message = "Docstring yield type does not match type hint."
-    target_kinds = frozenset({
-        GoogleYield,
-        NumPyYields,
-    })
+    target_kinds = frozenset(
+        {
+            GoogleYield,
+            NumPyYields,
+        }
+    )
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
@@ -37,12 +40,17 @@ class YLD101(BaseRule):
             return
 
         doc_type = ret_type_token.text
-        if doc_type == hint_type:
+        cmp_hint = hint_type
+        cmp_doc = doc_type
+        if self.config is not None and self.config.allow_optional_shorthand:
+            cmp_hint = normalize_optional(hint_type)
+            cmp_doc = normalize_optional(doc_type)
+        if cmp_doc == cmp_hint:
             return
 
         fix = Fix(
             edits=[replace_token(ret_type_token, hint_type)],
             applicability=Applicability.UNSAFE,
         )
-        message = f"Docstring yield type \'{doc_type}\' does not match type hint \'{hint_type}\'."
+        message = f"Docstring yield type '{doc_type}' does not match type hint '{hint_type}'."
         yield self._make_diagnostic(ctx, message, fix=fix, target=ret_type_token)

@@ -78,6 +78,13 @@ type_annotation_style = "signature"
 
 # Paths/patterns to exclude (in addition to built-in defaults)
 exclude = ["tests/", "docs/"]
+
+# Skip section-level rules (PRM001, RTN001, YLD001, RIS001) for one-line docstrings (default: true)
+skip_short_docstrings = true
+
+# Treat Optional[T], T | None, and Union[T, None] as equivalent to T when
+# comparing signature annotations to docstring types in PRM101/RTN101/YLD101 (default: false)
+allow_optional_shorthand = false
 ```
 
 ## Rules

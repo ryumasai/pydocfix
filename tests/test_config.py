@@ -216,3 +216,49 @@ class TestSkipShortDocstrings:
         rules_map = build_rules_map([RTN001(cfg)])
         diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
         assert any(d.rule == "RTN001" for d in diags)
+
+
+class TestAllowOptionalShorthand:
+    """Integration: allow_optional_shorthand suppresses Optional[T] vs T mismatches."""
+
+    def test_default_false_fires_on_optional(self, tmp_path: Path):
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm101 import PRM101
+
+        source = (
+            "from typing import Optional\n"
+            "def foo(x: Optional[int]):\n"
+            '    """Summary.\n\n    Args:\n        x (int): desc.\n    """\n'
+            "    pass\n"
+        )
+        cfg = Config(allow_optional_shorthand=False)
+        rules_map = build_rules_map([PRM101(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert any(d.rule == "PRM101" for d in diags)
+
+    def test_true_suppresses_optional_mismatch(self, tmp_path: Path):
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm101 import PRM101
+
+        source = (
+            "from typing import Optional\n"
+            "def foo(x: Optional[int]):\n"
+            '    """Summary.\n\n    Args:\n        x (int): desc.\n    """\n'
+            "    pass\n"
+        )
+        cfg = Config(allow_optional_shorthand=True)
+        rules_map = build_rules_map([PRM101(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert not any(d.rule == "PRM101" for d in diags)
+
+    def test_config_default_false(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\n")
+        config = load_config(tmp_path)
+        assert config.allow_optional_shorthand is False
+
+    def test_config_loaded_from_toml(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\nallow_optional_shorthand = true\n")
+        config = load_config(tmp_path)
+        assert config.allow_optional_shorthand is True
