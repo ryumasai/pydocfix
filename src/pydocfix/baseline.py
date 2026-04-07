@@ -37,6 +37,25 @@ BaselineData = dict[str, list[dict[str, str]]]
 
 
 # ---------------------------------------------------------------------------
+# Path normalisation
+# ---------------------------------------------------------------------------
+
+
+def normalize_path(filepath: Path, root: Path) -> str:
+    """Return a POSIX path string for *filepath* relative to *root*.
+
+    Paths are resolved before the comparison so that symbolic links and
+    ``..`` components do not cause spurious mismatches.  Falls back to the
+    absolute path string when *filepath* is not located under *root* (e.g.
+    when linting files outside the project tree).
+    """
+    try:
+        return filepath.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(filepath.resolve())
+
+
+# ---------------------------------------------------------------------------
 # Read / write
 # ---------------------------------------------------------------------------
 

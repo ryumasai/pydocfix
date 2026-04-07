@@ -12,6 +12,7 @@ from pydocfix.baseline import (
     filter_baseline_violations,
     generate_baseline,
     load_baseline,
+    normalize_path,
 )
 from pydocfix.checker import check_file
 from pydocfix.rules import build_registry
@@ -352,3 +353,57 @@ def greet(name: str) -> str:
         baseline = {str(fp): [{"symbol": "other_func", "code": violations[0].rule}]}
         filtered = filter_baseline_violations(violations, baseline, str(fp))
         assert len(filtered) == len(violations), "none should be suppressed"
+
+
+# ---------------------------------------------------------------------------
+# normalize_path
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizePath:
+    def test_relative_posix_path_under_root(self, tmp_path):
+        root = tmp_path / "project"
+        root.mkdir()
+        fp = root / "src" / "module.py"
+        fp.parent.mkdir(parents=True)
+        fp.touch()
+        assert normalize_path(fp, root) == "src/module.py"
+
+    def test_file_directly_under_root(self, tmp_path):
+        root = tmp_path / "project"
+        root.mkdir()
+        fp = root / "module.py"
+        fp.touch()
+        assert normalize_path(fp, root) == "module.py"
+
+    def test_fallback_when_not_under_root(self, tmp_path):
+        root = tmp_path / "project"
+        root.mkdir()
+        outside = tmp_path / "other" / "module.py"
+        outside.parent.mkdir(parents=True)
+        outside.touch()
+        result = normalize_path(outside, root)
+        # Falls back to resolved absolute path — not a relative path
+        assert result == str(outside.resolve())
+        assert "project" not in result
+
+    def test_resolves_symlinks(self, tmp_path):
+        root = tmp_path / "project"
+        root.mkdir()
+        real = root / "src" / "module.py"
+        real.parent.mkdir()
+        real.touch()
+        link = root / "link.py"
+        link.symlink_to(real)
+        # Both real and symlink should normalise to a path within the root
+        result = normalize_path(link, root)
+        assert result == "src/module.py"
+
+    def test_uses_forward_slashes(self, tmp_path):
+        root = tmp_path / "project"
+        root.mkdir()
+        fp = root / "a" / "b" / "c.py"
+        fp.parent.mkdir(parents=True)
+        fp.touch()
+        assert "/" in normalize_path(fp, root)
+        assert "\\" not in normalize_path(fp, root)

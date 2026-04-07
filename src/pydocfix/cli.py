@@ -76,14 +76,21 @@ def check(
     from pydocfix.baseline import (
         compute_updated_baseline,
         filter_baseline_violations,
-        generate_baseline as _generate_baseline,
         load_baseline,
+        normalize_path,
+    )
+    from pydocfix.baseline import (
+        generate_baseline as _generate_baseline,
     )
     from pydocfix.checker import check_file
-    from pydocfix.config import DEFAULT_EXCLUDE, load_config
+    from pydocfix.config import DEFAULT_EXCLUDE, find_pyproject_toml, load_config
     from pydocfix.rules import Applicability, build_registry
 
     config = load_config()
+
+    # Determine project root for stable relative-path keys in baseline files
+    _toml = find_pyproject_toml()
+    project_root: Path = _toml.parent if _toml is not None else Path.cwd()
 
     # Resolve baseline path: CLI > config > None
     effective_baseline_path: Path | None = None
@@ -93,7 +100,9 @@ def check(
         effective_baseline_path = Path(config.baseline)
 
     # Load existing baseline (empty dict if none)
-    baseline_data = load_baseline(effective_baseline_path) if (effective_baseline_path and not generate_baseline) else {}
+    baseline_data = (
+        load_baseline(effective_baseline_path) if (effective_baseline_path and not generate_baseline) else {}
+    )
 
     # CLI --select / --ignore override config file values when provided
     def _parse_codes(raw: tuple[str, ...]) -> list[str]:
@@ -129,8 +138,8 @@ def check(
             source, filepath, kind_map, fix=(fix or diff), unsafe_fixes=unsafe_fixes, config=config
         )
 
-        # Collect raw violations keyed by the filepath string used in Diagnostic
-        fp_str = str(filepath)
+        # Collect raw violations keyed by the project-relative path
+        fp_str = normalize_path(filepath, project_root)
         if diagnostics:
             raw_violations_by_file[fp_str] = list(diagnostics)
 
