@@ -253,7 +253,8 @@ def _make_d401_ctx_google(
     """Build a DiagnoseContext for PRM101 tests (Google style)."""
     parsed = parse_google(ds_text)
     tree = ast.parse(func_src)
-    func_node = tree.body[0]
+    # func_src may start with import statements; find the first function node.
+    func_node = next(node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)))
     return DiagnoseContext(
         filepath=Path("test.py"),
         docstring_text=ds_text,

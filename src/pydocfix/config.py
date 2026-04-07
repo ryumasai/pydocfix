@@ -41,6 +41,7 @@ class Config:
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
+    baseline: str | None = None
 
 
 def find_pyproject_toml(start: Path | None = None) -> Path | None:
@@ -79,6 +80,7 @@ def load_config(start: Path | None = None) -> Config:
     skip_short_docstrings: bool = bool(raw_ssd) if raw_ssd is not None else True
     raw_aos = section.get("allow_optional_shorthand")
     allow_optional_shorthand: bool = bool(raw_aos) if raw_aos is not None else False
+    baseline: str | None = section.get("baseline") or None
     return Config(
         ignore=ignore,
         select=select,
@@ -86,4 +88,5 @@ def load_config(start: Path | None = None) -> Config:
         exclude=exclude,
         skip_short_docstrings=skip_short_docstrings,
         allow_optional_shorthand=allow_optional_shorthand,
+        baseline=baseline,
     )

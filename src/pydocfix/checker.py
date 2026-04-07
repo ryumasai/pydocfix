@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import dataclasses
 import logging
 import re
 from collections.abc import Iterable, Iterator, Sequence
@@ -61,13 +62,19 @@ class _DocstringInfo(NamedTuple):
     stmt: ast.stmt
 
 
-def _extract_docstrings(source: str, filepath: Path) -> Iterator[_DocstringInfo]:
-    """Yield `_DocstringInfo` for every docstring in *source*."""
-    try:
-        tree: Final[ast.AST] = ast.parse(source, filename=str(filepath))
-    except SyntaxError:
-        logger.warning(f"{filepath}: could not parse (syntax error), skipping")
-        return
+def _extract_docstrings(source: str, filepath: Path, tree: ast.AST | None = None) -> Iterator[_DocstringInfo]:
+    """Yield `_DocstringInfo` for every docstring in *source*.
+
+    If *tree* is provided it is used directly; otherwise the source is parsed.
+    Sharing a pre-parsed tree with callers ensures ``id()``-based lookups stay
+    consistent across the same AST instance.
+    """
+    if tree is None:
+        try:
+            tree = ast.parse(source, filename=str(filepath))
+        except SyntaxError:
+            logger.warning(f"{filepath}: could not parse (syntax error), skipping")
+            return
 
     for node in ast.walk(tree):
         try:
@@ -381,6 +388,32 @@ def _apply_nonoverlapping_fixes(
     return content, applied
 
 
+def _compute_symbol(parent_ast: ast.AST, parent_map: dict[int, ast.AST]) -> str:
+    """Return a qualified symbol name for the node that owns a docstring.
+
+    Examples: ``"MyClass.my_method"``, ``"top_level_func"``, ``"MyClass"``.
+    Returns an empty string for module-level docstrings.
+    """
+    if isinstance(parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        name: str = parent_ast.name
+        owner = parent_map.get(id(parent_ast))
+        if isinstance(owner, ast.ClassDef):
+            return f"{owner.name}.{name}"
+        return name
+    if isinstance(parent_ast, ast.ClassDef):
+        return parent_ast.name
+    return ""  # ast.Module or unexpected
+
+
+def _build_parent_map(tree: ast.AST) -> dict[int, ast.AST]:
+    """Return a mapping from ``id(child)`` to the child's direct parent node."""
+    parent_map: dict[int, ast.AST] = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parent_map[id(child)] = node
+    return parent_map
+
+
 def check_file(
     source: str,
     filepath: Path,
@@ -406,7 +439,15 @@ def check_file(
     fixed_indices: set[int] = set()
     file_edits: list[tuple[int, int, bytes]] = []
 
-    for ds_content, parent_ast, ds_stmt in _extract_docstrings(source, filepath):
+    # Build parent map once for symbol computation
+    try:
+        _tree: ast.AST | None = ast.parse(source, filename=str(filepath))
+        parent_map: Final[dict[int, ast.AST]] = _build_parent_map(_tree)
+    except SyntaxError:
+        _tree = None
+        parent_map = {}
+
+    for ds_content, parent_ast, ds_stmt in _extract_docstrings(source, filepath, _tree):
         # Determine where the docstring content starts (after opening triple-quote).
         ds_loc = _locate_docstring(ds_stmt, lines, line_offsets, source_bytes)
         if ds_loc is None:
@@ -435,6 +476,10 @@ def check_file(
                     or (file_noqa is not None and file_noqa.suppresses(d.rule))
                 )
             ]
+
+        # Attach symbol to each diagnostic for baseline support
+        symbol = _compute_symbol(parent_ast, parent_map)
+        ds_diagnostics = [dataclasses.replace(d, symbol=symbol) for d in ds_diagnostics]
 
         base_idx = len(all_diagnostics)
         all_diagnostics.extend(ds_diagnostics)

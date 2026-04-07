@@ -87,6 +87,7 @@ class Diagnostic:
     docstring_line: int = 0
     severity: Severity = Severity.WARNING
     fix: Fix | None = None
+    symbol: str = ""
 
     @property
     def fixable(self) -> bool:

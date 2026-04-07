@@ -47,6 +47,18 @@ def cli() -> None:
     metavar="DIRS",
     help="Comma-separated directory names to exclude (e.g. build,dist). Added to default exclusions.",
 )
+@click.option(
+    "--baseline",
+    "baseline_path",
+    default=None,
+    metavar="FILE",
+    help="Path to baseline JSON file. Violations in the baseline are suppressed.",
+)
+@click.option(
+    "--generate-baseline",
+    is_flag=True,
+    help="Generate (or overwrite) the baseline file with all current violations.",
+)
 def check(
     paths: tuple[str, ...],
     fix: bool,
@@ -55,15 +67,33 @@ def check(
     select_codes: tuple[str, ...],
     ignore_codes: tuple[str, ...],
     exclude_dirs: tuple[str, ...],
+    baseline_path: str | None,
+    generate_baseline: bool,
 ) -> None:
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
 
+    from pydocfix.baseline import (
+        compute_updated_baseline,
+        filter_baseline_violations,
+        generate_baseline as _generate_baseline,
+        load_baseline,
+    )
     from pydocfix.checker import check_file
     from pydocfix.config import DEFAULT_EXCLUDE, load_config
     from pydocfix.rules import Applicability, build_registry
 
     config = load_config()
+
+    # Resolve baseline path: CLI > config > None
+    effective_baseline_path: Path | None = None
+    if baseline_path:
+        effective_baseline_path = Path(baseline_path)
+    elif config.baseline:
+        effective_baseline_path = Path(config.baseline)
+
+    # Load existing baseline (empty dict if none)
+    baseline_data = load_baseline(effective_baseline_path) if (effective_baseline_path and not generate_baseline) else {}
 
     # CLI --select / --ignore override config file values when provided
     def _parse_codes(raw: tuple[str, ...]) -> list[str]:
@@ -90,12 +120,28 @@ def check(
     total_safe_fixable = 0
     total_unsafe_fixable = 0
     remaining_diagnostics: list = []
+    # Collect raw (pre-baseline-filter) violations for baseline generation / auto-regen
+    raw_violations_by_file: dict[str, list] = {}
 
     for filepath in sorted(targets):
         source = filepath.read_text(encoding="utf-8")
         diagnostics, new_source, fixed_indices = check_file(
             source, filepath, kind_map, fix=(fix or diff), unsafe_fixes=unsafe_fixes, config=config
         )
+
+        # Collect raw violations keyed by the filepath string used in Diagnostic
+        fp_str = str(filepath)
+        if diagnostics:
+            raw_violations_by_file[fp_str] = list(diagnostics)
+
+        # When generating the baseline, skip filtering and reporting
+        if generate_baseline:
+            continue
+
+        # Apply baseline filtering
+        if baseline_data:
+            diagnostics = filter_baseline_violations(diagnostics, baseline_data, fp_str)
+
         if not diagnostics:
             continue
 
@@ -122,6 +168,30 @@ def check(
             click.echo(f"{d.filepath}:{d.lineno}:{d.col}: {d.rule} {d.message}{hint}")
 
         remaining_diagnostics.extend(diagnostics)
+
+    # --- Baseline generation ---
+    if generate_baseline:
+        if effective_baseline_path is None:
+            click.echo(
+                click.style("Error: ", fg="red")
+                + "specify a baseline path with --baseline or [tool.pydocfix] baseline in pyproject.toml.",
+                err=True,
+            )
+            sys.exit(2)
+        _generate_baseline(raw_violations_by_file, effective_baseline_path)
+        total_raw = sum(len(v) for v in raw_violations_by_file.values())
+        click.echo(
+            click.style("Baseline generated: ", fg="green")
+            + f"{effective_baseline_path} ({total_raw} violation(s) across {len(raw_violations_by_file)} file(s))"
+        )
+        sys.exit(0)
+
+    # --- Auto-regenerate baseline when violations have been fixed ---
+    if effective_baseline_path and baseline_data:
+        changed, updated = compute_updated_baseline(baseline_data, raw_violations_by_file)
+        if changed:
+            _generate_baseline(updated, effective_baseline_path)
+            logger.info("baseline auto-updated: %s", effective_baseline_path)
 
     remaining = total_violations - total_fixed
 
