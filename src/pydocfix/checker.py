@@ -37,6 +37,7 @@ from pydocstring import (
 )
 
 from pydocfix.config import Config
+from pydocfix.noqa import NoqaDirective, parse_file_noqa, parse_inline_noqa
 from pydocfix.rules import (
     BaseRule,
     DiagnoseContext,
@@ -400,6 +401,7 @@ def check_file(
     pos = -1
     while (pos := source_bytes.find(b"\n", pos + 1)) != -1:
         line_offsets.append(pos + 1)
+    file_noqa: Final[NoqaDirective | None] = parse_file_noqa(lines)
     all_diagnostics: list[Diagnostic] = []
     fixed_indices: set[int] = set()
     file_edits: list[tuple[int, int, bytes]] = []
@@ -419,6 +421,20 @@ def check_file(
             ds_loc,
             config,
         )
+
+        # Apply noqa suppression before reporting or fixing
+        inline_noqa: NoqaDirective | None = None
+        if ds_stmt.end_lineno is not None and 0 < ds_stmt.end_lineno <= len(lines):
+            inline_noqa = parse_inline_noqa(lines[ds_stmt.end_lineno - 1])
+        if inline_noqa is not None or file_noqa is not None:
+            ds_diagnostics = [
+                d
+                for d in ds_diagnostics
+                if not (
+                    (inline_noqa is not None and inline_noqa.suppresses(d.rule))
+                    or (file_noqa is not None and file_noqa.suppresses(d.rule))
+                )
+            ]
 
         base_idx = len(all_diagnostics)
         all_diagnostics.extend(ds_diagnostics)
