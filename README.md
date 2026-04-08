@@ -141,12 +141,12 @@ select = ["ALL"]
 ignore = ["PRM001", "RTN001", "YLD001", "RIS"]
 
 # Type annotation style: "signature", "docstring", "both", or omitted (default)
-    # - omitted:     PRM103/RTN103/YLD103 and PRM104/RTN104/YLD104 are all disabled (default)
+    # - omitted:     PRM104/RTN104/YLD104 and PRM103/RTN103/YLD103 are all disabled (default)
     # - "signature": types live in the function signature; missing signature annotations are flagged (PRM105/RTN105/YLD105),
-    #                redundant docstring types are flagged (PRM103/RTN103/YLD103)
-    # - "docstring": types live in the docstring; missing docstring types are flagged (PRM104/RTN104/YLD104),
+    #                redundant docstring types are flagged (PRM104/RTN104/YLD104)
+    # - "docstring": types live in the docstring; missing docstring types are flagged (PRM103/RTN103/YLD103),
     #                redundant signature annotations are flagged (PRM106/RTN106/YLD106)
-    # - "both":      types must appear in both; missing docstring types are flagged (PRM104/RTN104/YLD104),
+    # - "both":      types must appear in both; missing docstring types are flagged (PRM103/RTN103/YLD103),
     #                missing signature annotations are flagged (PRM105/RTN105/YLD105)
 type_annotation_style = "signature"
 
@@ -193,8 +193,8 @@ baseline = ".pydocfix-baseline.json"
 | PRM009 | ✅ | safe | Missing `*`/`**` prefix on `*args`/`**kwargs` |
 | PRM101 | ✅ | unsafe | Docstring type doesn't match signature annotation |
 | PRM102 | ✅ | unsafe | No type in docstring or signature |
-| PRM103 | | safe | Redundant type in docstring (signature has annotation) |
-| PRM104 | | unsafe | No type in docstring |
+| PRM103 | | unsafe | No type in docstring |
+| PRM104 | | safe | Redundant type in docstring (signature has annotation) |
 | PRM105 | | — | No type annotation in signature (`type_annotation_style = "signature"` or `"both"`) |
 | PRM106 | | — | Redundant type annotation in signature (`type_annotation_style = "docstring"`) |
 | PRM201 | ✅ | unsafe | Missing `optional` for parameter with default |
@@ -209,8 +209,8 @@ baseline = ".pydocfix-baseline.json"
 | RTN003 | ✅ | — | Returns entry has no description |
 | RTN101 | ✅ | unsafe | Return type mismatch |
 | RTN102 | ✅ | unsafe | No return type anywhere |
-| RTN103 | | safe | Redundant return type in docstring |
-| RTN104 | | unsafe | No return type in docstring |
+| RTN103 | | unsafe | No return type in docstring |
+| RTN104 | | safe | Redundant return type in docstring |
 | RTN105 | | — | No return type annotation in signature (`type_annotation_style = "signature"` or `"both"`) |
 | RTN106 | | — | Redundant return type annotation in signature (`type_annotation_style = "docstring"`) |
 
@@ -223,8 +223,8 @@ baseline = ".pydocfix-baseline.json"
 | YLD003 | ✅ | — | Yields entry has no description |
 | YLD101 | ✅ | unsafe | Yield type mismatch |
 | YLD102 | ✅ | unsafe | No yield type anywhere |
-| YLD103 | | safe | Redundant yield type in docstring |
-| YLD104 | | unsafe | No yield type in docstring |
+| YLD103 | | unsafe | No yield type in docstring |
+| YLD104 | | safe | Redundant yield type in docstring |
 | YLD105 | | — | No yield type annotation in signature (`type_annotation_style = "signature"` or `"both"`) |
 | YLD106 | | — | Redundant yield type annotation in signature (`type_annotation_style = "docstring"`) |
 

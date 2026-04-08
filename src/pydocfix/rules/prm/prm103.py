@@ -1,4 +1,4 @@
-"""Rule PRM103 - Redundant type in docstring when signature has type annotation."""
+"""Rule PRM103 - Parameter has no type in docstring."""
 
 from __future__ import annotations
 
@@ -7,26 +7,18 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix.rules._base import (
-    Applicability,
-    BaseRule,
-    ConfigRequirement,
-    DiagnoseContext,
-    Diagnostic,
-    Fix,
-    delete_range,
-)
+from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic, Edit, Fix
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token
 
 
 class PRM103(BaseRule):
-    """Signature has type annotation but docstring also specifies type (redundant)."""
+    """Docstring parameter has no type annotation (type_annotation_style = "docstring")."""
 
     code = "PRM103"
-    message = "Redundant type in docstring; type annotation exists in signature."
+    message = "Parameter has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"PRM104"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature"}))
+    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
     target_kinds = frozenset(
         {
             GoogleArg,
@@ -34,26 +26,33 @@ class PRM103(BaseRule):
         }
     )
 
-    def _build_delete_type_fix(self, cst_node, ds_text: str) -> Fix:
-        """Build a fix that removes the type annotation from the docstring entry."""
-        ds_bytes = ds_text.encode("utf-8")
+    def _build_insert_type_fix(self, cst_node, ann: str, ds_text: str) -> Fix:
+        """Build a fix that inserts the type annotation into the docstring entry."""
         if isinstance(cst_node, GoogleArg):
-            # Delete from open_bracket to close_bracket (inclusive)
-            if cst_node.open_bracket and cst_node.close_bracket:
-                start = cst_node.open_bracket.range.start
-                if start > 0 and ds_bytes[start - 1 : start] == b" ":
-                    start -= 1
-                return Fix(
-                    edits=[delete_range(start, cst_node.close_bracket.range.end)],
-                    applicability=Applicability.SAFE,
-                )
+            name_token = cst_node.name
+            if name_token is None:
+                return Fix(edits=[], applicability=Applicability.UNSAFE)
+            insert_pos = name_token.range.end
+            return Fix(
+                edits=[Edit(start=insert_pos, end=insert_pos, new_text=f" ({ann})")],
+                applicability=Applicability.UNSAFE,
+            )
         else:  # NumPyParameter
-            if cst_node.type and cst_node.colon:
+            name_token = cst_node.names[0] if cst_node.names else None
+            if name_token is None:
+                return Fix(edits=[], applicability=Applicability.UNSAFE)
+            if cst_node.colon:
+                insert_pos = cst_node.colon.range.end
                 return Fix(
-                    edits=[delete_range(cst_node.colon.range.start, cst_node.type.range.end)],
-                    applicability=Applicability.SAFE,
+                    edits=[Edit(start=insert_pos, end=insert_pos, new_text=f" {ann}")],
+                    applicability=Applicability.UNSAFE,
                 )
-        return Fix(edits=[], applicability=Applicability.SAFE)
+            else:
+                insert_pos = name_token.range.end
+                return Fix(
+                    edits=[Edit(start=insert_pos, end=insert_pos, new_text=f" : {ann}")],
+                    applicability=Applicability.UNSAFE,
+                )
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
@@ -68,13 +67,16 @@ class PRM103(BaseRule):
         else:
             name_token = get_param_name_token(cst_node)
             type_token = cst_node.type
-        if name_token is None or type_token is None:
+        if name_token is None:
+            return
+        if type_token is not None and type_token.text.strip():
             return
 
         b = bare_name(name_token.text)
-        if not get_annotation_map(ctx.parent_ast).get(b):
-            return
+        ann = get_annotation_map(ctx.parent_ast).get(b)
+        fix = None
+        if ann:
+            fix = self._build_insert_type_fix(cst_node, ann, ctx.docstring_text)
 
-        fix = self._build_delete_type_fix(cst_node, ctx.docstring_text)
-        message = f"Parameter '{name_token.text}' has redundant type in docstring."
-        yield self._make_diagnostic(ctx, message, fix=fix, target=type_token)
+        message = f"Parameter '{name_token.text}' has no type in docstring."
+        yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)

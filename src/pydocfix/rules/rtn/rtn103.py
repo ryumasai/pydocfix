@@ -1,4 +1,4 @@
-"""Rule RTN103 - Redundant return type in docstring when signature has annotation."""
+"""Rule RTN103 - Return has no type in docstring."""
 
 from __future__ import annotations
 
@@ -7,25 +7,17 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.rules._base import (
-    Applicability,
-    BaseRule,
-    ConfigRequirement,
-    DiagnoseContext,
-    Diagnostic,
-    Fix,
-    delete_range,
-)
+from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic, Edit, Fix
 
 
 class RTN103(BaseRule):
-    """Signature has return type annotation but docstring also specifies type (redundant)."""
+    """Docstring return entry has no type (type_annotation_style = "docstring")."""
 
     code = "RTN103"
-    message = "Redundant return type in docstring; type annotation exists in signature."
+    message = "Return has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"RTN104"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature"}))
+    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
     target_kinds = frozenset(
         {
             GoogleReturn,
@@ -41,32 +33,26 @@ class RTN103(BaseRule):
             return
 
         ret_type_token = cst_node.return_type
-        if ret_type_token is None:
-            return  # No type in docstring — nothing to flag
+        if ret_type_token is not None and ret_type_token.text.strip():
+            return  # Already has type
 
+        # Try to get type from signature for the fix
         func = ctx.parent_ast
-        if func.returns is None:  # type: ignore[union-attr]
-            return  # No return annotation in signature — not redundant
+        ann = None
+        if func.returns is not None:  # type: ignore[union-attr]
+            ann = ast.unparse(func.returns)  # type: ignore[union-attr]
 
-        colon_token = cst_node.colon
-        ds_bytes = ctx.docstring_text.encode("utf-8")
+        fix = None
+        if ann:
+            if isinstance(cst_node, GoogleReturn):
+                fix = Fix(
+                    edits=[Edit(start=cst_node.range.start, end=cst_node.range.start, new_text=f"{ann}: ")],
+                    applicability=Applicability.UNSAFE,
+                )
+            else:  # NumPyReturns
+                fix = Fix(
+                    edits=[Edit(start=cst_node.range.start, end=cst_node.range.start, new_text=f"{ann}\n")],
+                    applicability=Applicability.UNSAFE,
+                )
 
-        if isinstance(cst_node, GoogleReturn) and colon_token:
-            end = colon_token.range.end
-            if end < len(ds_bytes) and ds_bytes[end : end + 1] == b" ":
-                end += 1
-            fix = Fix(
-                edits=[delete_range(ret_type_token.range.start, end)],
-                applicability=Applicability.SAFE,
-            )
-        elif isinstance(cst_node, NumPyReturns):
-            nl_after = ds_bytes.find(b"\n", ret_type_token.range.end)
-            end = nl_after + 1 if nl_after != -1 else ret_type_token.range.end
-            fix = Fix(
-                edits=[delete_range(ret_type_token.range.start, end)],
-                applicability=Applicability.SAFE,
-            )
-        else:
-            fix = Fix(edits=[], applicability=Applicability.SAFE)
-
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=ret_type_token)
+        yield self._make_diagnostic(ctx, self.message, fix=fix, target=cst_node)
