@@ -136,13 +136,16 @@ Configure via `pyproject.toml`:
 
 ```toml
 [tool.pydocfix]
-# Rules to enable (overrides defaults); supports category prefixes and "ALL"
+# Both accept individual codes (e.g. "PRM001"), category prefixes (e.g. "RIS"), or "ALL"
 select = ["ALL"]
+ignore = ["PRM001", "RTN001", "YLD001", "RIS"]
 
-# Rules to disable
-ignore = ["PRM001", "RTN001", "YLD001", "RIS001"]
-
-# Type annotation style: "signature" (default) or "docstring"
+# Type annotation style: "signature", "docstring", "both", or omitted (default)
+    # - omitted:     PRM103/RTN103/YLD103 and PRM104/RTN104/YLD104 are all disabled (default)
+    # - "signature": types live in the function signature; redundant docstring types are flagged (PRM103/RTN103/YLD103)
+    # - "docstring": types live in the docstring; missing docstring types are always flagged (PRM104/RTN104/YLD104)
+    # - "both":      types must appear in both; missing docstring types are flagged (PRM104/RTN104/YLD104),
+    #                missing signature annotations are flagged (PRM105/RTN105/YLD105)
 type_annotation_style = "signature"
 
 # Paths/patterns to exclude (in addition to built-in defaults)
@@ -190,6 +193,7 @@ baseline = ".pydocfix-baseline.json"
 | PRM102 | ✅ | unsafe | No type in docstring or signature |
 | PRM103 | | safe | Redundant type in docstring (signature has annotation) |
 | PRM104 | | unsafe | No type in docstring |
+| PRM105 | | — | No type annotation in signature (`type_annotation_style = "both"`) |
 | PRM201 | ✅ | unsafe | Missing `optional` for parameter with default |
 | PRM202 | | unsafe | Missing `default` for parameter with default |
 
@@ -204,6 +208,7 @@ baseline = ".pydocfix-baseline.json"
 | RTN102 | ✅ | unsafe | No return type anywhere |
 | RTN103 | | safe | Redundant return type in docstring |
 | RTN104 | | unsafe | No return type in docstring |
+| RTN105 | | — | No return type annotation in signature (`type_annotation_style = "both"`) |
 
 ### Yields (YLD)
 
@@ -216,6 +221,7 @@ baseline = ".pydocfix-baseline.json"
 | YLD102 | ✅ | unsafe | No yield type anywhere |
 | YLD103 | | safe | Redundant yield type in docstring |
 | YLD104 | | unsafe | No yield type in docstring |
+| YLD105 | | — | No yield type annotation in signature (`type_annotation_style = "both"`) |
 
 ### Raises (RIS)
 

@@ -26,7 +26,7 @@ class YLD103(BaseRule):
     message = "Redundant yield type in docstring; type annotation exists in signature."
     enabled_by_default = False
     conflicts_with = frozenset({"YLD104"})
-    requires_config = ConfigRequirement("type_annotation_style", "signature")
+    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature"}))
     target_kinds = frozenset(
         {
             GoogleYield,

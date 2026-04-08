@@ -17,7 +17,7 @@ class RTN104(BaseRule):
     message = "Return has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"RTN103"})
-    requires_config = ConfigRequirement("type_annotation_style", "docstring")
+    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
     target_kinds = frozenset(
         {
             GoogleReturn,

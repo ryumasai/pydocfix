@@ -256,14 +256,15 @@ def is_applicable(diag: Diagnostic, unsafe_fixes: bool) -> bool:
 class ConfigRequirement(NamedTuple):
     """Conflict resolution condition for a rule.
 
-    Specifies which ``Config`` attribute must equal a particular value for the
-    rule to win when it is in an active conflict (see ``BaseRule.conflicts_with``).
+    Specifies which ``Config`` attribute must equal one of the allowed values
+    for the rule to win when it is in an active conflict
+    (see ``BaseRule.conflicts_with``).
     """
 
     attr: str
     """Name of the ``Config`` attribute to inspect (e.g. ``"type_annotation_style"``)."""
-    value: str
-    """Required value of the attribute (e.g. ``"signature"`` or ``"docstring"``)."""
+    values: frozenset[str]
+    """Allowed values of the attribute (e.g. ``frozenset({"signature"})``)."""
 
 
 class BaseRule:

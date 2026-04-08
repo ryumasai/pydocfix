@@ -18,7 +18,7 @@ class PRM104(BaseRule):
     message = "Parameter has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"PRM103"})
-    requires_config = ConfigRequirement("type_annotation_style", "docstring")
+    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
     target_kinds = frozenset(
         {
             GoogleArg,

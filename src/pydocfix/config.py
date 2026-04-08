@@ -75,6 +75,12 @@ def load_config(start: Path | None = None) -> Config:
     ignore: list[str] = [str(code) for code in section.get("ignore", [])]
     select: list[str] = [str(code) for code in section.get("select", [])]
     type_annotation_style: str | None = section.get("type_annotation_style") or None
+    if type_annotation_style is not None and type_annotation_style not in {"signature", "docstring", "both"}:
+        logger.warning(
+            "invalid type_annotation_style %r (expected 'signature', 'docstring', or 'both'); ignoring",
+            type_annotation_style,
+        )
+        type_annotation_style = None
     exclude: list[str] = [str(p) for p in section.get("exclude", [])]
     raw_ssd = section.get("skip_short_docstrings")
     skip_short_docstrings: bool = bool(raw_ssd) if raw_ssd is not None else True

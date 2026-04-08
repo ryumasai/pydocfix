@@ -13,6 +13,7 @@ from pydocfix.rules.prm.prm101 import PRM101
 from pydocfix.rules.prm.prm102 import PRM102
 from pydocfix.rules.prm.prm103 import PRM103
 from pydocfix.rules.prm.prm104 import PRM104
+from pydocfix.rules.prm.prm105 import PRM105
 from pydocfix.rules.prm.prm201 import PRM201
 from pydocfix.rules.prm.prm202 import PRM202
 
@@ -30,6 +31,7 @@ __all__ = [
     "PRM102",
     "PRM103",
     "PRM104",
+    "PRM105",
     "PRM201",
     "PRM202",
 ]

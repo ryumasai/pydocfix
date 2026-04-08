@@ -80,6 +80,31 @@ class TestLoadConfig:
         config = load_config(tmp_path)
         assert config.skip_short_docstrings is True
 
+    def test_type_annotation_style_signature(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\ntype_annotation_style = "signature"\n')
+        config = load_config(tmp_path)
+        assert config.type_annotation_style == "signature"
+
+    def test_type_annotation_style_docstring(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\ntype_annotation_style = "docstring"\n')
+        config = load_config(tmp_path)
+        assert config.type_annotation_style == "docstring"
+
+    def test_type_annotation_style_both(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\ntype_annotation_style = "both"\n')
+        config = load_config(tmp_path)
+        assert config.type_annotation_style == "both"
+
+    def test_type_annotation_style_invalid_ignored(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\ntype_annotation_style = "invalid"\n')
+        config = load_config(tmp_path)
+        assert config.type_annotation_style is None
+
+    def test_type_annotation_style_default_none(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\n")
+        config = load_config(tmp_path)
+        assert config.type_annotation_style is None
+
 
 class TestIgnoreViaConfig:
     """Integration: ignored rules produce no diagnostics."""

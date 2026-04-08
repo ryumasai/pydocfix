@@ -43,6 +43,7 @@ from pydocfix.rules.prm.prm101 import PRM101
 from pydocfix.rules.prm.prm102 import PRM102
 from pydocfix.rules.prm.prm103 import PRM103
 from pydocfix.rules.prm.prm104 import PRM104
+from pydocfix.rules.prm.prm105 import PRM105
 from pydocfix.rules.prm.prm201 import PRM201
 from pydocfix.rules.prm.prm202 import PRM202
 
@@ -61,6 +62,7 @@ from pydocfix.rules.rtn.rtn101 import RTN101
 from pydocfix.rules.rtn.rtn102 import RTN102
 from pydocfix.rules.rtn.rtn103 import RTN103
 from pydocfix.rules.rtn.rtn104 import RTN104
+from pydocfix.rules.rtn.rtn105 import RTN105
 
 # --- Summary rules ---
 from pydocfix.rules.sum.sum001 import SUM001
@@ -74,6 +76,7 @@ from pydocfix.rules.yld.yld101 import YLD101
 from pydocfix.rules.yld.yld102 import YLD102
 from pydocfix.rules.yld.yld103 import YLD103
 from pydocfix.rules.yld.yld104 import YLD104
+from pydocfix.rules.yld.yld105 import YLD105
 
 __all__ = [
     "Applicability",
@@ -98,6 +101,7 @@ __all__ = [
     "PRM102",
     "PRM103",
     "PRM104",
+    "PRM105",
     "PRM201",
     "PRM202",
     # ris
@@ -114,6 +118,7 @@ __all__ = [
     "RTN102",
     "RTN103",
     "RTN104",
+    "RTN105",
     # yld
     "YLD001",
     "YLD002",
@@ -122,6 +127,7 @@ __all__ = [
     "YLD102",
     "YLD103",
     "YLD104",
+    "YLD105",
     # **** FRAMEWORK ****
     "DiagnoseContext",
     "Diagnostic",
@@ -159,6 +165,7 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     PRM102,
     PRM103,
     PRM104,
+    PRM105,
     PRM201,
     PRM202,
     RIS001,
@@ -173,6 +180,7 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     RTN102,
     RTN103,
     RTN104,
+    RTN105,
     YLD001,
     YLD002,
     YLD003,
@@ -180,6 +188,7 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     YLD102,
     YLD103,
     YLD104,
+    YLD105,
 ]
 
 ALL_RULE_CODES: frozenset[str] = frozenset(cls.code for cls in _BUILTIN_RULES)
@@ -210,17 +219,18 @@ def _resolve_conflicts(candidates: list[BaseRule], config: Config | None) -> lis
             result.append(rule)
         else:
             actual = getattr(config, rule.requires_config.attr, None) if config else None
-            if actual == rule.requires_config.value:
+            if actual in rule.requires_config.values:
                 result.append(rule)
             else:
                 import logging
 
+                allowed = ", ".join(f"'{v}'" for v in sorted(rule.requires_config.values))
                 logging.getLogger(__name__).warning(
-                    "%s conflicts with [%s] and '%s' does not equal '%s'; %s excluded.",
+                    "%s conflicts with [%s] and '%s' is not in {%s}; %s excluded.",
                     rule.code,
                     ", ".join(sorted(active_conflicts)),
                     rule.requires_config.attr,
-                    rule.requires_config.value,
+                    allowed,
                     rule.code,
                 )
     return result

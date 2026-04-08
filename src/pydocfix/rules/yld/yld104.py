@@ -18,7 +18,7 @@ class YLD104(BaseRule):
     message = "Yield has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"YLD103"})
-    requires_config = ConfigRequirement("type_annotation_style", "docstring")
+    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
     target_kinds = frozenset(
         {
             GoogleYield,

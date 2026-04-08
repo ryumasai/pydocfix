@@ -7,6 +7,7 @@ from pydocfix.rules.yld.yld101 import YLD101
 from pydocfix.rules.yld.yld102 import YLD102
 from pydocfix.rules.yld.yld103 import YLD103
 from pydocfix.rules.yld.yld104 import YLD104
+from pydocfix.rules.yld.yld105 import YLD105
 
 __all__ = [
     "YLD001",
@@ -16,4 +17,5 @@ __all__ = [
     "YLD102",
     "YLD103",
     "YLD104",
+    "YLD105",
 ]
