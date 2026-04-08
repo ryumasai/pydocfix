@@ -8,6 +8,7 @@ from pydocfix.rules.rtn.rtn102 import RTN102
 from pydocfix.rules.rtn.rtn103 import RTN103
 from pydocfix.rules.rtn.rtn104 import RTN104
 from pydocfix.rules.rtn.rtn105 import RTN105
+from pydocfix.rules.rtn.rtn106 import RTN106
 
 __all__ = [
     "RTN001",
@@ -18,4 +19,5 @@ __all__ = [
     "RTN103",
     "RTN104",
     "RTN105",
+    "RTN106",
 ]

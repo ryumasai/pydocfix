@@ -22,7 +22,7 @@ pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a
 ## Features
 
 - **Auto-fix** — Automatically repair docstring issues with safe/unsafe classification
-- **35 rules** across 6 categories: Summary, Parameters, Returns, Yields, Raises, Docstring
+- **40 rules** across 6 categories: Summary, Parameters, Returns, Yields, Raises, Docstring
 - **Google & NumPy style** support (powered by [pydocstring-rs](https://github.com/aita/pydocstring-rs))
 - **Signature ↔ docstring consistency** — type mismatches, missing/extra parameters, ordering
 - **Default value checking** — detect missing `optional` / `default` annotations
@@ -142,8 +142,10 @@ ignore = ["PRM001", "RTN001", "YLD001", "RIS"]
 
 # Type annotation style: "signature", "docstring", "both", or omitted (default)
     # - omitted:     PRM103/RTN103/YLD103 and PRM104/RTN104/YLD104 are all disabled (default)
-    # - "signature": types live in the function signature; redundant docstring types are flagged (PRM103/RTN103/YLD103)
-    # - "docstring": types live in the docstring; missing docstring types are always flagged (PRM104/RTN104/YLD104)
+    # - "signature": types live in the function signature; missing signature annotations are flagged (PRM105/RTN105/YLD105),
+    #                redundant docstring types are flagged (PRM103/RTN103/YLD103)
+    # - "docstring": types live in the docstring; missing docstring types are flagged (PRM104/RTN104/YLD104),
+    #                redundant signature annotations are flagged (PRM106/RTN106/YLD106)
     # - "both":      types must appear in both; missing docstring types are flagged (PRM104/RTN104/YLD104),
     #                missing signature annotations are flagged (PRM105/RTN105/YLD105)
 type_annotation_style = "signature"
@@ -164,7 +166,7 @@ baseline = ".pydocfix-baseline.json"
 
 ## Rules
 
-35 rules across 6 categories. Each rule is classified as **safe** fix, **unsafe** fix, or report-only.
+40 rules across 6 categories. Each rule is classified as **safe** fix, **unsafe** fix, or report-only.
 
 - **Safe** fixes can be applied automatically with `--fix` (no risk of changing semantics)
 - **Unsafe** fixes require `--fix --unsafe-fixes` (may alter docstring meaning)
@@ -193,7 +195,8 @@ baseline = ".pydocfix-baseline.json"
 | PRM102 | ✅ | unsafe | No type in docstring or signature |
 | PRM103 | | safe | Redundant type in docstring (signature has annotation) |
 | PRM104 | | unsafe | No type in docstring |
-| PRM105 | | — | No type annotation in signature (`type_annotation_style = "both"`) |
+| PRM105 | | — | No type annotation in signature (`type_annotation_style = "signature"` or `"both"`) |
+| PRM106 | | — | Redundant type annotation in signature (`type_annotation_style = "docstring"`) |
 | PRM201 | ✅ | unsafe | Missing `optional` for parameter with default |
 | PRM202 | | unsafe | Missing `default` for parameter with default |
 
@@ -208,7 +211,8 @@ baseline = ".pydocfix-baseline.json"
 | RTN102 | ✅ | unsafe | No return type anywhere |
 | RTN103 | | safe | Redundant return type in docstring |
 | RTN104 | | unsafe | No return type in docstring |
-| RTN105 | | — | No return type annotation in signature (`type_annotation_style = "both"`) |
+| RTN105 | | — | No return type annotation in signature (`type_annotation_style = "signature"` or `"both"`) |
+| RTN106 | | — | Redundant return type annotation in signature (`type_annotation_style = "docstring"`) |
 
 ### Yields (YLD)
 
@@ -221,7 +225,8 @@ baseline = ".pydocfix-baseline.json"
 | YLD102 | ✅ | unsafe | No yield type anywhere |
 | YLD103 | | safe | Redundant yield type in docstring |
 | YLD104 | | unsafe | No yield type in docstring |
-| YLD105 | | — | No yield type annotation in signature (`type_annotation_style = "both"`) |
+| YLD105 | | — | No yield type annotation in signature (`type_annotation_style = "signature"` or `"both"`) |
+| YLD106 | | — | Redundant yield type annotation in signature (`type_annotation_style = "docstring"`) |
 
 ### Raises (RIS)
 

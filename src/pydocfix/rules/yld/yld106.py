@@ -1,4 +1,4 @@
-"""Rule YLD105 - Yield type has no annotation in function signature."""
+"""Rule YLD106 - Yield type has an annotation in function signature (docstring style)."""
 
 from __future__ import annotations
 
@@ -11,14 +11,14 @@ from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, D
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
-class YLD105(BaseRule):
-    """Documented yield has no type annotation in the function signature."""
+class YLD106(BaseRule):
+    """Documented yield has a type annotation in the function signature (types belong in docstring)."""
 
-    code = "YLD105"
-    message = "Yield has no type annotation in signature."
+    code = "YLD106"
+    message = "Yield has a type annotation in signature; types belong in the docstring."
     enabled_by_default = False
-    conflicts_with = frozenset({"YLD102", "YLD106"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature", "both"}))
+    conflicts_with = frozenset({"YLD105"})
+    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring"}))
     target_kinds = frozenset(
         {
             GoogleYield,
@@ -33,7 +33,7 @@ class YLD105(BaseRule):
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
-        if get_yield_type(ctx.parent_ast) is not None:
-            return  # has annotation in signature
+        if get_yield_type(ctx.parent_ast) is None:
+            return  # no annotation in signature — nothing to flag
 
         yield self._make_diagnostic(ctx, self.message, target=cst_node)

@@ -2126,6 +2126,68 @@ class TestPRM105:
         assert "PRM102" in PRM105.conflicts_with
 
 
+# ── PRM106 Tests ───────────────────────────────────────────────────────
+
+
+class TestPRM106:
+    """PRM106: redundant type annotation in signature (type_annotation_style = 'docstring')."""
+
+    def test_has_sig_annotation_fires(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm106 import PRM106
+
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(PRM106().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM106"
+
+    def test_no_sig_annotation_no_diagnostic(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm106 import PRM106
+
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(PRM106().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        from pydocfix.rules.prm.prm106 import PRM106
+
+        assert PRM106.enabled_by_default is False
+
+    def test_conflicts_with_prm105(self):
+        from pydocfix.rules.prm.prm106 import PRM106
+
+        assert "PRM105" in PRM106.conflicts_with
+
+
 # ── PRM201 Tests ───────────────────────────────────────────────────────
 
 
@@ -2580,6 +2642,64 @@ class TestRTN105:
         from pydocfix.rules.rtn.rtn105 import RTN105
 
         assert "RTN102" in RTN105.conflicts_with
+
+
+# ── RTN106 Tests ───────────────────────────────────────────────────────
+
+
+class TestRTN106:
+    """RTN106: redundant return type annotation in signature (type_annotation_style = 'docstring')."""
+
+    def test_has_sig_annotation_fires(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn106 import RTN106
+
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo() -> int:\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(RTN106().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "RTN106"
+
+    def test_no_sig_annotation_no_diagnostic(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn106 import RTN106
+
+        ds = "Summary.\n\nReturns:\n    The result.\n"
+        func = "def foo():\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(RTN106().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        from pydocfix.rules.rtn.rtn106 import RTN106
+
+        assert RTN106.enabled_by_default is False
+
+    def test_conflicts_with_rtn105(self):
+        from pydocfix.rules.rtn.rtn106 import RTN106
+
+        assert "RTN105" in RTN106.conflicts_with
 
 
 # ── YLD001 Tests ───────────────────────────────────────────────────────
@@ -3151,6 +3271,65 @@ class TestYLD105:
         from pydocfix.rules.yld.yld105 import YLD105
 
         assert "YLD102" in YLD105.conflicts_with
+
+
+# ── YLD106 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD106:
+    """YLD106: redundant yield type annotation in signature (type_annotation_style = 'docstring')."""
+
+    def test_has_sig_annotation_fires(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.yld.yld106 import YLD106
+
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        ctx = _make_yields_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=tree.body[1],
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(YLD106().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "YLD106"
+
+    def test_no_sig_annotation_no_diagnostic(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.yld.yld106 import YLD106
+
+        ds = "Summary.\n\nYields:\n    An item.\n"
+        func = "def foo():\n    yield 1\n"
+        ctx = _make_yields_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(YLD106().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        from pydocfix.rules.yld.yld106 import YLD106
+
+        assert YLD106.enabled_by_default is False
+
+    def test_conflicts_with_yld105(self):
+        from pydocfix.rules.yld.yld106 import YLD106
+
+        assert "YLD105" in YLD106.conflicts_with
 
 
 # ── RIS001 Tests ───────────────────────────────────────────────────────
@@ -3768,7 +3947,7 @@ class TestRegistryCompleteness:
         assert "YLD103" not in codes
 
     def test_all_rules_select_all_both_style(self):
-        """type_annotation_style='both' activates 104/105 rules (not 103)."""
+        """type_annotation_style='both' activates 104/105 rules (not 103/106)."""
         from pydocfix.config import Config
 
         config = Config(type_annotation_style="both")
@@ -3782,8 +3961,53 @@ class TestRegistryCompleteness:
         assert "YLD104" in codes
         assert "YLD105" in codes
         assert "PRM103" not in codes
+        assert "PRM106" not in codes
         assert "RTN103" not in codes
+        assert "RTN106" not in codes
         assert "YLD103" not in codes
+        assert "YLD106" not in codes
+
+    def test_all_rules_select_all_docstring_style(self):
+        """type_annotation_style='docstring' activates 104/106 rules (not 103/105)."""
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="docstring")
+        registry = build_registry(select=["ALL"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert len(registry.all_rules()) == 37
+        assert "PRM104" in codes
+        assert "PRM106" in codes
+        assert "RTN104" in codes
+        assert "RTN106" in codes
+        assert "YLD104" in codes
+        assert "YLD106" in codes
+        assert "PRM103" not in codes
+        assert "PRM105" not in codes
+        assert "RTN103" not in codes
+        assert "RTN105" not in codes
+        assert "YLD103" not in codes
+        assert "YLD105" not in codes
+
+    def test_all_rules_select_all_signature_style(self):
+        """type_annotation_style='signature' activates 103/105 rules (not 104/106)."""
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="signature")
+        registry = build_registry(select=["ALL"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert len(registry.all_rules()) == 37
+        assert "PRM103" in codes
+        assert "PRM105" in codes
+        assert "RTN103" in codes
+        assert "RTN105" in codes
+        assert "YLD103" in codes
+        assert "YLD105" in codes
+        assert "PRM104" not in codes
+        assert "PRM106" not in codes
+        assert "RTN104" not in codes
+        assert "RTN106" not in codes
+        assert "YLD104" not in codes
+        assert "YLD106" not in codes
 
     def test_both_style_resolved_conflict(self):
         """'both' resolves the 103/104 conflict in favour of 104."""

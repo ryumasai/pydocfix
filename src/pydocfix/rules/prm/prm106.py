@@ -1,4 +1,4 @@
-"""Rule PRM105 - Parameter has no type annotation in function signature."""
+"""Rule PRM106 - Parameter has a type annotation in function signature (docstring style)."""
 
 from __future__ import annotations
 
@@ -11,14 +11,14 @@ from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, D
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token, get_signature_params
 
 
-class PRM105(BaseRule):
-    """Documented parameter has no type annotation in the function signature."""
+class PRM106(BaseRule):
+    """Documented parameter has a type annotation in the function signature (types belong in docstring)."""
 
-    code = "PRM105"
-    message = "Parameter has no type annotation in signature."
+    code = "PRM106"
+    message = "Parameter has a type annotation in signature; types belong in the docstring."
     enabled_by_default = False
-    conflicts_with = frozenset({"PRM102", "PRM106"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature", "both"}))
+    conflicts_with = frozenset({"PRM105"})
+    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring"}))
     target_kinds = frozenset(
         {
             GoogleArg,
@@ -43,8 +43,8 @@ class PRM105(BaseRule):
             return  # not a real parameter — PRM005's responsibility
 
         ann_map = get_annotation_map(ctx.parent_ast)
-        if b in ann_map:
-            return  # has annotation in signature
+        if b not in ann_map:
+            return  # no annotation in signature — nothing to flag
 
-        message = f"Parameter '{name_token.text}' has no type annotation in signature."
+        message = f"Parameter '{name_token.text}' has a type annotation in signature; types belong in the docstring."
         yield self._make_diagnostic(ctx, message, target=name_token)

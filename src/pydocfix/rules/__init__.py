@@ -44,6 +44,7 @@ from pydocfix.rules.prm.prm102 import PRM102
 from pydocfix.rules.prm.prm103 import PRM103
 from pydocfix.rules.prm.prm104 import PRM104
 from pydocfix.rules.prm.prm105 import PRM105
+from pydocfix.rules.prm.prm106 import PRM106
 from pydocfix.rules.prm.prm201 import PRM201
 from pydocfix.rules.prm.prm202 import PRM202
 
@@ -63,6 +64,7 @@ from pydocfix.rules.rtn.rtn102 import RTN102
 from pydocfix.rules.rtn.rtn103 import RTN103
 from pydocfix.rules.rtn.rtn104 import RTN104
 from pydocfix.rules.rtn.rtn105 import RTN105
+from pydocfix.rules.rtn.rtn106 import RTN106
 
 # --- Summary rules ---
 from pydocfix.rules.sum.sum001 import SUM001
@@ -77,6 +79,7 @@ from pydocfix.rules.yld.yld102 import YLD102
 from pydocfix.rules.yld.yld103 import YLD103
 from pydocfix.rules.yld.yld104 import YLD104
 from pydocfix.rules.yld.yld105 import YLD105
+from pydocfix.rules.yld.yld106 import YLD106
 
 __all__ = [
     "Applicability",
@@ -102,6 +105,7 @@ __all__ = [
     "PRM103",
     "PRM104",
     "PRM105",
+    "PRM106",
     "PRM201",
     "PRM202",
     # ris
@@ -119,6 +123,7 @@ __all__ = [
     "RTN103",
     "RTN104",
     "RTN105",
+    "RTN106",
     # yld
     "YLD001",
     "YLD002",
@@ -128,6 +133,7 @@ __all__ = [
     "YLD103",
     "YLD104",
     "YLD105",
+    "YLD106",
     # **** FRAMEWORK ****
     "DiagnoseContext",
     "Diagnostic",
@@ -166,6 +172,7 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     PRM103,
     PRM104,
     PRM105,
+    PRM106,
     PRM201,
     PRM202,
     RIS001,
@@ -181,6 +188,7 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     RTN103,
     RTN104,
     RTN105,
+    RTN106,
     YLD001,
     YLD002,
     YLD003,
@@ -189,6 +197,7 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     YLD103,
     YLD104,
     YLD105,
+    YLD106,
 ]
 
 ALL_RULE_CODES: frozenset[str] = frozenset(cls.code for cls in _BUILTIN_RULES)
