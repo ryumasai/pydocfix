@@ -138,6 +138,8 @@ __all__ = [
     "insert_at",
     "is_applicable",
     "replace_token",
+    # **** CONSTANTS ****
+    "ALL_RULE_CODES",
 ]
 
 _BUILTIN_RULES: list[type[BaseRule]] = [
@@ -179,6 +181,8 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     YLD103,
     YLD104,
 ]
+
+ALL_RULE_CODES: frozenset[str] = frozenset(cls.code for cls in _BUILTIN_RULES)
 
 
 def _matches(code: str, patterns: frozenset[str]) -> bool:

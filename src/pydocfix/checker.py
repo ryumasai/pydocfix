@@ -38,8 +38,9 @@ from pydocstring import (
 )
 
 from pydocfix.config import Config
-from pydocfix.noqa import NoqaDirective, parse_file_noqa, parse_inline_noqa
+from pydocfix.noqa import NoqaDirective, find_inline_noqa, parse_file_noqa, parse_inline_noqa
 from pydocfix.rules import (
+    ALL_RULE_CODES,
     BaseRule,
     DiagnoseContext,
     Diagnostic,
@@ -47,6 +48,7 @@ from pydocfix.rules import (
     Edit,
     Fix,
     Offset,
+    Range,
     apply_edits,
     is_applicable,
 )
@@ -414,6 +416,89 @@ def _build_parent_map(tree: ast.AST) -> dict[int, ast.AST]:
     return parent_map
 
 
+def _check_unused_inline_noqa(
+    *,
+    inline_noqa: NoqaDirective,
+    noqa_span: tuple[int, int],
+    used_codes: set[str],
+    any_suppressed: bool,
+    end_lineno: int,
+    lines: Sequence[str],
+    line_offsets: Sequence[int],
+    filepath: Path,
+) -> tuple[list[Diagnostic], tuple[int, int, bytes] | None]:
+    """Return NOQ001 diagnostics and an optional source edit for unused noqa codes.
+
+    *used_codes*: pydocfix codes that actually suppressed at least one diagnostic.
+    *any_suppressed*: True if the blanket noqa suppressed at least one diagnostic.
+    *noqa_span*: ``(start, end)`` character positions of the match in the closing line.
+
+    Codes not in ``ALL_RULE_CODES`` (e.g. other tools' codes) are ignored so that
+    suppression comments like ``# noqa: PRM001, pylint-disable`` are handled safely.
+    """
+    if end_lineno <= 0 or end_lineno > len(lines):
+        return [], None
+
+    line = lines[end_lineno - 1]
+    char_start, char_end = noqa_span
+    line_byte_offset = line_offsets[end_lineno - 1]
+
+    def _byte_pos(char_pos: int) -> int:
+        return line_byte_offset + len(line[:char_pos].encode("utf-8"))
+
+    diagnostics: list[Diagnostic] = []
+    source_edit: tuple[int, int, bytes] | None = None
+
+    if inline_noqa.codes is None:
+        # Blanket # noqa — unused when nothing was suppressed
+        if not any_suppressed:
+            diagnostics.append(
+                Diagnostic(
+                    rule="NOQ001",
+                    message="Unused `noqa` directive",
+                    filepath=str(filepath),
+                    range=Range(
+                        start=Offset(end_lineno, char_start + 1),
+                        end=Offset(end_lineno, char_end + 1),
+                    ),
+                )
+            )
+            ws_start = char_start
+            while ws_start > 0 and line[ws_start - 1] in " \t":
+                ws_start -= 1
+            source_edit = (_byte_pos(ws_start), _byte_pos(char_end), b"")
+    else:
+        # Specific codes: flag each known-but-unused pydocfix code
+        unused_known = (inline_noqa.codes & ALL_RULE_CODES) - used_codes
+        if unused_known:
+            for code in sorted(unused_known):
+                diagnostics.append(
+                    Diagnostic(
+                        rule="NOQ001",
+                        message=f"Unused `noqa` directive for {code}",
+                        filepath=str(filepath),
+                        range=Range(
+                            start=Offset(end_lineno, char_start + 1),
+                            end=Offset(end_lineno, char_end + 1),
+                        ),
+                    )
+                )
+            remaining_codes = inline_noqa.codes - unused_known
+            if remaining_codes:
+                # Rewrite the comment keeping used + non-pydocfix codes
+                new_codes_str = ", ".join(sorted(remaining_codes))
+                replacement = f"# noqa: {new_codes_str}".encode("utf-8")
+                source_edit = (_byte_pos(char_start), _byte_pos(char_end), replacement)
+            else:
+                # All codes remove — strip the entire comment
+                ws_start = char_start
+                while ws_start > 0 and line[ws_start - 1] in " \t":
+                    ws_start -= 1
+                source_edit = (_byte_pos(ws_start), _byte_pos(char_end), b"")
+
+    return diagnostics, source_edit
+
+
 def check_file(
     source: str,
     filepath: Path,
@@ -465,17 +550,28 @@ def check_file(
 
         # Apply noqa suppression before reporting or fixing
         inline_noqa: NoqaDirective | None = None
-        if ds_stmt.end_lineno is not None and 0 < ds_stmt.end_lineno <= len(lines):
-            inline_noqa = parse_inline_noqa(lines[ds_stmt.end_lineno - 1])
+        inline_noqa_span: tuple[int, int] | None = None
+        end_line_idx = (ds_stmt.end_lineno or 0) - 1
+        if 0 <= end_line_idx < len(lines):
+            found = find_inline_noqa(lines[end_line_idx])
+            if found is not None:
+                inline_noqa, inline_noqa_span = found
+
+        used_inline: set[str] = set()
+        inline_suppressed_any: bool = False
         if inline_noqa is not None or file_noqa is not None:
-            ds_diagnostics = [
-                d
-                for d in ds_diagnostics
-                if not (
-                    (inline_noqa is not None and inline_noqa.suppresses(d.rule))
-                    or (file_noqa is not None and file_noqa.suppresses(d.rule))
-                )
-            ]
+            kept: list[Diagnostic] = []
+            for d in ds_diagnostics:
+                suppress_inline = inline_noqa is not None and inline_noqa.suppresses(d.rule)
+                suppress_file = file_noqa is not None and file_noqa.suppresses(d.rule)
+                if suppress_inline or suppress_file:
+                    if suppress_inline:
+                        inline_suppressed_any = True
+                        if inline_noqa.codes is not None:
+                            used_inline.add(d.rule)
+                else:
+                    kept.append(d)
+            ds_diagnostics = kept
 
         # Attach symbol to each diagnostic for baseline support
         symbol = _compute_symbol(parent_ast, parent_map)
@@ -534,6 +630,26 @@ def check_file(
                         (ds_loc.opening + current_content + ds_loc.closing).encode("utf-8"),
                     ),
                 )
+
+        # Generate NOQ001 diagnostics for unused inline noqa codes
+        if inline_noqa is not None and inline_noqa_span is not None:
+            noq_diagnostics, noq_source_edit = _check_unused_inline_noqa(
+                inline_noqa=inline_noqa,
+                noqa_span=inline_noqa_span,
+                used_codes=used_inline,
+                any_suppressed=inline_suppressed_any,
+                end_lineno=ds_stmt.end_lineno or 0,
+                lines=lines,
+                line_offsets=line_offsets,
+                filepath=filepath,
+            )
+            if noq_diagnostics:
+                noq_base_idx = len(all_diagnostics)
+                all_diagnostics.extend(noq_diagnostics)
+                if fix and noq_source_edit is not None:
+                    file_edits.append(noq_source_edit)
+                    for i in range(len(noq_diagnostics)):
+                        fixed_indices.add(noq_base_idx + i)
 
     fixed_source: str | None = None
     if file_edits:

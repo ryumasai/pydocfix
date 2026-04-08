@@ -27,6 +27,8 @@ pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a
 - **Signature ↔ docstring consistency** — type mismatches, missing/extra parameters, ordering
 - **Default value checking** — detect missing `optional` / `default` annotations
 - **Precise diagnostics** — byte-level position information for every violation
+- **Baseline** — suppress existing violations so only new ones are reported
+- **noqa** — suppress specific violations inline or file-wide
 
 ## Installation
 
@@ -61,6 +63,73 @@ pydocfix check src/ --select PRM,RTN
 pydocfix check src/ --ignore SUM001,PRM008
 ```
 
+## Suppressing violations
+
+### Inline suppression (`# noqa`)
+
+Add a `# noqa` comment on the **closing `"""`** line to suppress violations for that docstring.
+
+```python
+def foo(x):
+    """Short summary."""  # noqa                    # suppress all rules for this docstring
+
+def bar(x):
+    """Short summary."""  # noqa: PRM001            # suppress only PRM001
+
+def baz(x):
+    """Short summary."""  # noqa: PRM001, RTN001    # suppress multiple rules
+
+# For multiline docstrings, put the comment on the closing """ line
+def qux(x: int) -> int:
+    """Short summary.
+
+    Args:
+        x: A value.
+    """  # noqa: RTN001
+    return x
+```
+
+Unused `# noqa` codes are reported as **NOQ001** (and removed by `--fix`).
+
+### File-level suppression
+
+Put a `# pydocfix: noqa` comment on its **own line** anywhere in the file to suppress violations for every docstring in the file.
+
+```python
+# pydocfix: noqa            # suppress all rules in this file
+# pydocfix: noqa: PRM001    # suppress only PRM001 in this file
+```
+
+## Baseline
+
+The baseline lets you record the current violation state of a project and suppress those existing violations on future runs — so only *new* violations are reported.
+This makes gradual adoption easier: fix violations at your own pace.
+
+```bash
+# Record all current violations as the baseline
+pydocfix check src/ --baseline .pydocfix-baseline.json --generate-baseline
+
+# Future runs only report violations not in the baseline
+pydocfix check src/ --baseline .pydocfix-baseline.json
+```
+
+Or configure the baseline path in `pyproject.toml` so you don't need the flag every time:
+
+```toml
+[tool.pydocfix]
+baseline = ".pydocfix-baseline.json"
+```
+
+Then generate and use it:
+
+```bash
+pydocfix check src/ --generate-baseline    # write baseline
+pydocfix check src/                        # only new violations reported
+```
+
+The baseline file is a JSON file that records violations by **symbol name** (e.g. `MyClass.my_method`) rather than line number, so it stays stable when unrelated code is added or removed.
+Fixed violations are automatically removed from the baseline on the next run.
+
 ## Configuration
 
 Configure via `pyproject.toml`:
@@ -85,6 +154,9 @@ skip_short_docstrings = true
 # Treat Optional[T], T | None, and Union[T, None] as equivalent to T when
 # comparing signature annotations to docstring types in PRM101/RTN101/YLD101 (default: false)
 allow_optional_shorthand = false
+
+# Path to the baseline file (relative to pyproject.toml)
+baseline = ".pydocfix-baseline.json"
 ```
 
 ## Rules
@@ -167,8 +239,8 @@ pydocfix performs linting **and** auto-fix generation in a single pass, yet achi
 
 | Project | Files | Lines | pydocfix | pydoclint |
 |---------|------:|------:|---------:|----------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 251K | 4.2 sec | 4.6 sec |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 635 | 372K | 4.1 sec | 5.3 sec |
+| [numpy](https://github.com/numpy/numpy) | 425 | 251K | 3.1 sec | 3.0 sec |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 635 | 372K | 3.0 sec | 4.3 sec |
 
 > pydocfix is in early development. The majority of processing time is spent in the Rust-based CST parser (pydocstring-rs); adding more Python-side rules has limited impact on overall throughput.
 

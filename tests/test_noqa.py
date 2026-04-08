@@ -139,8 +139,10 @@ class TestInlineNoqaIntegration:
         f = tmp_path / "example.py"
         f.write_text('def foo():\n    """No period"""  # noqa: PRM001\n    pass\n')
         diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
-        assert len(diags) == 1
-        assert diags[0].rule == "SUM002"
+        # SUM002 violation + NOQ001 for unused PRM001
+        rules = {d.rule for d in diags}
+        assert "SUM002" in rules
+        assert "NOQ001" in rules
 
     def test_multiline_docstring_noqa_on_closing_line(self, tmp_path: Path):
         f = tmp_path / "example.py"
@@ -204,6 +206,7 @@ class TestFileNoqaIntegration:
         f.write_text(src)
         diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
         assert len(diags) == 1
+        assert diags[0].rule == "SUM002"
 
     def test_file_level_suppresses_all_docstrings(self, tmp_path: Path):
         f = tmp_path / "example.py"
@@ -223,3 +226,95 @@ class TestFileNoqaIntegration:
         f.write_text(src)
         diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
         assert diags == []
+
+
+# ---------------------------------------------------------------------------
+# NOQ001: Unused noqa directive
+# ---------------------------------------------------------------------------
+
+
+class TestNOQ001:
+    def test_blanket_noqa_suppresses_real_violation_no_noq001(self, tmp_path: Path):
+        """Blanket # noqa that actually suppresses something is NOT reported."""
+        f = tmp_path / "example.py"
+        f.write_text('def foo():\n    """No period"""  # noqa\n    pass\n')
+        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
+        assert not any(d.rule == "NOQ001" for d in diags)
+
+    def test_blanket_noqa_suppresses_nothing_is_reported(self, tmp_path: Path):
+        """Blanket # noqa on a docstring with no violations → NOQ001."""
+        f = tmp_path / "example.py"
+        f.write_text('def foo():\n    """No period."""  # noqa\n    pass\n')
+        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
+        assert len(diags) == 1
+        assert diags[0].rule == "NOQ001"
+        assert diags[0].message == "Unused `noqa` directive"
+
+    def test_specific_code_used_no_noq001(self, tmp_path: Path):
+        """# noqa: SUM002 that actually suppresses SUM002 is NOT reported."""
+        f = tmp_path / "example.py"
+        f.write_text('def foo():\n    """No period"""  # noqa: SUM002\n    pass\n')
+        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
+        assert not any(d.rule == "NOQ001" for d in diags)
+
+    def test_specific_code_unused_is_reported(self, tmp_path: Path):
+        """# noqa: SUM002 when SUM002 doesn't fire → NOQ001."""
+        f = tmp_path / "example.py"
+        f.write_text('def foo():\n    """Has a period."""  # noqa: SUM002\n    pass\n')
+        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
+        assert len(diags) == 1
+        assert diags[0].rule == "NOQ001"
+        assert "SUM002" in diags[0].message
+
+    def test_multiple_codes_one_unused(self, tmp_path: Path):
+        """# noqa: SUM002, PRM001 when only SUM002 fires → NOQ001 for PRM001 only."""
+        f = tmp_path / "example.py"
+        f.write_text('def foo():\n    """No period"""  # noqa: SUM002, PRM001\n    pass\n')
+        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002(), PRM001()]))
+        noq = [d for d in diags if d.rule == "NOQ001"]
+        assert len(noq) == 1
+        assert "PRM001" in noq[0].message
+
+    def test_non_pydocfix_code_ignored(self, tmp_path: Path):
+        """# noqa: SUM002, pylint-something — non-pydocfix codes are not flagged."""
+        f = tmp_path / "example.py"
+        # pylint000 doesn't match pydocfix code pattern so it won't appear in ALL_RULE_CODES
+        f.write_text('def foo():\n    """No period."""  # noqa: SUM002, RTN001\n    pass\n')
+        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
+        # SUM002 is unused, RTN001 is known to pydocfix but also unused
+        noq_codes = {d.rule for d in diags if d.rule == "NOQ001"}
+        assert "NOQ001" in noq_codes
+
+    def test_fix_removes_blanket_noqa(self, tmp_path: Path):
+        """--fix removes a blanket # noqa that suppresses nothing."""
+        f = tmp_path / "example.py"
+        f.write_text('def foo():\n    """Has a period."""  # noqa\n    pass\n')
+        diags, fixed, fixed_idx = check_file(f.read_text(), f, build_rules_map([SUM002()]), fix=True)
+        assert fixed is not None
+        assert "# noqa" not in fixed
+        assert fixed_idx
+
+    def test_fix_removes_specific_unused_code(self, tmp_path: Path):
+        """--fix removes an unused specific code, leaving the comment clean."""
+        f = tmp_path / "example.py"
+        f.write_text('def foo():\n    """Has a period."""  # noqa: SUM002\n    pass\n')
+        diags, fixed, fixed_idx = check_file(f.read_text(), f, build_rules_map([SUM002()]), fix=True)
+        assert fixed is not None
+        assert "# noqa" not in fixed
+
+    def test_fix_rewrites_partial_noqa(self, tmp_path: Path):
+        """--fix rewrites # noqa: SUM002, PRM001 → # noqa: SUM002 when PRM001 unused."""
+        f = tmp_path / "example.py"
+        f.write_text('def foo():\n    """No period"""  # noqa: SUM002, PRM001\n    pass\n')
+        diags, fixed, fixed_idx = check_file(f.read_text(), f, build_rules_map([SUM002(), PRM001()]), fix=True)
+        assert fixed is not None
+        assert "# noqa: SUM002" in fixed
+        assert "PRM001" not in fixed
+
+    def test_noq001_lineno_points_to_noqa_line(self, tmp_path: Path):
+        """NOQ001's line number should match the closing \"\"\" line."""
+        f = tmp_path / "example.py"
+        f.write_text('def foo():\n    """Has period."""  # noqa: SUM002\n    pass\n')
+        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
+        noq = next(d for d in diags if d.rule == "NOQ001")
+        assert noq.lineno == 2  # the closing `"""` is on line 2
