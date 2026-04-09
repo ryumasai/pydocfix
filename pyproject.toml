@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
-    "pydocstring-rs>=0.1.9",
+    "pydocstring-rs>=0.1.10",
     "click>=8.0",
 ]
 
@@ -48,7 +48,7 @@ target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
+select = ["D", "E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
 
 [tool.pyright]
 pythonVersion = "3.11"

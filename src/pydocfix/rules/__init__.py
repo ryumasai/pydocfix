@@ -28,6 +28,7 @@ from pydocfix.rules._base import (
 
 # --- Docstring-level rules ---
 from pydocfix.rules.doc.doc001 import DOC001
+from pydocfix.rules.doc.doc002 import DOC002
 
 # --- Parameter rules ---
 from pydocfix.rules.prm.prm001 import PRM001
@@ -90,6 +91,7 @@ __all__ = [
     "SUM002",
     # doc
     "DOC001",
+    "DOC002",
     # prm
     "PRM001",
     "PRM002",
@@ -158,6 +160,7 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     SUM001,
     SUM002,
     DOC001,
+    DOC002,
     PRM001,
     PRM002,
     PRM003,

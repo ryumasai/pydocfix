@@ -29,6 +29,7 @@ from pydocstring import (
 
 from pydocfix.rules import (
     DOC001,
+    DOC002,
     PRM001,
     PRM002,
     PRM003,
@@ -3828,6 +3829,152 @@ class TestDOC001:
         assert "stray line" in result
 
 
+# ── DOC002 ────────────────────────────────────────────────────────────
+
+
+def _make_doc002_ctx(ds_text: str, cst_node, *, numpy: bool = False) -> DiagnoseContext:
+    """Create a DiagnoseContext for DOC002 tests with an entry node as target."""
+    parsed = parse_numpy(ds_text) if numpy else parse_google(ds_text)
+    return DiagnoseContext(
+        filepath=Path("test.py"),
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=cst_node,
+        parent_ast=ast.parse("pass").body[0],
+        docstring_stmt=_dummy_stmt(2, 4),
+        docstring_location=DocstringLocation(Offset(2, 7), 0, len(ds_text) + 6, '"""', '"""'),
+    )
+
+
+class TestDOC002:
+    """DOC002: incorrect indentation of docstring section entries."""
+
+    # Google style – 4-space section indent, 8-space expected entry indent
+    DS_GOOGLE_CORRECT = "Summary.\n\n    Args:\n        x: An arg.\n\n    "
+    DS_GOOGLE_UNDER = "Summary.\n\n    Args:\n     x: An arg.\n\n    "  # 5 spaces (expected 8)
+    DS_GOOGLE_OVER = "Summary.\n\n    Args:\n            x: An arg.\n\n    "  # 12 spaces
+
+    def test_google_correct_no_diagnostic(self):
+        ds = self.DS_GOOGLE_CORRECT
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        assert list(DOC002().diagnose(ctx)) == []
+
+    def test_google_under_indent_emits_diagnostic(self):
+        ds = self.DS_GOOGLE_UNDER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+        assert "5" in diags[0].message
+        assert "8" in diags[0].message
+
+    def test_google_over_indent_emits_diagnostic(self):
+        ds = self.DS_GOOGLE_OVER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+        assert "12" in diags[0].message
+
+    def test_fix_corrects_under_indent(self):
+        ds = self.DS_GOOGLE_UNDER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diag = next(iter(DOC002().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "        x: An arg." in result  # 8 spaces
+
+    def test_fix_corrects_over_indent(self):
+        ds = self.DS_GOOGLE_OVER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diag = next(iter(DOC002().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "        x: An arg." in result  # 8 spaces
+
+    def test_fix_is_safe(self):
+        ds = self.DS_GOOGLE_UNDER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diag = next(iter(DOC002().diagnose(ctx)))
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_google_returns_section(self):
+        ds = "Summary.\n\n    Returns:\n     str: Result.\n\n    "
+        parsed = parse_google(ds)
+        returns = _find_cst_nodes(parsed, GoogleReturn)
+        ctx = _make_doc002_ctx(ds, returns[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+    def test_google_raises_section(self):
+        ds = "Summary.\n\n    Raises:\n     ValueError: If bad.\n\n    "
+        parsed = parse_google(ds)
+        exceptions = _find_cst_nodes(parsed, GoogleException)
+        ctx = _make_doc002_ctx(ds, exceptions[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+    def test_google_yields_section(self):
+        ds = "Summary.\n\n    Yields:\n     int: A value.\n\n    "
+        parsed = parse_google(ds)
+        yields = _find_cst_nodes(parsed, GoogleYield)
+        ctx = _make_doc002_ctx(ds, yields[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+    def test_numpy_correct_no_diagnostic(self):
+        # NumPy: entries at same indent as section header
+        ds = "Summary.\n\n    Parameters\n    ----------\n    x : int\n        An arg.\n\n    "
+        parsed = parse_numpy(ds)
+        params = _find_cst_nodes(parsed, NumPyParameter)
+        ctx = _make_doc002_ctx(ds, params[0], numpy=True)
+        assert list(DOC002().diagnose(ctx)) == []
+
+    def test_numpy_over_indent_emits_diagnostic(self):
+        ds = "Summary.\n\n    Parameters\n    ----------\n      x : int\n        An arg.\n\n    "
+        parsed = parse_numpy(ds)
+        params = _find_cst_nodes(parsed, NumPyParameter)
+        ctx = _make_doc002_ctx(ds, params[0], numpy=True)
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+    def test_numpy_fix_corrects_indent(self):
+        ds = "Summary.\n\n    Parameters\n    ----------\n      x : int\n        An arg.\n\n    "
+        parsed = parse_numpy(ds)
+        params = _find_cst_nodes(parsed, NumPyParameter)
+        ctx = _make_doc002_ctx(ds, params[0], numpy=True)
+        diag = next(iter(DOC002().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "    x : int" in result  # 4 spaces (same as section)
+
+    def test_numpy_returns_section(self):
+        ds = "Summary.\n\n    Returns\n    -------\n      str\n        A value.\n\n    "
+        parsed = parse_numpy(ds)
+        returns = _find_cst_nodes(parsed, NumPyReturns)
+        ctx = _make_doc002_ctx(ds, returns[0], numpy=True)
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+
 # ── Registry completeness ─────────────────────────────────────────────
 
 
@@ -3838,7 +3985,7 @@ class TestRegistryCompleteness:
         # Without type_annotation_style, style-specific rules (103/104 pairs)
         # are excluded to avoid contradictory enforcement — 6 fewer rules.
         registry = build_registry(select=["ALL"])
-        assert len(registry.all_rules()) == 31
+        assert len(registry.all_rules()) == 32
 
     def test_all_rules_select_all_signature_style(self):
         from pydocfix.config import Config
@@ -3846,7 +3993,7 @@ class TestRegistryCompleteness:
         config = Config(type_annotation_style="signature")
         registry = build_registry(select=["ALL"], config=config)
         codes = {r.code for r in registry.all_rules()}
-        assert len(registry.all_rules()) == 34
+        assert len(registry.all_rules()) == 35
         assert "PRM104" in codes
         assert "RTN104" in codes
         assert "YLD104" in codes
@@ -3860,7 +4007,7 @@ class TestRegistryCompleteness:
         config = Config(type_annotation_style="docstring")
         registry = build_registry(select=["ALL"], config=config)
         codes = {r.code for r in registry.all_rules()}
-        assert len(registry.all_rules()) == 34
+        assert len(registry.all_rules()) == 35
         assert "PRM103" in codes
         assert "RTN103" in codes
         assert "YLD103" in codes
@@ -3870,7 +4017,7 @@ class TestRegistryCompleteness:
 
     def test_default_rules_count(self):
         registry = build_registry()
-        assert len(registry.all_rules()) == 30
+        assert len(registry.all_rules()) == 31
 
     def test_non_default_rules_excluded(self):
         registry = build_registry()
@@ -3953,7 +4100,7 @@ class TestRegistryCompleteness:
         config = Config(type_annotation_style="both")
         registry = build_registry(select=["ALL"], config=config)
         codes = {r.code for r in registry.all_rules()}
-        assert len(registry.all_rules()) == 37
+        assert len(registry.all_rules()) == 38
         assert "PRM103" in codes
         assert "PRM105" in codes
         assert "RTN103" in codes
@@ -3974,7 +4121,7 @@ class TestRegistryCompleteness:
         config = Config(type_annotation_style="docstring")
         registry = build_registry(select=["ALL"], config=config)
         codes = {r.code for r in registry.all_rules()}
-        assert len(registry.all_rules()) == 37
+        assert len(registry.all_rules()) == 38
         assert "PRM103" in codes
         assert "PRM106" in codes
         assert "RTN103" in codes
@@ -3995,7 +4142,7 @@ class TestRegistryCompleteness:
         config = Config(type_annotation_style="signature")
         registry = build_registry(select=["ALL"], config=config)
         codes = {r.code for r in registry.all_rules()}
-        assert len(registry.all_rules()) == 37
+        assert len(registry.all_rules()) == 38
         assert "PRM104" in codes
         assert "PRM105" in codes
         assert "RTN104" in codes
