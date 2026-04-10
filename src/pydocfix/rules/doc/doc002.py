@@ -34,34 +34,8 @@ from pydocfix.rules._base import (
     detect_section_indent,
 )
 
-_NUMPY_ENTRY_TYPES: frozenset[type] = frozenset({
-    NumPyParameter,
-    NumPyReturns,
-    NumPyException,
-    NumPyYields,
-    NumPyAttribute,
-    NumPyWarning,
-    NumPySeeAlsoItem,
-    NumPyReference,
-    NumPyMethod,
-})
-
-
-class DOC002(BaseRule):
-    """Incorrect indentation of a docstring section entry."""
-
-    code = "DOC002"
-    message = "Incorrect indentation of section entry."
-    enabled_by_default = True
-    target_kinds = frozenset({
-        GoogleArg,
-        GoogleReturn,
-        GoogleException,
-        GoogleYield,
-        GoogleAttribute,
-        GoogleWarning,
-        GoogleSeeAlsoItem,
-        GoogleMethod,
+_NUMPY_ENTRY_TYPES: frozenset[type] = frozenset(
+    {
         NumPyParameter,
         NumPyReturns,
         NumPyException,
@@ -71,14 +45,45 @@ class DOC002(BaseRule):
         NumPySeeAlsoItem,
         NumPyReference,
         NumPyMethod,
-    })
+    }
+)
+
+
+class DOC002(BaseRule):
+    """Incorrect indentation of a docstring section entry."""
+
+    code = "DOC002"
+    message = "Incorrect indentation of section entry."
+    enabled_by_default = True
+    target_kinds = frozenset(
+        {
+            GoogleArg,
+            GoogleReturn,
+            GoogleException,
+            GoogleYield,
+            GoogleAttribute,
+            GoogleWarning,
+            GoogleSeeAlsoItem,
+            GoogleMethod,
+            NumPyParameter,
+            NumPyReturns,
+            NumPyException,
+            NumPyYields,
+            NumPyAttribute,
+            NumPyWarning,
+            NumPySeeAlsoItem,
+            NumPyReference,
+            NumPyMethod,
+        }
+    )
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        """Yield DOC002 diagnostics for incorrectly indented docstring entries."""
         node = ctx.target_cst
         ds_text = ctx.docstring_text
 
         # Find the start of the line on which this entry appears.
-        before = ds_text[:node.range.start]
+        before = ds_text[: node.range.start]
         last_nl = before.rfind("\n")
         if last_nl == -1:
             # Entry is on the very first line of the docstring content — skip.
@@ -93,10 +98,7 @@ class DOC002(BaseRule):
 
         # NumPy entries are at the same level as the section header;
         # Google entries are indented 4 more spaces.
-        if type(node) in _NUMPY_ENTRY_TYPES:
-            expected_indent = section_indent
-        else:
-            expected_indent = section_indent + 4
+        expected_indent = section_indent if type(node) in _NUMPY_ENTRY_TYPES else section_indent + 4
 
         if actual_indent == expected_indent:
             return

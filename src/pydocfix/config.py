@@ -41,6 +41,8 @@ class Config:
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
+    extend_safe_fixes: list[str] = field(default_factory=list)
+    extend_unsafe_fixes: list[str] = field(default_factory=list)
     baseline: str | None = None
 
 
@@ -87,6 +89,8 @@ def load_config(start: Path | None = None) -> Config:
     raw_aos = section.get("allow_optional_shorthand")
     allow_optional_shorthand: bool = bool(raw_aos) if raw_aos is not None else False
     baseline: str | None = section.get("baseline") or None
+    extend_safe_fixes: list[str] = [str(c).upper() for c in section.get("extend-safe-fixes", [])]
+    extend_unsafe_fixes: list[str] = [str(c).upper() for c in section.get("extend-unsafe-fixes", [])]
     return Config(
         ignore=ignore,
         select=select,
@@ -95,4 +99,6 @@ def load_config(start: Path | None = None) -> Config:
         skip_short_docstrings=skip_short_docstrings,
         allow_optional_shorthand=allow_optional_shorthand,
         baseline=baseline,
+        extend_safe_fixes=extend_safe_fixes,
+        extend_unsafe_fixes=extend_unsafe_fixes,
     )

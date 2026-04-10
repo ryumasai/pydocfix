@@ -242,13 +242,27 @@ def apply_edits(source: str, edits: Iterable[Edit]) -> str:
     return buf.decode("utf-8")
 
 
-def is_applicable(diag: Diagnostic, unsafe_fixes: bool) -> bool:
+def effective_applicability(diag: Diagnostic, config: Config | None = None) -> Applicability:
+    """Return the effective applicability of a diagnostic's fix, after config overrides."""
+    assert diag.fix is not None
+    applicability = diag.fix.applicability
+    if config is not None:
+        code = diag.rule.upper()
+        if code in {c.upper() for c in config.extend_safe_fixes}:
+            return Applicability.SAFE
+        if code in {c.upper() for c in config.extend_unsafe_fixes}:
+            return Applicability.UNSAFE
+    return applicability
+
+
+def is_applicable(diag: Diagnostic, unsafe_fixes: bool, config: Config | None = None) -> bool:
     """Return True if the diagnostic's fix should be applied."""
     if diag.fix is None:
         return False
-    if diag.fix.applicability == Applicability.SAFE:
+    app = effective_applicability(diag, config)
+    if app == Applicability.SAFE:
         return True
-    if diag.fix.applicability == Applicability.UNSAFE and unsafe_fixes:  # noqa: SIM103
+    if app == Applicability.UNSAFE and unsafe_fixes:  # noqa: SIM103
         return True
     return False
 

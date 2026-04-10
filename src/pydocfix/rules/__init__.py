@@ -21,6 +21,7 @@ from pydocfix.rules._base import (
     Severity,
     apply_edits,
     delete_range,
+    effective_applicability,
     insert_at,
     is_applicable,
     replace_token,
@@ -150,6 +151,7 @@ __all__ = [
     "build_registry",
     "delete_range",
     "insert_at",
+    "effective_applicability",
     "is_applicable",
     "replace_token",
     # **** CONSTANTS ****

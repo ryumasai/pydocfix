@@ -84,7 +84,7 @@ def check(
     )
     from pydocfix.checker import check_file
     from pydocfix.config import DEFAULT_EXCLUDE, find_pyproject_toml, load_config
-    from pydocfix.rules import Applicability, build_registry
+    from pydocfix.rules import Applicability, build_registry, effective_applicability
 
     config = load_config()
 
@@ -158,9 +158,10 @@ def check(
 
         for d in diagnostics:
             if d.fix is not None:
-                if d.fix.applicability == Applicability.SAFE:
+                app = effective_applicability(d, config)
+                if app == Applicability.SAFE:
                     total_safe_fixable += 1
-                elif d.fix.applicability == Applicability.UNSAFE:
+                elif app == Applicability.UNSAFE:
                     total_unsafe_fixable += 1
 
         if new_source is not None:
@@ -173,7 +174,7 @@ def check(
                 diagnostics = [d for i, d in enumerate(diagnostics) if i not in fixed_indices]
 
         for d in diagnostics:
-            hint = _fixable_hint(d, unsafe_fixes)
+            hint = _fixable_hint(d, unsafe_fixes, config)
             click.echo(f"{d.filepath}:{d.lineno}:{d.col}: {d.rule} {d.message}{hint}")
 
         remaining_diagnostics.extend(diagnostics)
@@ -210,7 +211,7 @@ def check(
     if total_violations == 0:
         click.echo(click.style("All checks passed.", fg="green") + f" ({len(targets)} file(s) checked)")
     elif fix:
-        _summarize_fix(total_fixed, remaining, remaining_diagnostics, unsafe_fixes)
+        _summarize_fix(total_fixed, remaining, remaining_diagnostics, unsafe_fixes, config)
     elif diff:
         _summarize_diff(total_violations, total_would_fix, total_unsafe_fixable, unsafe_fixes)
     else:
@@ -220,9 +221,11 @@ def check(
         sys.exit(1)
 
 
-def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe fix)", " (display only fix)"]:
+def _fixable_hint(
+    d, unsafe_fixes: bool, config=None
+) -> Literal["", " (fixable)", " (unsafe fix)", " (display only fix)"]:
     """Return a parenthetical hint about fixability."""
-    from pydocfix.rules import Applicability
+    from pydocfix.rules import Applicability, effective_applicability
 
     unfixable: Final = ""
     fixable: Final = " (fixable)"
@@ -231,11 +234,12 @@ def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe 
 
     if d.fix is None:
         return unfixable
-    if d.fix.applicability == Applicability.SAFE:
+    app = effective_applicability(d, config)
+    if app == Applicability.SAFE:
         return fixable
-    if d.fix.applicability == Applicability.UNSAFE:
+    if app == Applicability.UNSAFE:
         return unsafe if not unsafe_fixes else fixable
-    if d.fix.applicability == Applicability.DISPLAY_ONLY:
+    if app == Applicability.DISPLAY_ONLY:
         return display_only
     return unfixable
 
@@ -256,15 +260,19 @@ def _summarize_check(total: int, safe: int, unsafe: int) -> None:
         click.echo(f"Found {total} violation(s). No auto-fixes available.")
 
 
-def _summarize_fix(total_fixed: int, remaining: int, remaining_diagnostics: list, unsafe_fixes: bool) -> None:
+def _summarize_fix(
+    total_fixed: int, remaining: int, remaining_diagnostics: list, unsafe_fixes: bool, config=None
+) -> None:
     """Print summary for --fix mode."""
-    from pydocfix.rules import Applicability
+    from pydocfix.rules import Applicability, effective_applicability
 
     if total_fixed and not remaining:
         click.echo(click.style(f"Fixed {total_fixed} violation(s). No issues remaining.", fg="green"))
     elif total_fixed and remaining:
         remaining_unsafe = sum(
-            1 for d in remaining_diagnostics if d.fix is not None and d.fix.applicability == Applicability.UNSAFE
+            1
+            for d in remaining_diagnostics
+            if d.fix is not None and effective_applicability(d, config) == Applicability.UNSAFE
         )
         msg = f"Fixed {total_fixed} violation(s). {remaining} remaining"
         if remaining_unsafe and not unsafe_fixes:
@@ -273,7 +281,9 @@ def _summarize_fix(total_fixed: int, remaining: int, remaining_diagnostics: list
         click.echo(msg)
     else:
         remaining_unsafe = sum(
-            1 for d in remaining_diagnostics if d.fix is not None and d.fix.applicability == Applicability.UNSAFE
+            1
+            for d in remaining_diagnostics
+            if d.fix is not None and effective_applicability(d, config) == Applicability.UNSAFE
         )
         if remaining_unsafe and not unsafe_fixes:
             click.echo(f"Found {remaining} violation(s). Run --fix --unsafe-fixes to fix {remaining_unsafe} of them.")

@@ -38,7 +38,7 @@ from pydocstring import (
 )
 
 from pydocfix.config import Config
-from pydocfix.noqa import NoqaDirective, find_inline_noqa, parse_file_noqa, parse_inline_noqa
+from pydocfix.noqa import NoqaDirective, find_inline_noqa, parse_file_noqa
 from pydocfix.rules import (
     ALL_RULE_CODES,
     BaseRule,
@@ -351,6 +351,7 @@ def _apply_nonoverlapping_fixes(
     ds_content: str,
     ds_diagnostics: list[Diagnostic],
     unsafe_fixes: bool,
+    config: Config | None = None,
 ) -> tuple[str | None, int]:
     """Apply non-overlapping fixes to a docstring.
 
@@ -359,7 +360,7 @@ def _apply_nonoverlapping_fixes(
     accepted_edits: list[Edit] = []
     applied = 0
     for d in ds_diagnostics:
-        if not is_applicable(d, unsafe_fixes):
+        if not is_applicable(d, unsafe_fixes, config):
             continue
         assert d.fix is not None
         if _has_overlap(accepted_edits, d.fix):
@@ -487,7 +488,7 @@ def _check_unused_inline_noqa(
             if remaining_codes:
                 # Rewrite the comment keeping used + non-pydocfix codes
                 new_codes_str = ", ".join(sorted(remaining_codes))
-                replacement = f"# noqa: {new_codes_str}".encode("utf-8")
+                replacement = f"# noqa: {new_codes_str}".encode()
                 source_edit = (_byte_pos(char_start), _byte_pos(char_end), replacement)
             else:
                 # All codes remove — strip the entire comment
@@ -525,9 +526,10 @@ def check_file(
     file_edits: list[tuple[int, int, bytes]] = []
 
     # Build parent map once for symbol computation
+    parent_map: dict[int, ast.AST]
     try:
         _tree: ast.AST | None = ast.parse(source, filename=str(filepath))
-        parent_map: Final[dict[int, ast.AST]] = _build_parent_map(_tree)
+        parent_map = _build_parent_map(_tree)
     except SyntaxError:
         _tree = None
         parent_map = {}
@@ -567,7 +569,7 @@ def check_file(
                 if suppress_inline or suppress_file:
                     if suppress_inline:
                         inline_suppressed_any = True
-                        if inline_noqa.codes is not None:
+                        if inline_noqa is not None and inline_noqa.codes is not None:
                             used_inline.add(d.rule)
                 else:
                     kept.append(d)
@@ -591,6 +593,7 @@ def check_file(
                     current_content,
                     ds_diagnostics,
                     unsafe_fixes,
+                    config,
                 )
                 if new_content is None:
                     break  # nothing fixable remains
@@ -606,7 +609,7 @@ def check_file(
                     ds_loc,
                     config,
                 )
-                if not ds_diagnostics or not any(is_applicable(d, unsafe_fixes) for d in ds_diagnostics):
+                if not ds_diagnostics or not any(is_applicable(d, unsafe_fixes, config) for d in ds_diagnostics):
                     break  # converged — no more fixable diagnostics
             else:
                 logger.warning(

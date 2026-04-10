@@ -287,3 +287,122 @@ class TestAllowOptionalShorthand:
         (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\nallow_optional_shorthand = true\n")
         config = load_config(tmp_path)
         assert config.allow_optional_shorthand is True
+
+
+class TestExtendSafeUnsafeFixes:
+    """extend-safe-fixes / extend-unsafe-fixes config options."""
+
+    def test_defaults_empty(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\n")
+        config = load_config(tmp_path)
+        assert config.extend_safe_fixes == []
+        assert config.extend_unsafe_fixes == []
+
+    def test_extend_safe_fixes_loaded(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\nextend-safe-fixes = ["PRM001", "RTN002"]\n')
+        config = load_config(tmp_path)
+        assert config.extend_safe_fixes == ["PRM001", "RTN002"]
+
+    def test_extend_unsafe_fixes_loaded(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\nextend-unsafe-fixes = ["SUM001"]\n')
+        config = load_config(tmp_path)
+        assert config.extend_unsafe_fixes == ["SUM001"]
+
+    def test_extend_safe_fixes_uppercased(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\nextend-safe-fixes = ["prm001"]\n')
+        config = load_config(tmp_path)
+        assert config.extend_safe_fixes == ["PRM001"]
+
+    def test_effective_applicability_override_to_safe(self, tmp_path: Path):
+        """A rule listed in extend_safe_fixes is treated as SAFE even if its fix is UNSAFE."""
+        from pydocfix.config import Config
+        from pydocfix.rules._base import Applicability, Diagnostic, Edit, Fix, Offset, Range, effective_applicability
+
+        fix = Fix(edits=[Edit(0, 0, "")], applicability=Applicability.UNSAFE)
+        diag = Diagnostic(
+            rule="PRM001",
+            message="msg",
+            filepath="f.py",
+            range=Range(Offset(1, 1), Offset(1, 1)),
+            fix=fix,
+        )
+        cfg = Config(extend_safe_fixes=["PRM001"])
+        assert effective_applicability(diag, cfg) == Applicability.SAFE
+
+    def test_effective_applicability_override_to_unsafe(self, tmp_path: Path):
+        """A rule listed in extend_unsafe_fixes is treated as UNSAFE even if its fix is SAFE."""
+        from pydocfix.config import Config
+        from pydocfix.rules._base import Applicability, Diagnostic, Edit, Fix, Offset, Range, effective_applicability
+
+        fix = Fix(edits=[Edit(0, 0, "")], applicability=Applicability.SAFE)
+        diag = Diagnostic(
+            rule="SUM002",
+            message="msg",
+            filepath="f.py",
+            range=Range(Offset(1, 1), Offset(1, 1)),
+            fix=fix,
+        )
+        cfg = Config(extend_unsafe_fixes=["SUM002"])
+        assert effective_applicability(diag, cfg) == Applicability.UNSAFE
+
+    def test_is_applicable_extend_safe_without_unsafe_flag(self, tmp_path: Path):
+        """UNSAFE rule promoted to SAFE via config should be applicable without --unsafe-fixes."""
+        from pydocfix.config import Config
+        from pydocfix.rules._base import Applicability, Diagnostic, Edit, Fix, Offset, Range, is_applicable
+
+        fix = Fix(edits=[Edit(0, 0, "")], applicability=Applicability.UNSAFE)
+        diag = Diagnostic(
+            rule="PRM001",
+            message="msg",
+            filepath="f.py",
+            range=Range(Offset(1, 1), Offset(1, 1)),
+            fix=fix,
+        )
+        cfg = Config(extend_safe_fixes=["PRM001"])
+        assert is_applicable(diag, unsafe_fixes=False, config=cfg) is True
+
+    def test_is_applicable_extend_unsafe_safe_rule_not_applied_without_flag(self, tmp_path: Path):
+        """SAFE rule demoted to UNSAFE via config should not be applicable without --unsafe-fixes."""
+        from pydocfix.config import Config
+        from pydocfix.rules._base import Applicability, Diagnostic, Edit, Fix, Offset, Range, is_applicable
+
+        fix = Fix(edits=[Edit(0, 0, "")], applicability=Applicability.SAFE)
+        diag = Diagnostic(
+            rule="SUM002",
+            message="msg",
+            filepath="f.py",
+            range=Range(Offset(1, 1), Offset(1, 1)),
+            fix=fix,
+        )
+        cfg = Config(extend_unsafe_fixes=["SUM002"])
+        assert is_applicable(diag, unsafe_fixes=False, config=cfg) is False
+
+    def test_is_applicable_extend_unsafe_safe_rule_applied_with_flag(self, tmp_path: Path):
+        """SAFE rule demoted to UNSAFE via config should be applicable with --unsafe-fixes."""
+        from pydocfix.config import Config
+        from pydocfix.rules._base import Applicability, Diagnostic, Edit, Fix, Offset, Range, is_applicable
+
+        fix = Fix(edits=[Edit(0, 0, "")], applicability=Applicability.SAFE)
+        diag = Diagnostic(
+            rule="SUM002",
+            message="msg",
+            filepath="f.py",
+            range=Range(Offset(1, 1), Offset(1, 1)),
+            fix=fix,
+        )
+        cfg = Config(extend_unsafe_fixes=["SUM002"])
+        assert is_applicable(diag, unsafe_fixes=True, config=cfg) is True
+
+    def test_no_override_without_config(self, tmp_path: Path):
+        """Without config, UNSAFE fix is not applicable without --unsafe-fixes."""
+        from pydocfix.rules._base import Applicability, Diagnostic, Edit, Fix, Offset, Range, is_applicable
+
+        fix = Fix(edits=[Edit(0, 0, "")], applicability=Applicability.UNSAFE)
+        diag = Diagnostic(
+            rule="PRM001",
+            message="msg",
+            filepath="f.py",
+            range=Range(Offset(1, 1), Offset(1, 1)),
+            fix=fix,
+        )
+        assert is_applicable(diag, unsafe_fixes=False, config=None) is False
