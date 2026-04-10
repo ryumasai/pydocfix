@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @click.group()
 @click.version_option(__version__, "--version", message="pydocfix %(version)s")
 def cli() -> None:
-    """A Python docstring linter with auto-fix support."""
+    """Lint and auto-fix Python docstrings."""
 
 
 @cli.command()
@@ -329,7 +329,6 @@ def _collect_files(
     exclude: frozenset[str] = frozenset(),
 ) -> list[Path]:
     """Resolve paths to a flat list of Python files, skipping excluded directories."""
-
     suffixes: Final = {".py", ".pyi"}
 
     def _walk(directory: Path) -> list[Path]:
@@ -355,6 +354,7 @@ def _collect_files(
 
 
 def main() -> None:
+    """Entry point for console script. Calls the CLI group function."""
     cli()
 
 
