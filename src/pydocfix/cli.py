@@ -134,7 +134,7 @@ def check(
 
     for filepath in sorted(targets):
         source = filepath.read_text(encoding="utf-8")
-        diagnostics, new_source, fixed_indices = check_file(
+        diagnostics, new_source, remaining = check_file(
             source, filepath, kind_map, fix=(fix or diff), unsafe_fixes=unsafe_fixes, config=config
         )
 
@@ -147,9 +147,10 @@ def check(
         if generate_baseline:
             continue
 
-        # Apply baseline filtering
+        # Apply baseline filtering to both first-pass and remaining diagnostics
         if baseline_data:
             diagnostics = filter_baseline_violations(diagnostics, baseline_data, fp_str)
+            remaining = filter_baseline_violations(remaining, baseline_data, fp_str)
 
         if not diagnostics:
             continue
@@ -167,11 +168,11 @@ def check(
         if new_source is not None:
             if diff:
                 _print_diff(filepath, source, new_source)
-                total_would_fix += len(fixed_indices)
+                total_would_fix += len(diagnostics) - len(remaining)
             if fix:
                 filepath.write_text(new_source, encoding="utf-8")
-                total_fixed += len(fixed_indices)
-                diagnostics = [d for i, d in enumerate(diagnostics) if i not in fixed_indices]
+                total_fixed += len(diagnostics) - len(remaining)
+                diagnostics = remaining
 
         for d in diagnostics:
             hint = _fixable_hint(d, unsafe_fixes, config)

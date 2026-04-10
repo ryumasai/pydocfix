@@ -161,10 +161,10 @@ class TestInlineNoqaIntegration:
     def test_noqa_suppressed_diagnostic_also_skips_fix(self, tmp_path: Path):
         f = tmp_path / "example.py"
         f.write_text('def foo():\n    """No period"""  # noqa\n    pass\n')
-        diags, fixed, fixed_idx = check_file(f.read_text(), f, build_rules_map([SUM002()]), fix=True)
+        diags, fixed, remaining = check_file(f.read_text(), f, build_rules_map([SUM002()]), fix=True)
         assert diags == []
         assert fixed is None
-        assert fixed_idx == frozenset()
+        assert remaining == []
 
     def test_per_function_noqa(self, tmp_path: Path):
         """noqa on one function's docstring should not affect another."""
@@ -289,16 +289,16 @@ class TestNOQ001:
         """--fix removes a blanket # noqa that suppresses nothing."""
         f = tmp_path / "example.py"
         f.write_text('def foo():\n    """Has a period."""  # noqa\n    pass\n')
-        diags, fixed, fixed_idx = check_file(f.read_text(), f, build_rules_map([SUM002()]), fix=True)
+        diags, fixed, remaining = check_file(f.read_text(), f, build_rules_map([SUM002()]), fix=True)
         assert fixed is not None
         assert "# noqa" not in fixed
-        assert fixed_idx
+        assert remaining == []
 
     def test_fix_removes_specific_unused_code(self, tmp_path: Path):
         """--fix removes an unused specific code, leaving the comment clean."""
         f = tmp_path / "example.py"
         f.write_text('def foo():\n    """Has a period."""  # noqa: SUM002\n    pass\n')
-        diags, fixed, fixed_idx = check_file(f.read_text(), f, build_rules_map([SUM002()]), fix=True)
+        diags, fixed, remaining = check_file(f.read_text(), f, build_rules_map([SUM002()]), fix=True)
         assert fixed is not None
         assert "# noqa" not in fixed
 
@@ -306,7 +306,7 @@ class TestNOQ001:
         """--fix rewrites # noqa: SUM002, PRM001 → # noqa: SUM002 when PRM001 unused."""
         f = tmp_path / "example.py"
         f.write_text('def foo():\n    """No period"""  # noqa: SUM002, PRM001\n    pass\n')
-        diags, fixed, fixed_idx = check_file(f.read_text(), f, build_rules_map([SUM002(), PRM001()]), fix=True)
+        diags, fixed, remaining = check_file(f.read_text(), f, build_rules_map([SUM002(), PRM001()]), fix=True)
         assert fixed is not None
         assert "# noqa: SUM002" in fixed
         assert "PRM001" not in fixed

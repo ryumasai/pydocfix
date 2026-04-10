@@ -508,10 +508,12 @@ def check_file(
     fix: bool = False,
     unsafe_fixes: bool = False,
     config: Config | None = None,
-) -> tuple[list[Diagnostic], str | None, frozenset[int]]:
+) -> tuple[list[Diagnostic], str | None, list[Diagnostic]]:
     """Diagnose and optionally fix all docstrings, iterating until stable.
 
-    Returns (all_diagnostics, fixed_source_or_none, indices_of_fixed_diagnostics).
+    Returns (all_diagnostics, fixed_source_or_none, remaining_after_fix).
+    *remaining_after_fix* is the list of diagnostics that still exist after
+    all fixes have been applied (empty when fix=False).
     """
     lines: Final[list[str]] = source.splitlines(keepends=True)
     source_bytes: Final[bytes] = source.encode("utf-8")
@@ -522,7 +524,7 @@ def check_file(
         line_offsets.append(pos + 1)
     file_noqa: Final[NoqaDirective | None] = parse_file_noqa(lines)
     all_diagnostics: list[Diagnostic] = []
-    fixed_indices: set[int] = set()
+    remaining_after_fix: list[Diagnostic] = []
     file_edits: list[tuple[int, int, bytes]] = []
 
     # Build parent map once for symbol computation
@@ -579,14 +581,11 @@ def check_file(
         symbol = _compute_symbol(parent_ast, parent_map)
         ds_diagnostics = [dataclasses.replace(d, symbol=symbol) for d in ds_diagnostics]
 
-        base_idx = len(all_diagnostics)
         all_diagnostics.extend(ds_diagnostics)
 
         # Fix phase (per-docstring) — iterate until stable
         if fix and ds_diagnostics:
             current_content = ds_content
-            # Track which first-pass diagnostics have been fixed by rule identity
-            first_pass_rules = {(base_idx + i, d.rule, d.range) for i, d in enumerate(ds_diagnostics)}
 
             for _iteration in range(_MAX_FIX_ITERATIONS):
                 new_content, applied = _apply_nonoverlapping_fixes(
@@ -599,7 +598,7 @@ def check_file(
                     break  # nothing fixable remains
                 current_content = new_content
 
-                # Re-diagnose the fixed docstring
+                # Re-diagnose the fixed docstring, re-annotate symbol
                 ds_diagnostics = _diagnose_docstring(
                     kind_map,
                     filepath,
@@ -609,6 +608,7 @@ def check_file(
                     ds_loc,
                     config,
                 )
+                ds_diagnostics = [dataclasses.replace(d, symbol=symbol) for d in ds_diagnostics]
                 if not ds_diagnostics or not any(is_applicable(d, unsafe_fixes, config) for d in ds_diagnostics):
                     break  # converged — no more fixable diagnostics
             else:
@@ -618,12 +618,8 @@ def check_file(
                     _MAX_FIX_ITERATIONS,
                 )
 
-            # Determine which first-pass diagnostics were fixed:
-            # any diagnostic from the first pass whose (rule, range) no longer appears
-            remaining_ids = {(d.rule, d.range) for d in ds_diagnostics}
-            for idx, rule, rng in first_pass_rules:
-                if (rule, rng) not in remaining_ids:
-                    fixed_indices.add(idx)
+            # The final ds_diagnostics is the ground truth of what remains
+            remaining_after_fix.extend(ds_diagnostics)
 
             if current_content != ds_content:
                 file_edits.append(
@@ -647,12 +643,13 @@ def check_file(
                 filepath=filepath,
             )
             if noq_diagnostics:
-                noq_base_idx = len(all_diagnostics)
                 all_diagnostics.extend(noq_diagnostics)
                 if fix and noq_source_edit is not None:
                     file_edits.append(noq_source_edit)
-                    for i in range(len(noq_diagnostics)):
-                        fixed_indices.add(noq_base_idx + i)
+                    # NOQ001 was fixed — does not appear in remaining_after_fix
+                elif fix:
+                    # NOQ001 not fixable — still remains
+                    remaining_after_fix.extend(noq_diagnostics)
 
     fixed_source: str | None = None
     if file_edits:
@@ -661,4 +658,4 @@ def check_file(
             buf = buf[:start] + replacement + buf[end:]
         fixed_source = buf.decode("utf-8")
 
-    return all_diagnostics, fixed_source, frozenset(fixed_indices)
+    return all_diagnostics, fixed_source, remaining_after_fix
