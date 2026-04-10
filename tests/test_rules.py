@@ -90,16 +90,13 @@ def _dummy_stmt(lineno: int = 1, col_offset: int = 0) -> ast.stmt:
 
 
 def _make_diagnose_ctx(raw: str) -> DiagnoseContext:
-    """Create a DiagnoseContext with the SUMMARY token as cst_node."""
+    """Create a DiagnoseContext with the parsed docstring as target."""
     parsed = parse_google(raw)
-    summary_token = parsed.summary
-    # If no summary, use the parsed docstring itself as target
-    target = summary_token if summary_token is not None else parsed
     return DiagnoseContext(
         filepath=Path("test.py"),
         docstring_text=raw,
         docstring_cst=parsed,
-        target_cst=target,
+        target_cst=parsed,
         parent_ast=ast.parse("pass").body[0],
         docstring_stmt=_dummy_stmt(1, 0),
         docstring_location=DocstringLocation(Offset(1, 0), 0, len(raw) + 6, '"""', '"""'),
@@ -234,8 +231,8 @@ class TestRegistry:
 
     def test_rules_for_kind(self):
         registry = build_registry()
-        summary_rules = registry.rules_for_kind(Token)
-        assert any(r.code == "SUM002" for r in summary_rules)
+        google_ds_rules = registry.rules_for_kind(GoogleDocstring)
+        assert any(r.code == "SUM002" for r in google_ds_rules)
         assert registry.rules_for_kind(type(None)) == []
         google_arg_rules = registry.rules_for_kind(GoogleArg)
         assert any(r.code == "PRM101" for r in google_arg_rules)

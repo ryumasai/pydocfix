@@ -221,31 +221,9 @@ class _DiagnosticCollector(Visitor):
         for rule in matching:
             self.diagnostics.extend(rule.diagnose(ctx))
 
-    def _dispatch_summary_token(self, docstring):
-        """Dispatch the summary Token for rules targeting Token."""
-        if docstring.summary is None:
-            return
-        token = docstring.summary
-        matching = self._kind_map.get(type(token), [])
-        if not matching:
-            return
-        ctx = DiagnoseContext(
-            filepath=self._filepath,
-            docstring_text=self._ds_content,
-            docstring_cst=self._parsed,
-            target_cst=token,
-            parent_ast=self._parent_ast,
-            docstring_stmt=self._ds_stmt,
-            docstring_location=self._ds_loc,
-            config=self._config,
-        )
-        for rule in matching:
-            self.diagnostics.extend(rule.diagnose(ctx))
-
     # Google style
     def enter_google_docstring(self, node, ctx):
         self._dispatch(node)
-        self._dispatch_summary_token(node)
 
     def enter_google_section(self, node, ctx):
         self._dispatch(node)
@@ -277,7 +255,6 @@ class _DiagnosticCollector(Visitor):
     # NumPy style
     def enter_numpy_docstring(self, node, ctx):
         self._dispatch(node)
-        self._dispatch_summary_token(node)
 
     def enter_numpy_section(self, node, ctx):
         self._dispatch(node)
@@ -315,7 +292,6 @@ class _DiagnosticCollector(Visitor):
     # Plain
     def enter_plain_docstring(self, node, ctx):
         self._dispatch(node)
-        self._dispatch_summary_token(node)
 
 
 _MAX_FIX_ITERATIONS: Final[int] = 10
