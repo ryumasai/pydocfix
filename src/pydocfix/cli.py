@@ -82,6 +82,9 @@ def check(
     from pydocfix.baseline import (
         generate_baseline as _generate_baseline,
     )
+    from pydocfix.baseline import (
+        write_baseline as _write_baseline,
+    )
     from pydocfix.checker import check_file
     from pydocfix.config import DEFAULT_EXCLUDE, find_pyproject_toml, load_config
     from pydocfix.rules import Applicability, build_registry, effective_applicability
@@ -201,7 +204,7 @@ def check(
     if effective_baseline_path and baseline_data:
         changed, updated = compute_updated_baseline(baseline_data, raw_violations_by_file)
         if changed:
-            _generate_baseline(updated, effective_baseline_path)
+            _write_baseline(updated, effective_baseline_path)
             logger.info("baseline auto-updated: %s", effective_baseline_path)
 
     remaining = total_violations - total_fixed

@@ -79,6 +79,15 @@ def load_baseline(path: Path) -> BaselineData:
     return data
 
 
+def write_baseline(data: BaselineData, path: Path) -> None:
+    """Write pre-built baseline data to a JSON file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2, ensure_ascii=False)
+        fh.write("\n")
+    logger.info("baseline written to %s (%d file(s))", path, len(data))
+
+
 def generate_baseline(
     violations_by_file: dict[str, list[Diagnostic]],
     path: Path,
@@ -98,11 +107,7 @@ def generate_baseline(
         if entries:
             data[filepath] = entries
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=2, ensure_ascii=False)
-        fh.write("\n")
-    logger.info("baseline written to %s (%d file(s))", path, len(data))
+    write_baseline(data, path)
 
 
 # ---------------------------------------------------------------------------
