@@ -406,3 +406,51 @@ class TestExtendSafeUnsafeFixes:
             fix=fix,
         )
         assert is_applicable(diag, unsafe_fixes=False, config=None) is False
+
+    def test_extend_safe_fixes_prefix(self, tmp_path: Path):
+        """A category prefix in extend_safe_fixes promotes all matching rules."""
+        from pydocfix.config import Config
+        from pydocfix.rules._base import Applicability, Diagnostic, Edit, Fix, Offset, Range, effective_applicability
+
+        fix = Fix(edits=[Edit(0, 0, "")], applicability=Applicability.UNSAFE)
+        diag = Diagnostic(
+            rule="PRM004",
+            message="msg",
+            filepath="f.py",
+            range=Range(Offset(1, 1), Offset(1, 1)),
+            fix=fix,
+        )
+        cfg = Config(extend_safe_fixes=["PRM"])
+        assert effective_applicability(diag, cfg) == Applicability.SAFE
+
+    def test_extend_unsafe_fixes_prefix(self, tmp_path: Path):
+        """A category prefix in extend_unsafe_fixes demotes all matching rules."""
+        from pydocfix.config import Config
+        from pydocfix.rules._base import Applicability, Diagnostic, Edit, Fix, Offset, Range, effective_applicability
+
+        fix = Fix(edits=[Edit(0, 0, "")], applicability=Applicability.SAFE)
+        diag = Diagnostic(
+            rule="SUM002",
+            message="msg",
+            filepath="f.py",
+            range=Range(Offset(1, 1), Offset(1, 1)),
+            fix=fix,
+        )
+        cfg = Config(extend_unsafe_fixes=["SUM"])
+        assert effective_applicability(diag, cfg) == Applicability.UNSAFE
+
+    def test_extend_safe_fixes_all(self, tmp_path: Path):
+        """'ALL' in extend_safe_fixes promotes every rule to SAFE."""
+        from pydocfix.config import Config
+        from pydocfix.rules._base import Applicability, Diagnostic, Edit, Fix, Offset, Range, effective_applicability
+
+        fix = Fix(edits=[Edit(0, 0, "")], applicability=Applicability.UNSAFE)
+        diag = Diagnostic(
+            rule="PRM001",
+            message="msg",
+            filepath="f.py",
+            range=Range(Offset(1, 1), Offset(1, 1)),
+            fix=fix,
+        )
+        cfg = Config(extend_safe_fixes=["ALL"])
+        assert effective_applicability(diag, cfg) == Applicability.SAFE

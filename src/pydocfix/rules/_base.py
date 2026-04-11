@@ -242,15 +242,22 @@ def apply_edits(source: str, edits: Iterable[Edit]) -> str:
     return buf.decode("utf-8")
 
 
+def _matches_any(code: str, patterns: frozenset[str]) -> bool:
+    """Return True if *code* matches any pattern (exact, prefix, or ``ALL``)."""
+    return "ALL" in patterns or any(code == p or code.startswith(p) for p in patterns)
+
+
 def effective_applicability(diag: Diagnostic, config: Config | None = None) -> Applicability:
     """Return the effective applicability of a diagnostic's fix, after config overrides."""
     assert diag.fix is not None
     applicability = diag.fix.applicability
     if config is not None:
         code = diag.rule.upper()
-        if code in {c.upper() for c in config.extend_safe_fixes}:
+        safe_patterns = frozenset(c.upper() for c in config.extend_safe_fixes)
+        if safe_patterns and _matches_any(code, safe_patterns):
             return Applicability.SAFE
-        if code in {c.upper() for c in config.extend_unsafe_fixes}:
+        unsafe_patterns = frozenset(c.upper() for c in config.extend_unsafe_fixes)
+        if unsafe_patterns and _matches_any(code, unsafe_patterns):
             return Applicability.UNSAFE
     return applicability
 
