@@ -129,10 +129,10 @@ class DOC001(BaseRule):
     code = "DOC001"
     message = "Docstring sections are not in canonical order."
     enabled_by_default = True
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleDocstring,
         NumPyDocstring,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         root = ctx.target_cst

@@ -29,6 +29,7 @@ from pydocstring import (
 
 from pydocfix.rules import (
     DOC001,
+    DOC002,
     PRM001,
     PRM002,
     PRM003,
@@ -89,16 +90,13 @@ def _dummy_stmt(lineno: int = 1, col_offset: int = 0) -> ast.stmt:
 
 
 def _make_diagnose_ctx(raw: str) -> DiagnoseContext:
-    """Create a DiagnoseContext with the SUMMARY token as cst_node."""
+    """Create a DiagnoseContext with the parsed docstring as target."""
     parsed = parse_google(raw)
-    summary_token = parsed.summary
-    # If no summary, use the parsed docstring itself as target
-    target = summary_token if summary_token is not None else parsed
     return DiagnoseContext(
         filepath=Path("test.py"),
         docstring_text=raw,
         docstring_cst=parsed,
-        target_cst=target,
+        target_cst=parsed,
         parent_ast=ast.parse("pass").body[0],
         docstring_stmt=_dummy_stmt(1, 0),
         docstring_location=DocstringLocation(Offset(1, 0), 0, len(raw) + 6, '"""', '"""'),
@@ -233,8 +231,8 @@ class TestRegistry:
 
     def test_rules_for_kind(self):
         registry = build_registry()
-        summary_rules = registry.rules_for_kind(Token)
-        assert any(r.code == "SUM002" for r in summary_rules)
+        google_ds_rules = registry.rules_for_kind(GoogleDocstring)
+        assert any(r.code == "SUM002" for r in google_ds_rules)
         assert registry.rules_for_kind(type(None)) == []
         google_arg_rules = registry.rules_for_kind(GoogleArg)
         assert any(r.code == "PRM101" for r in google_arg_rules)
@@ -253,7 +251,8 @@ def _make_d401_ctx_google(
     """Build a DiagnoseContext for PRM101 tests (Google style)."""
     parsed = parse_google(ds_text)
     tree = ast.parse(func_src)
-    func_node = tree.body[0]
+    # func_src may start with import statements; find the first function node.
+    func_node = next(node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)))
     return DiagnoseContext(
         filepath=Path("test.py"),
         docstring_text=ds_text,
@@ -1870,15 +1869,46 @@ class TestPRM102:
         diag = next(iter(PRM102().diagnose(ctx)), None)
         assert diag is not None
 
+    def test_numpy_none_param_no_diagnostic(self):
+        """NumPy convention: ``Parameters\\n----------\\nNone`` is not a real param."""
+        ds = "Summary.\n\nParameters\n----------\nNone\n"
+        func = "def foo():\n    pass\n"
+        parsed = parse_numpy(ds)
+        params = _find_cst_nodes(parsed, NumPyParameter)
+        if not params:
+            return  # parser did not produce a param node — nothing to test
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=params[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(PRM102().diagnose(ctx)), None)
+        assert diag is None  # "None" is not in the signature — PRM002's job
+
+    def test_param_not_in_signature_no_diagnostic(self):
+        """Docstring param that does not exist in signature should not trigger PRM102."""
+        ds = "Summary.\n\nArgs:\n    ghost: undocumented param.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM102().diagnose(ctx)), None)
+        assert diag is None  # "ghost" not in signature — PRM002's responsibility
+
 
 # ── PRM103 Tests ───────────────────────────────────────────────────────
 
 
 class TestPRM103:
-    """PRM103: redundant type in docstring."""
+    """PRM103: no type in docstring."""
 
-    def test_redundant_type_google(self):
-        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+    def test_no_doc_type(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, GoogleArg)
@@ -1886,6 +1916,115 @@ class TestPRM103:
         diag = next(iter(PRM103().diagnose(ctx)), None)
         assert diag is not None
         assert diag.rule == "PRM103"
+
+    def test_has_doc_type_no_diagnostic(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM103().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_fix_inserts_type_google(self):
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM103().diagnose(ctx)), None)
+        assert diag is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "(int)" in result
+
+    def test_not_enabled_by_default(self):
+        assert PRM103.enabled_by_default is False
+
+    def test_both_mode_no_sig_annotation_still_fires(self):
+        """'both' mode: signature has no annotation → PRM103 still fires (docstring must have type)."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="both"),
+        )
+        diag = next(iter(PRM103().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM103"
+
+    def test_both_mode_with_sig_annotation_fires(self):
+        """'both' mode: signature has annotation but docstring lacks type → PRM103 fires."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="both"),
+        )
+        diag = next(iter(PRM103().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM103"
+
+    def test_docstring_mode_no_sig_annotation_still_fires(self):
+        """'docstring' mode: fires even when signature has no annotation."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(PRM103().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM103"
+
+
+# ── PRM104 Tests ───────────────────────────────────────────────────────
+
+
+class TestPRM104:
+    """PRM104: redundant type in docstring."""
+
+    def test_redundant_type_google(self):
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM104().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM104"
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
 
@@ -1895,7 +2034,7 @@ class TestPRM103:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = next(iter(PRM103().diagnose(ctx)), None)
+        diag = next(iter(PRM104().diagnose(ctx)), None)
         assert diag is None
 
     def test_no_doc_type_no_diagnostic(self):
@@ -1904,7 +2043,7 @@ class TestPRM103:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = next(iter(PRM103().diagnose(ctx)), None)
+        diag = next(iter(PRM104().diagnose(ctx)), None)
         assert diag is None
 
     def test_fix_removes_type_google(self):
@@ -1913,54 +2052,138 @@ class TestPRM103:
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = next(iter(PRM103().diagnose(ctx)), None)
+        diag = next(iter(PRM104().diagnose(ctx)), None)
         assert diag is not None
         result = apply_edits(ds, diag.fix.edits)
         assert "(int)" not in result
         assert "x:" in result
 
     def test_not_enabled_by_default(self):
-        assert PRM103.enabled_by_default is False
+        assert PRM104.enabled_by_default is False
 
 
-# ── PRM104 Tests ───────────────────────────────────────────────────────
+# ── PRM105 Tests ───────────────────────────────────────────────────────
 
 
-class TestPRM104:
-    """PRM104: no type in docstring."""
+class TestPRM105:
+    """PRM105: no type annotation in signature (type_annotation_style = 'both')."""
 
-    def test_no_doc_type(self):
+    def test_no_sig_annotation_fires(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm105 import PRM105
+
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="both"),
+        )
+        diag = next(iter(PRM105().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM105"
+
+    def test_has_sig_annotation_no_diagnostic(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm105 import PRM105
+
         ds = "Summary.\n\nArgs:\n    x: desc.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = next(iter(PRM104().diagnose(ctx)), None)
-        assert diag is not None
-        assert diag.rule == "PRM104"
-
-    def test_has_doc_type_no_diagnostic(self):
-        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
-        func = "def foo(x: int):\n    pass\n"
-        parsed = parse_google(ds)
-        args = _find_cst_nodes(parsed, GoogleArg)
-        ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = next(iter(PRM104().diagnose(ctx)), None)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="both"),
+        )
+        diag = next(iter(PRM105().diagnose(ctx)), None)
         assert diag is None
 
-    def test_fix_inserts_type_google(self):
+    def test_not_enabled_by_default(self):
+        from pydocfix.rules.prm.prm105 import PRM105
+
+        assert PRM105.enabled_by_default is False
+
+    def test_conflicts_with_prm102(self):
+        from pydocfix.rules.prm.prm105 import PRM105
+
+        assert "PRM102" in PRM105.conflicts_with
+
+
+# ── PRM106 Tests ───────────────────────────────────────────────────────
+
+
+class TestPRM106:
+    """PRM106: redundant type annotation in signature (type_annotation_style = 'docstring')."""
+
+    def test_has_sig_annotation_fires(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm106 import PRM106
+
         ds = "Summary.\n\nArgs:\n    x: desc.\n"
         func = "def foo(x: int):\n    pass\n"
         parsed = parse_google(ds)
         args = _find_cst_nodes(parsed, GoogleArg)
         ctx = _make_d401_ctx_google(ds, func, args[0])
-        diag = next(iter(PRM104().diagnose(ctx)), None)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(PRM106().diagnose(ctx)), None)
         assert diag is not None
-        result = apply_edits(ds, diag.fix.edits)
-        assert "(int)" in result
+        assert diag.rule == "PRM106"
+
+    def test_no_sig_annotation_no_diagnostic(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm106 import PRM106
+
+        ds = "Summary.\n\nArgs:\n    x: desc.\n"
+        func = "def foo(x):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(PRM106().diagnose(ctx)), None)
+        assert diag is None
 
     def test_not_enabled_by_default(self):
-        assert PRM104.enabled_by_default is False
+        from pydocfix.rules.prm.prm106 import PRM106
+
+        assert PRM106.enabled_by_default is False
+
+    def test_conflicts_with_prm105(self):
+        from pydocfix.rules.prm.prm106 import PRM106
+
+        assert "PRM105" in PRM106.conflicts_with
 
 
 # ── PRM201 Tests ───────────────────────────────────────────────────────
@@ -2110,9 +2333,10 @@ class TestRTN001:
 
 
 class TestRTN002:
-    """RTN002: unnecessary Returns section."""
+    """RTN002: unnecessary Returns section (function does not return a value)."""
 
-    def test_unnecessary_returns(self):
+    def test_no_return_value_triggers(self):
+        """No return statement → unnecessary Returns section."""
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         ctx = _make_section_ctx(ds, "def foo():\n    pass\n")
         diag = next(iter(RTN002().diagnose(ctx)), None)
@@ -2121,15 +2345,53 @@ class TestRTN002:
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
 
-    def test_has_return_type_no_diagnostic(self):
+    def test_bare_return_triggers(self):
+        """``return`` with no value → unnecessary Returns section."""
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
-        ctx = _make_section_ctx(ds, "def foo() -> int:\n    pass\n")
+        ctx = _make_section_ctx(ds, "def foo():\n    return\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_return_none_triggers(self):
+        """``return None`` → unnecessary Returns section."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    return None\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_returns_value_no_diagnostic(self):
+        """``return <expr>`` → Returns section is warranted."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo() -> int:\n    return 42\n")
         diag = next(iter(RTN002().diagnose(ctx)), None)
         assert diag is None
 
-    def test_none_return_triggers(self):
+    def test_returns_value_without_annotation_no_diagnostic(self):
+        """Unannotated but actually returning → Returns section is warranted."""
+        ds = "Summary.\n\nReturns:\n    The result.\n"
+        ctx = _make_section_ctx(ds, "def foo():\n    return 42\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_none_annotation_but_no_return_value_triggers(self):
+        """``-> None`` and no return value → unnecessary Returns section."""
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         ctx = _make_section_ctx(ds, "def foo() -> None:\n    pass\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_has_annotation_but_no_return_value_triggers(self):
+        """``-> int`` annotation but no actual return → unnecessary Returns section."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        ctx = _make_section_ctx(ds, "def foo() -> int:\n    pass\n")
+        diag = next(iter(RTN002().diagnose(ctx)), None)
+        assert diag is not None
+
+    def test_nested_function_return_ignored(self):
+        """Return inside a nested function should not affect outer function."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo():\n    def inner():\n        return 42\n    pass\n"
+        ctx = _make_section_ctx(ds, func)
         diag = next(iter(RTN002().diagnose(ctx)), None)
         assert diag is not None
 
@@ -2239,15 +2501,54 @@ class TestRTN102:
 
 
 class TestRTN103:
-    """RTN103: redundant return type in docstring."""
+    """RTN103: no return type in docstring."""
+
+    def test_no_return_type_in_doc(self):
+        ds = "Summary.\n\nReturns:\n    The result.\n"
+        func = "def foo() -> int:\n    pass\n"
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleReturn)
+        if not entries:
+            return
+        tree = ast.parse(func)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=tree.body[0],
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(RTN103().diagnose(ctx)), None)
+        # Depends on whether parser produces RETURN_TYPE token
+        if diag is not None:
+            assert diag.rule == "RTN103"
+
+    def test_has_type_no_diagnostic(self):
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo() -> int:\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        diag = next(iter(RTN103().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        assert RTN103.enabled_by_default is False
+
+
+# ── RTN104 Tests ───────────────────────────────────────────────────────
+
+
+class TestRTN104:
+    """RTN104: redundant return type in docstring."""
 
     def test_redundant_return_type(self):
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         func = "def foo() -> int:\n    pass\n"
         ctx = _make_returns_entry_ctx(ds, func)
-        diag = next(iter(RTN103().diagnose(ctx)), None)
+        diag = next(iter(RTN104().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "RTN103"
+        assert diag.rule == "RTN104"
         assert diag.fix is not None
         assert diag.fix.applicability == Applicability.SAFE
 
@@ -2255,7 +2556,7 @@ class TestRTN103:
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         func = "def foo():\n    pass\n"
         ctx = _make_returns_entry_ctx(ds, func)
-        diag = next(iter(RTN103().diagnose(ctx)), None)
+        diag = next(iter(RTN104().diagnose(ctx)), None)
         assert diag is None
 
     def test_no_doc_type_no_diagnostic(self):
@@ -2275,51 +2576,128 @@ class TestRTN103:
             docstring_stmt=_dummy_stmt(2, 4),
             docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
-        diag = next(iter(RTN103().diagnose(ctx)), None)
+        diag = next(iter(RTN104().diagnose(ctx)), None)
         # If no RETURN_TYPE token, no diagnostic
         assert diag is None
 
     def test_not_enabled_by_default(self):
-        assert RTN103.enabled_by_default is False
+        assert RTN104.enabled_by_default is False
 
 
-# ── RTN104 Tests ───────────────────────────────────────────────────────
+# ── RTN105 Tests ───────────────────────────────────────────────────────
 
 
-class TestRTN104:
-    """RTN104: no return type in docstring."""
+class TestRTN105:
+    """RTN105: no return type annotation in signature (type_annotation_style = 'both')."""
 
-    def test_no_return_type_in_doc(self):
+    def test_no_sig_annotation_fires(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn105 import RTN105
+
         ds = "Summary.\n\nReturns:\n    The result.\n"
-        func = "def foo() -> int:\n    pass\n"
-        parsed = parse_google(ds)
-        entries = _find_cst_nodes(parsed, GoogleReturn)
-        if not entries:
-            return
-        tree = ast.parse(func)
+        func = "def foo():\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
         ctx = DiagnoseContext(
-            filepath=Path("test.py"),
-            docstring_text=ds,
-            docstring_cst=parsed,
-            target_cst=entries[0],
-            parent_ast=tree.body[0],
-            docstring_stmt=_dummy_stmt(2, 4),
-            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="both"),
         )
-        diag = next(iter(RTN104().diagnose(ctx)), None)
-        # Depends on whether parser produces RETURN_TYPE token
-        if diag is not None:
-            assert diag.rule == "RTN104"
+        diag = next(iter(RTN105().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "RTN105"
 
-    def test_has_type_no_diagnostic(self):
+    def test_has_sig_annotation_no_diagnostic(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn105 import RTN105
+
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
         func = "def foo() -> int:\n    pass\n"
         ctx = _make_returns_entry_ctx(ds, func)
-        diag = next(iter(RTN104().diagnose(ctx)), None)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="both"),
+        )
+        diag = next(iter(RTN105().diagnose(ctx)), None)
         assert diag is None
 
     def test_not_enabled_by_default(self):
-        assert RTN104.enabled_by_default is False
+        from pydocfix.rules.rtn.rtn105 import RTN105
+
+        assert RTN105.enabled_by_default is False
+
+    def test_conflicts_with_rtn102(self):
+        from pydocfix.rules.rtn.rtn105 import RTN105
+
+        assert "RTN102" in RTN105.conflicts_with
+
+
+# ── RTN106 Tests ───────────────────────────────────────────────────────
+
+
+class TestRTN106:
+    """RTN106: redundant return type annotation in signature (type_annotation_style = 'docstring')."""
+
+    def test_has_sig_annotation_fires(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn106 import RTN106
+
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "def foo() -> int:\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(RTN106().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "RTN106"
+
+    def test_no_sig_annotation_no_diagnostic(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn106 import RTN106
+
+        ds = "Summary.\n\nReturns:\n    The result.\n"
+        func = "def foo():\n    pass\n"
+        ctx = _make_returns_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(RTN106().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        from pydocfix.rules.rtn.rtn106 import RTN106
+
+        assert RTN106.enabled_by_default is False
+
+    def test_conflicts_with_rtn105(self):
+        from pydocfix.rules.rtn.rtn106 import RTN106
+
+        assert "RTN105" in RTN106.conflicts_with
 
 
 # ── YLD001 Tests ───────────────────────────────────────────────────────
@@ -2542,6 +2920,151 @@ class TestYLD101:
         assert NumPyReturns not in YLD101.target_kinds
 
 
+# ── allow_optional_shorthand Tests ─────────────────────────────────────
+
+
+class TestAllowOptionalShorthand:
+    """PRM101/RTN101/YLD101: allow_optional_shorthand normalises Optional[T] before comparison."""
+
+    # ── PRM101 ──
+
+    def test_prm101_optional_fires_by_default(self):
+        """Optional[int] sig vs int doc → PRM101 fires (default off)."""
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "from typing import Optional\ndef foo(x: Optional[int]):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        diag = next(iter(PRM101().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM101"
+
+    def test_prm101_optional_suppressed_when_flag_true(self):
+        """Optional[int] sig vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "from typing import Optional\ndef foo(x: Optional[int]):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(PRM101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_prm101_pipe_none_suppressed_when_flag_true(self):
+        """int | None sig vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "def foo(x: int | None):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(PRM101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_prm101_union_none_suppressed_when_flag_true(self):
+        """Union[int, None] sig vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "from typing import Union\ndef foo(x: Union[int, None]):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(PRM101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_prm101_genuine_mismatch_still_fires(self):
+        """Optional[str] sig vs int doc → PRM101 still fires (after normalisation, str != int)."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nArgs:\n    x (int): desc.\n"
+        func = "from typing import Optional\ndef foo(x: Optional[str]):\n    pass\n"
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_d401_ctx_google(ds, func, args[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(PRM101(cfg).diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "PRM101"
+
+    # ── RTN101 ──
+
+    def test_rtn101_optional_suppressed_when_flag_true(self):
+        """Optional[int] return vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "from typing import Optional\ndef foo() -> Optional[int]:\n    pass\n"
+        parsed = parse_google(ds)
+        rets = _find_cst_nodes(parsed, GoogleReturn)
+        ctx = _make_d401_ctx_google(ds, func, rets[0])
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(RTN101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_rtn101_optional_fires_by_default(self):
+        """Optional[int] return vs int doc → RTN101 fires (default off)."""
+        ds = "Summary.\n\nReturns:\n    int: The result.\n"
+        func = "from typing import Optional\ndef foo() -> Optional[int]:\n    pass\n"
+        parsed = parse_google(ds)
+        rets = _find_cst_nodes(parsed, GoogleReturn)
+        ctx = _make_d401_ctx_google(ds, func, rets[0])
+        diag = next(iter(RTN101().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "RTN101"
+
+    # ── YLD101 ──
+
+    def test_yld101_optional_suppressed_when_flag_true(self):
+        """Optional[int] yield vs int doc → silent when allow_optional_shorthand=True."""
+        from pydocfix.config import Config
+
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Optional, Generator\ndef foo() -> Generator[Optional[int], None, None]:\n    yield None\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        cfg = Config(allow_optional_shorthand=True)
+        diag = next(iter(YLD101(cfg).diagnose(ctx)), None)
+        assert diag is None
+
+    def test_yld101_optional_fires_by_default(self):
+        """Optional[int] yield vs int doc → YLD101 fires (default off)."""
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Optional, Generator\ndef foo() -> Generator[Optional[int], None, None]:\n    yield None\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD101().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "YLD101"
+
+
 # ── YLD102 Tests ───────────────────────────────────────────────────────
 
 
@@ -2581,48 +3104,10 @@ class TestYLD102:
 
 
 class TestYLD103:
-    """YLD103: redundant yield type in docstring."""
-
-    def test_redundant_type(self):
-        ds = "Summary.\n\nYields:\n    int: An item.\n"
-        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
-        tree = ast.parse(func)
-        func_node = tree.body[1]
-        parsed = parse_google(ds)
-        entries = _find_cst_nodes(parsed, GoogleYield)
-        ctx = DiagnoseContext(
-            filepath=Path("test.py"),
-            docstring_text=ds,
-            docstring_cst=parsed,
-            target_cst=entries[0],
-            parent_ast=func_node,
-            docstring_stmt=_dummy_stmt(2, 4),
-            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
-        )
-        diag = next(iter(YLD103().diagnose(ctx)), None)
-        assert diag is not None
-        assert diag.rule == "YLD103"
-        assert diag.fix.applicability == Applicability.SAFE
-
-    def test_no_sig_type_no_diagnostic(self):
-        ds = "Summary.\n\nYields:\n    int: An item.\n"
-        func = "def foo():\n    yield 1\n"
-        ctx = _make_yields_entry_ctx(ds, func)
-        diag = next(iter(YLD103().diagnose(ctx)), None)
-        assert diag is None
+    """YLD103: no yield type in docstring."""
 
     def test_not_enabled_by_default(self):
         assert YLD103.enabled_by_default is False
-
-
-# ── YLD104 Tests ───────────────────────────────────────────────────────
-
-
-class TestYLD104:
-    """YLD104: no yield type in docstring."""
-
-    def test_not_enabled_by_default(self):
-        assert YLD104.enabled_by_default is False
 
     def test_no_type_in_docstring(self):
         ds = "Summary.\n\nYields:\n    An item.\n"
@@ -2641,9 +3126,9 @@ class TestYLD104:
             docstring_stmt=_dummy_stmt(2, 4),
             docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
-        diag = next(iter(YLD104().diagnose(ctx)), None)
+        diag = next(iter(YLD103().diagnose(ctx)), None)
         assert diag is not None
-        assert diag.rule == "YLD104"
+        assert diag.rule == "YLD103"
 
     def test_has_type_no_diagnostic(self):
         ds = "Summary.\n\nYields:\n    int: An item.\n"
@@ -2662,7 +3147,7 @@ class TestYLD104:
             docstring_stmt=_dummy_stmt(2, 4),
             docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
-        diag = next(iter(YLD104().diagnose(ctx)), None)
+        diag = next(iter(YLD103().diagnose(ctx)), None)
         assert diag is None
 
     def test_fix_inserts_type(self):
@@ -2682,11 +3167,167 @@ class TestYLD104:
             docstring_stmt=_dummy_stmt(2, 4),
             docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
         )
-        diag = next(iter(YLD104().diagnose(ctx)), None)
+        diag = next(iter(YLD103().diagnose(ctx)), None)
         assert diag is not None
         if diag.fix:
             result = apply_edits(ds, diag.fix.edits)
             assert "int" in result
+
+
+# ── YLD104 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD104:
+    """YLD104: redundant yield type in docstring."""
+
+    def test_redundant_type(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        func_node = tree.body[1]
+        parsed = parse_google(ds)
+        entries = _find_cst_nodes(parsed, GoogleYield)
+        ctx = DiagnoseContext(
+            filepath=Path("test.py"),
+            docstring_text=ds,
+            docstring_cst=parsed,
+            target_cst=entries[0],
+            parent_ast=func_node,
+            docstring_stmt=_dummy_stmt(2, 4),
+            docstring_location=DocstringLocation(Offset(2, 7), 0, 0, '"""', '"""'),
+        )
+        diag = next(iter(YLD104().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "YLD104"
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_no_sig_type_no_diagnostic(self):
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "def foo():\n    yield 1\n"
+        ctx = _make_yields_entry_ctx(ds, func)
+        diag = next(iter(YLD104().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        assert YLD104.enabled_by_default is False
+
+
+# ── YLD105 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD105:
+    """YLD105: no yield type annotation in signature (type_annotation_style = 'both')."""
+
+    def test_no_sig_annotation_fires(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.yld.yld105 import YLD105
+
+        ds = "Summary.\n\nYields:\n    An item.\n"
+        func = "def foo():\n    yield 1\n"
+        ctx = _make_yields_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="both"),
+        )
+        diag = next(iter(YLD105().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "YLD105"
+
+    def test_has_sig_annotation_no_diagnostic(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.yld.yld105 import YLD105
+
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        ctx = _make_yields_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=tree.body[1],
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="both"),
+        )
+        diag = next(iter(YLD105().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        from pydocfix.rules.yld.yld105 import YLD105
+
+        assert YLD105.enabled_by_default is False
+
+    def test_conflicts_with_yld102(self):
+        from pydocfix.rules.yld.yld105 import YLD105
+
+        assert "YLD102" in YLD105.conflicts_with
+
+
+# ── YLD106 Tests ───────────────────────────────────────────────────────
+
+
+class TestYLD106:
+    """YLD106: redundant yield type annotation in signature (type_annotation_style = 'docstring')."""
+
+    def test_has_sig_annotation_fires(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.yld.yld106 import YLD106
+
+        ds = "Summary.\n\nYields:\n    int: An item.\n"
+        func = "from typing import Generator\ndef foo() -> Generator[int, None, None]:\n    yield 1\n"
+        tree = ast.parse(func)
+        ctx = _make_yields_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=tree.body[1],
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(YLD106().diagnose(ctx)), None)
+        assert diag is not None
+        assert diag.rule == "YLD106"
+
+    def test_no_sig_annotation_no_diagnostic(self):
+        from pydocfix.config import Config
+        from pydocfix.rules.yld.yld106 import YLD106
+
+        ds = "Summary.\n\nYields:\n    An item.\n"
+        func = "def foo():\n    yield 1\n"
+        ctx = _make_yields_entry_ctx(ds, func)
+        ctx = DiagnoseContext(
+            filepath=ctx.filepath,
+            docstring_text=ctx.docstring_text,
+            docstring_cst=ctx.docstring_cst,
+            target_cst=ctx.target_cst,
+            parent_ast=ctx.parent_ast,
+            docstring_stmt=ctx.docstring_stmt,
+            docstring_location=ctx.docstring_location,
+            config=Config(type_annotation_style="docstring"),
+        )
+        diag = next(iter(YLD106().diagnose(ctx)), None)
+        assert diag is None
+
+    def test_not_enabled_by_default(self):
+        from pydocfix.rules.yld.yld106 import YLD106
+
+        assert YLD106.enabled_by_default is False
+
+    def test_conflicts_with_yld105(self):
+        from pydocfix.rules.yld.yld106 import YLD106
+
+        assert "YLD105" in YLD106.conflicts_with
 
 
 # ── RIS001 Tests ───────────────────────────────────────────────────────
@@ -3185,6 +3826,152 @@ class TestDOC001:
         assert "stray line" in result
 
 
+# ── DOC002 ────────────────────────────────────────────────────────────
+
+
+def _make_doc002_ctx(ds_text: str, cst_node, *, numpy: bool = False) -> DiagnoseContext:
+    """Create a DiagnoseContext for DOC002 tests with an entry node as target."""
+    parsed = parse_numpy(ds_text) if numpy else parse_google(ds_text)
+    return DiagnoseContext(
+        filepath=Path("test.py"),
+        docstring_text=ds_text,
+        docstring_cst=parsed,
+        target_cst=cst_node,
+        parent_ast=ast.parse("pass").body[0],
+        docstring_stmt=_dummy_stmt(2, 4),
+        docstring_location=DocstringLocation(Offset(2, 7), 0, len(ds_text) + 6, '"""', '"""'),
+    )
+
+
+class TestDOC002:
+    """DOC002: incorrect indentation of docstring section entries."""
+
+    # Google style – 4-space section indent, 8-space expected entry indent
+    DS_GOOGLE_CORRECT = "Summary.\n\n    Args:\n        x: An arg.\n\n    "
+    DS_GOOGLE_UNDER = "Summary.\n\n    Args:\n     x: An arg.\n\n    "  # 5 spaces (expected 8)
+    DS_GOOGLE_OVER = "Summary.\n\n    Args:\n            x: An arg.\n\n    "  # 12 spaces
+
+    def test_google_correct_no_diagnostic(self):
+        ds = self.DS_GOOGLE_CORRECT
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        assert list(DOC002().diagnose(ctx)) == []
+
+    def test_google_under_indent_emits_diagnostic(self):
+        ds = self.DS_GOOGLE_UNDER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+        assert "5" in diags[0].message
+        assert "8" in diags[0].message
+
+    def test_google_over_indent_emits_diagnostic(self):
+        ds = self.DS_GOOGLE_OVER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+        assert "12" in diags[0].message
+
+    def test_fix_corrects_under_indent(self):
+        ds = self.DS_GOOGLE_UNDER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diag = next(iter(DOC002().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "        x: An arg." in result  # 8 spaces
+
+    def test_fix_corrects_over_indent(self):
+        ds = self.DS_GOOGLE_OVER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diag = next(iter(DOC002().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "        x: An arg." in result  # 8 spaces
+
+    def test_fix_is_safe(self):
+        ds = self.DS_GOOGLE_UNDER
+        parsed = parse_google(ds)
+        args = _find_cst_nodes(parsed, GoogleArg)
+        ctx = _make_doc002_ctx(ds, args[0])
+        diag = next(iter(DOC002().diagnose(ctx)))
+        assert diag.fix is not None
+        assert diag.fix.applicability == Applicability.SAFE
+
+    def test_google_returns_section(self):
+        ds = "Summary.\n\n    Returns:\n     str: Result.\n\n    "
+        parsed = parse_google(ds)
+        returns = _find_cst_nodes(parsed, GoogleReturn)
+        ctx = _make_doc002_ctx(ds, returns[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+    def test_google_raises_section(self):
+        ds = "Summary.\n\n    Raises:\n     ValueError: If bad.\n\n    "
+        parsed = parse_google(ds)
+        exceptions = _find_cst_nodes(parsed, GoogleException)
+        ctx = _make_doc002_ctx(ds, exceptions[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+    def test_google_yields_section(self):
+        ds = "Summary.\n\n    Yields:\n     int: A value.\n\n    "
+        parsed = parse_google(ds)
+        yields = _find_cst_nodes(parsed, GoogleYield)
+        ctx = _make_doc002_ctx(ds, yields[0])
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+    def test_numpy_correct_no_diagnostic(self):
+        # NumPy: entries at same indent as section header
+        ds = "Summary.\n\n    Parameters\n    ----------\n    x : int\n        An arg.\n\n    "
+        parsed = parse_numpy(ds)
+        params = _find_cst_nodes(parsed, NumPyParameter)
+        ctx = _make_doc002_ctx(ds, params[0], numpy=True)
+        assert list(DOC002().diagnose(ctx)) == []
+
+    def test_numpy_over_indent_emits_diagnostic(self):
+        ds = "Summary.\n\n    Parameters\n    ----------\n      x : int\n        An arg.\n\n    "
+        parsed = parse_numpy(ds)
+        params = _find_cst_nodes(parsed, NumPyParameter)
+        ctx = _make_doc002_ctx(ds, params[0], numpy=True)
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+    def test_numpy_fix_corrects_indent(self):
+        ds = "Summary.\n\n    Parameters\n    ----------\n      x : int\n        An arg.\n\n    "
+        parsed = parse_numpy(ds)
+        params = _find_cst_nodes(parsed, NumPyParameter)
+        ctx = _make_doc002_ctx(ds, params[0], numpy=True)
+        diag = next(iter(DOC002().diagnose(ctx)))
+        assert diag.fix is not None
+        result = apply_edits(ds, diag.fix.edits)
+        assert "    x : int" in result  # 4 spaces (same as section)
+
+    def test_numpy_returns_section(self):
+        ds = "Summary.\n\n    Returns\n    -------\n      str\n        A value.\n\n    "
+        parsed = parse_numpy(ds)
+        returns = _find_cst_nodes(parsed, NumPyReturns)
+        ctx = _make_doc002_ctx(ds, returns[0], numpy=True)
+        diags = list(DOC002().diagnose(ctx))
+        assert len(diags) == 1
+        assert diags[0].rule == "DOC002"
+
+
 # ── Registry completeness ─────────────────────────────────────────────
 
 
@@ -3192,28 +3979,81 @@ class TestRegistryCompleteness:
     """All rules are registered."""
 
     def test_all_rules_with_select_all(self):
+        # Without type_annotation_style, style-specific rules (103/104 pairs)
+        # are excluded to avoid contradictory enforcement — 6 fewer rules.
         registry = build_registry(select=["ALL"])
-        assert len(registry.all_rules()) == 37
+        assert len(registry.all_rules()) == 32
+
+    def test_all_rules_select_all_signature_style(self):
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="signature")
+        registry = build_registry(select=["ALL"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert len(registry.all_rules()) == 35
+        assert "PRM104" in codes
+        assert "RTN104" in codes
+        assert "YLD104" in codes
+        assert "PRM103" not in codes
+        assert "RTN103" not in codes
+        assert "YLD103" not in codes
+
+    def test_all_rules_select_all_docstring_style(self):
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="docstring")
+        registry = build_registry(select=["ALL"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert len(registry.all_rules()) == 35
+        assert "PRM103" in codes
+        assert "RTN103" in codes
+        assert "YLD103" in codes
+        assert "PRM104" not in codes
+        assert "RTN104" not in codes
+        assert "YLD104" not in codes
 
     def test_default_rules_count(self):
         registry = build_registry()
-        assert len(registry.all_rules()) == 30
+        assert len(registry.all_rules()) == 31
 
     def test_non_default_rules_excluded(self):
         registry = build_registry()
         codes = {r.code for r in registry.all_rules()}
-        assert "PRM103" not in codes
         assert "PRM104" not in codes
-        assert "RTN103" not in codes
+        assert "PRM103" not in codes
         assert "RTN104" not in codes
-        assert "YLD103" not in codes
+        assert "RTN103" not in codes
         assert "YLD104" not in codes
+        assert "YLD103" not in codes
 
     def test_non_default_rules_included_with_select(self):
-        registry = build_registry(select=["PRM103", "YLD104"])
+        # PRM104 and YLD103 are in different conflict groups — no conflict.
+        registry = build_registry(select=["PRM104", "YLD103"])
         codes = {r.code for r in registry.all_rules()}
-        assert "PRM103" in codes
-        assert "YLD104" in codes
+        assert "PRM104" in codes
+        assert "YLD103" in codes
+
+    def test_explicit_conflict_both_excluded_without_config(self):
+        # PRM104 and PRM103 are in the same conflict_group and no config resolves it.
+        registry = build_registry(select=["PRM104", "PRM103"])
+        codes = {r.code for r in registry.all_rules()}
+        assert "PRM104" not in codes
+        assert "PRM103" not in codes
+
+    def test_explicit_conflict_resolved_by_config(self):
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="signature")
+        registry = build_registry(select=["PRM104", "PRM103"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert "PRM104" in codes
+        assert "PRM103" not in codes
+
+    def test_single_conflict_group_member_always_registered(self):
+        # Selecting only one side of a conflict group should always work,
+        # regardless of type_annotation_style.
+        registry = build_registry(select=["PRM104"])
+        assert "PRM104" in {r.code for r in registry.all_rules()}
 
     def test_select_by_prefix(self):
         registry = build_registry(select=["RTN"])
@@ -3232,8 +4072,93 @@ class TestRegistryCompleteness:
         assert "RTN001" in codes
 
     def test_select_prefix_includes_non_default(self):
-        """Selecting a prefix also enables non-default rules in that category."""
+        """Selecting a prefix that includes conflicting rules drops both when config is unset."""
         registry = build_registry(select=["YLD"])
         codes = {r.code for r in registry.all_rules()}
+        # YLD103 and YLD104 conflict; without type_annotation_style config, both are excluded.
+        assert "YLD103" not in codes
+        assert "YLD104" not in codes
+        # Non-conflicting rules are still included.
+        assert "YLD001" in codes
+
+    def test_select_prefix_conflict_resolved_by_config(self):
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="docstring")
+        registry = build_registry(select=["YLD"], config=config)
+        codes = {r.code for r in registry.all_rules()}
         assert "YLD103" in codes
+        assert "YLD104" not in codes
+
+    def test_all_rules_select_all_both_style(self):
+        """type_annotation_style='both' activates 104/105 rules (not 103/106)."""
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="both")
+        registry = build_registry(select=["ALL"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert len(registry.all_rules()) == 38
+        assert "PRM103" in codes
+        assert "PRM105" in codes
+        assert "RTN103" in codes
+        assert "RTN105" in codes
+        assert "YLD103" in codes
+        assert "YLD105" in codes
+        assert "PRM104" not in codes
+        assert "PRM106" not in codes
+        assert "RTN104" not in codes
+        assert "RTN106" not in codes
+        assert "YLD104" not in codes
+        assert "YLD106" not in codes
+
+    def test_all_rules_select_all_docstring_style(self):
+        """type_annotation_style='docstring' activates 104/106 rules (not 103/105)."""
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="docstring")
+        registry = build_registry(select=["ALL"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert len(registry.all_rules()) == 38
+        assert "PRM103" in codes
+        assert "PRM106" in codes
+        assert "RTN103" in codes
+        assert "RTN106" in codes
+        assert "YLD103" in codes
+        assert "YLD106" in codes
+        assert "PRM104" not in codes
+        assert "PRM105" not in codes
+        assert "RTN104" not in codes
+        assert "RTN105" not in codes
+        assert "YLD104" not in codes
+        assert "YLD105" not in codes
+
+    def test_all_rules_select_all_signature_style(self):
+        """type_annotation_style='signature' activates 103/105 rules (not 104/106)."""
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="signature")
+        registry = build_registry(select=["ALL"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert len(registry.all_rules()) == 38
+        assert "PRM104" in codes
+        assert "PRM105" in codes
+        assert "RTN104" in codes
+        assert "RTN105" in codes
         assert "YLD104" in codes
+        assert "YLD105" in codes
+        assert "PRM103" not in codes
+        assert "PRM106" not in codes
+        assert "RTN103" not in codes
+        assert "RTN106" not in codes
+        assert "YLD103" not in codes
+        assert "YLD106" not in codes
+
+    def test_both_style_resolved_conflict(self):
+        """'both' resolves the 103/104 conflict in favour of 104."""
+        from pydocfix.config import Config
+
+        config = Config(type_annotation_style="both")
+        registry = build_registry(select=["PRM104", "PRM103"], config=config)
+        codes = {r.code for r in registry.all_rules()}
+        assert "PRM103" in codes
+        assert "PRM104" not in codes

@@ -24,10 +24,10 @@ class PRM004(BaseRule):
 
     code = "PRM004"
     message = "Missing parameter in docstring."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleSection,
         NumPySection,
-    }
+    })
 
     # -- helpers -------------------------------------------------------
 

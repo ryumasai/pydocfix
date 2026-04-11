@@ -16,10 +16,10 @@ class PRM005(BaseRule):
 
     code = "PRM005"
     message = "Docstring has parameter not in function signature."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleArg,
         NumPyParameter,
-    }
+    })
 
     @staticmethod
     def _get_signature_names(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:

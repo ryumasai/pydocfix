@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Final
 
-from pydocstring import Token
+from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
 
@@ -18,12 +18,22 @@ class SUM002(BaseRule):
 
     code = "SUM002"
     message = "Summary should end with a period."
-    target_kinds = {Token}
+    target_kinds = frozenset(
+        {
+            GoogleDocstring,
+            NumPyDocstring,
+            PlainDocstring,
+        }
+    )
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        token = ctx.target_cst
-        assert isinstance(token, Token)
+        root = ctx.target_cst
+        if not isinstance(root, (GoogleDocstring, NumPyDocstring, PlainDocstring)):
+            return
+        if root.summary is None:
+            return
 
+        token = root.summary
         summary: Final[str] = token.text.strip()
         last_char: Final[str | None] = summary[-1] if summary else None
 
@@ -32,4 +42,4 @@ class SUM002(BaseRule):
                 edits=[insert_at(token.range.end, _DEFAULT_PERIOD)],
                 applicability=Applicability.SAFE,
             )
-            yield self._make_diagnostic(ctx, self.message, fix=fix)
+            yield self._make_diagnostic(ctx, self.message, fix=fix, target=token)

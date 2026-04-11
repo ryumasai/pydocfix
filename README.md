@@ -1,14 +1,19 @@
 # pydocfix
 
+[![PyPI - Version](https://img.shields.io/pypi/v/pydocfix?color=0062A8)](https://pypi.org/project/pydocstring-rs/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pydocfix?color=0062A8)](https://devguide.python.org/versions/)
+
 A Python docstring linter that checks **signature ↔ docstring consistency** and **auto-fixes** violations.
 
-> [!WARNING]
-> This project is currently under active development (v0.1.0a1).
-> APIs and behavior may change without notice.
+Inspired by [pydoclint](https://github.com/jsh9/pydoclint), pydocfix goes further by **automatically repairing** the issues it finds.
+
+> [!NOTE]
+> This project is in **beta** (v0.1.0b1).
+> APIs and behavior may change before the stable release.
 
 ## Why pydocfix?
 
-Existing signature ↔ docstring consistency checkers (such as pydoclint) can report violations but cannot fix them — leaving all corrections to the developer.
+[pydoclint](https://github.com/jsh9/pydoclint) pioneered fast signature ↔ docstring consistency checking for Python. However, it can only *report* violations — all corrections must be done by hand.
 
 pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a **CST (Concrete Syntax Tree) parser** for docstrings written in Rust by the same author. CST preserves every token's byte offset, whitespace, and formatting, enabling:
 
@@ -19,11 +24,48 @@ pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a
 ## Features
 
 - **Auto-fix** — Automatically repair docstring issues with safe/unsafe classification
-- **35 rules** across 6 categories: Summary, Parameters, Returns, Yields, Raises, Docstring
+- **Many rules** across multiple categories (Summary, Parameters, Returns, Yields, Raises, Docstring)
 - **Google & NumPy style** support (powered by [pydocstring-rs](https://github.com/aita/pydocstring-rs))
 - **Signature ↔ docstring consistency** — type mismatches, missing/extra parameters, ordering
 - **Default value checking** — detect missing `optional` / `default` annotations
 - **Precise diagnostics** — byte-level position information for every violation
+- **Baseline** — suppress existing violations so only new ones are reported
+- **noqa** — suppress specific violations inline or file-wide
+
+## Benchmark
+
+### pydocfix vs pydoclint
+
+pydocfix performs linting **and** auto-fix generation in a single pass, yet is significantly faster than pydoclint (lint-only) thanks to parallel file processing and a Rust-based CST parser:
+
+| Project | Files | Lines | pydocfix | pydoclint | Speedup |
+|---------|------:|------:|---------:|----------:|--------:|
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.74 sec | 2.93 sec | **4.0x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 635 | 372K | 0.70 sec | 4.41 sec | **6.3x** |
+
+> Median of 5 runs (+ 1 warmup). pydocfix automatically parallelises across CPU cores (`-j` flag); pydoclint runs single-threaded.
+
+### Feature comparison
+
+|  | pydocfix | pydoclint |
+|--|:--------:|:---------:|
+| Auto-fix (safe + unsafe) | ✅ | — |
+| Google style | ✅ | ✅ |
+| NumPy style | ✅ | ✅ |
+| Sphinx style | — | ✅ |
+| Parameter checking | ✅ | ✅ |
+| Return type checking | ✅ | ✅ |
+| Yield checking | ✅ | ✅ |
+| Raises checking | ✅ | ✅ |
+| Class docstring / `__init__` rules | - | ✅ |
+| Class attribute checking | - | ✅ |
+| Default value checking (`optional` / `default`) | ✅ | — |
+| Byte-level diagnostics | ✅ | — |
+| Baseline suppression | ✅ | ✅ |
+| Inline `# noqa` | ✅ | ✅ |
+| flake8 plugin | — | ✅ |
+| pre-commit hook | ✅ | ✅ |
+| Parallel execution | ✅ | — |
 
 ## Installation
 
@@ -48,14 +90,11 @@ pydocfix check src/ --fix
 # Apply safe + unsafe fixes
 pydocfix check src/ --fix --unsafe-fixes
 
-# Enable all rules (including non-default)
-pydocfix check src/ --select ALL
+# Select / ignore specific rules or categories
+pydocfix check src/ --select PRM --ignore RTN,YLD
 
-# Select specific rules
-pydocfix check src/ --select PRM,RTN
-
-# Ignore specific rules
-pydocfix check src/ --ignore SUM001,PRM008
+# Parallel execution (auto-detected for ≥8 files; override with --jobs)
+pydocfix check src/ --jobs 4
 ```
 
 ## Configuration
@@ -64,22 +103,36 @@ Configure via `pyproject.toml`:
 
 ```toml
 [tool.pydocfix]
-# Rules to enable (overrides defaults); supports category prefixes and "ALL"
+# Rule selection (see "Rule selectors" for syntax details)
 select = ["ALL"]
+ignore = ["RIS"]
+extend-safe-fixes = ["PRM"]
+extend-unsafe-fixes = ["RTN", "YLD"]
 
-# Rules to disable
-ignore = ["PRM001", "RTN001", "YLD001", "RIS001"]
-
-# Type annotation style: "signature" (default) or "docstring"
+# Type annotation style: "signature" | "docstring" | "both" | omitted (default)
+#   omitted    — PRM103/RTN103/YLD103 and PRM104/RTN104/YLD104 are all disabled
+#   signature  — redundant docstring types flagged (x104); missing signature annotations flagged (x105)
+#   docstring  — missing docstring types flagged (x103); redundant signature annotations flagged (x106)
+#   both       — missing docstring types flagged (x103); missing signature annotations flagged (x105)
 type_annotation_style = "signature"
 
 # Paths/patterns to exclude (in addition to built-in defaults)
 exclude = ["tests/", "docs/"]
+
+# Skip section-level rules (PRM001, RTN001, YLD001, RIS001) for one-line docstrings (default: true)
+skip_short_docstrings = true
+
+# Treat Optional[T], T | None, and Union[T, None] as equivalent to T
+# when comparing types in PRM101/RTN101/YLD101 (default: false)
+allow_optional_shorthand = false
+
+# Path to the baseline file (relative to pyproject.toml)
+baseline = ".pydocfix-baseline.json"
 ```
 
 ## Rules
 
-35 rules across 6 categories. Each rule is classified as **safe** fix, **unsafe** fix, or report-only.
+Each rule is classified as **safe** fix, **unsafe** fix, or report-only.
 
 - **Safe** fixes can be applied automatically with `--fix` (no risk of changing semantics)
 - **Unsafe** fixes require `--fix --unsafe-fixes` (may alter docstring meaning)
@@ -106,8 +159,10 @@ exclude = ["tests/", "docs/"]
 | PRM009 | ✅ | safe | Missing `*`/`**` prefix on `*args`/`**kwargs` |
 | PRM101 | ✅ | unsafe | Docstring type doesn't match signature annotation |
 | PRM102 | ✅ | unsafe | No type in docstring or signature |
-| PRM103 | | safe | Redundant type in docstring (signature has annotation) |
-| PRM104 | | unsafe | No type in docstring |
+| PRM103 | | unsafe | No type in docstring |
+| PRM104 | | safe | Redundant type in docstring (signature has annotation) |
+| PRM105 | | — | No type annotation in signature (`type_annotation_style = "signature"` or `"both"`) |
+| PRM106 | | — | Redundant type annotation in signature (`type_annotation_style = "docstring"`) |
 | PRM201 | ✅ | unsafe | Missing `optional` for parameter with default |
 | PRM202 | | unsafe | Missing `default` for parameter with default |
 
@@ -120,8 +175,10 @@ exclude = ["tests/", "docs/"]
 | RTN003 | ✅ | — | Returns entry has no description |
 | RTN101 | ✅ | unsafe | Return type mismatch |
 | RTN102 | ✅ | unsafe | No return type anywhere |
-| RTN103 | | safe | Redundant return type in docstring |
-| RTN104 | | unsafe | No return type in docstring |
+| RTN103 | | unsafe | No return type in docstring |
+| RTN104 | | safe | Redundant return type in docstring |
+| RTN105 | | — | No return type annotation in signature (`type_annotation_style = "signature"` or `"both"`) |
+| RTN106 | | — | Redundant return type annotation in signature (`type_annotation_style = "docstring"`) |
 
 ### Yields (YLD)
 
@@ -132,8 +189,10 @@ exclude = ["tests/", "docs/"]
 | YLD003 | ✅ | — | Yields entry has no description |
 | YLD101 | ✅ | unsafe | Yield type mismatch |
 | YLD102 | ✅ | unsafe | No yield type anywhere |
-| YLD103 | | safe | Redundant yield type in docstring |
-| YLD104 | | unsafe | No yield type in docstring |
+| YLD103 | | unsafe | No yield type in docstring |
+| YLD104 | | safe | Redundant yield type in docstring |
+| YLD105 | | — | No yield type annotation in signature (`type_annotation_style = "signature"` or `"both"`) |
+| YLD106 | | — | Redundant yield type annotation in signature (`type_annotation_style = "docstring"`) |
 
 ### Raises (RIS)
 
@@ -151,16 +210,101 @@ exclude = ["tests/", "docs/"]
 |------|:-------:|:---:|-------------|
 | DOC001 | ✅ | unsafe | Section order doesn't match convention |
 
-## Benchmark
+## Rule selectors
 
-pydocfix performs linting **and** auto-fix generation in a single pass, yet achieves comparable speed to lint-only tools. Below is a comparison with [pydoclint](https://github.com/jsh9/pydoclint), the closest tool in scope (signature ↔ docstring consistency checking, lint-only):
+`--select`, `--ignore`, `--extend-safe-fixes`, `--extend-unsafe-fixes` (CLI) and their `pyproject.toml` equivalents all accept the same **rule selector** syntax:
 
-| Project | Files | Lines | pydocfix | pydoclint |
-|---------|------:|------:|---------:|----------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 251K | 4.2 sec | 4.6 sec |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 635 | 372K | 4.1 sec | 5.3 sec |
+| Format | Example | Matches |
+|--------|---------|----------|
+| Exact code | `PRM001` | PRM001 only |
+| Category prefix | `PRM` | All PRM rules |
+| `ALL` | `ALL` | Every rule |
 
-> pydocfix is in early development. The majority of processing time is spent in the Rust-based CST parser (pydocstring-rs); adding more Python-side rules has limited impact on overall throughput.
+## Suppressing violations
+
+### Inline suppression (`# noqa`)
+
+Add a `# noqa` comment on the **closing `"""`** line to suppress violations for that docstring.
+
+```python
+def foo(x):
+    """Short summary."""  # noqa                    # suppress all rules for this docstring
+
+def bar(x):
+    """Short summary."""  # noqa: PRM001            # suppress only PRM001
+
+def baz(x):
+    """Short summary."""  # noqa: PRM001, RTN001    # suppress multiple rules
+
+# For multiline docstrings, put the comment on the closing """ line
+def qux(x: int) -> int:
+    """Short summary.
+
+    Args:
+        x: A value.
+    """  # noqa: RTN001
+    return x
+```
+
+Unused `# noqa` codes are reported as **NOQ001** (and removed by `--fix`).
+
+### File-level suppression
+
+Put a `# pydocfix: noqa` comment on its **own line** anywhere in the file to suppress violations for every docstring in the file.
+
+```python
+# pydocfix: noqa            # suppress all rules in this file
+# pydocfix: noqa: PRM001    # suppress only PRM001 in this file
+```
+
+## Baseline
+
+The baseline lets you record the current violation state of a project and suppress those existing violations on future runs — so only *new* violations are reported.
+This makes gradual adoption easier: fix violations at your own pace.
+
+```bash
+# Record all current violations as the baseline
+pydocfix check src/ --baseline .pydocfix-baseline.json --generate-baseline
+
+# Future runs only report violations not in the baseline
+pydocfix check src/ --baseline .pydocfix-baseline.json
+```
+
+Or configure the baseline path in `pyproject.toml` so you don't need the flag every time:
+
+```toml
+[tool.pydocfix]
+baseline = ".pydocfix-baseline.json"
+```
+
+Then generate and use it:
+
+```bash
+pydocfix check src/ --generate-baseline    # write baseline
+pydocfix check src/                        # only new violations reported
+```
+
+The baseline file is a JSON file that records violations by **symbol name** (e.g. `MyClass.my_method`) rather than line number, so it stays stable when unrelated code is added or removed.
+Fixed violations are automatically removed from the baseline on the next run.
+
+## pre-commit
+
+Add to `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/qraqras/pydocfix
+    rev: v0.1.0b1
+    hooks:
+      - id: pydocfix
+```
+
+To enable auto-fix:
+
+```yaml
+      - id: pydocfix
+        args: [--fix]
+```
 
 ## License
 

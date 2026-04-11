@@ -11,18 +11,20 @@ from pydocstring import (
 )
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
-from pydocfix.rules.rtn._helpers import has_return_annotation, is_returns_section
+from pydocfix.rules.rtn._helpers import is_returns_section, returns_a_value
 
 
 class RTN002(BaseRule):
-    """Function has no return type annotation but docstring has a Returns section."""
+    """Returns section present but the function does not return a value."""
 
     code = "RTN002"
     message = "Unnecessary Returns section in docstring."
-    target_kinds = {
-        GoogleSection,
-        NumPySection,
-    }
+    target_kinds = frozenset(
+        {
+            GoogleSection,
+            NumPySection,
+        }
+    )
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         section = ctx.target_cst
@@ -34,7 +36,7 @@ class RTN002(BaseRule):
         if not is_returns_section(section):
             return
 
-        if has_return_annotation(ctx.parent_ast):
+        if returns_a_value(ctx.parent_ast):
             return
 
         # Delete the entire Returns section

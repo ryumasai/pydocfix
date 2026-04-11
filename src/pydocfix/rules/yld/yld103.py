@@ -1,4 +1,4 @@
-"""Rule YLD103 - Redundant yield type in docstring when signature has annotation."""
+"""Rule YLD103 - Yield has no type in docstring."""
 
 from __future__ import annotations
 
@@ -7,20 +7,24 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
+from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic, Edit, Fix
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
 class YLD103(BaseRule):
-    """Signature has yield type annotation but docstring also specifies type (redundant)."""
+    """Docstring yield entry has no type (type_annotation_style = "docstring")."""
 
     code = "YLD103"
-    message = "Redundant yield type in docstring; type annotation exists in signature."
+    message = "Yield has no type in docstring."
     enabled_by_default = False
-    target_kinds = {
-        GoogleYield,
-        NumPyYields,
-    }
+    conflicts_with = frozenset({"YLD104"})
+    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
+    target_kinds = frozenset(
+        {
+            GoogleYield,
+            NumPyYields,
+        }
+    )
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
@@ -30,31 +34,21 @@ class YLD103(BaseRule):
             return
 
         ret_type_token = cst_node.return_type
-        if ret_type_token is None:
+        if ret_type_token is not None and ret_type_token.text.strip():
             return
 
-        if get_yield_type(ctx.parent_ast) is None:
-            return
+        ann = get_yield_type(ctx.parent_ast)
+        fix = None
+        if ann:
+            if isinstance(cst_node, GoogleYield):
+                fix = Fix(
+                    edits=[Edit(start=cst_node.range.start, end=cst_node.range.start, new_text=f"{ann}: ")],
+                    applicability=Applicability.UNSAFE,
+                )
+            else:  # NumPyYields
+                fix = Fix(
+                    edits=[Edit(start=cst_node.range.start, end=cst_node.range.start, new_text=f"{ann}\n")],
+                    applicability=Applicability.UNSAFE,
+                )
 
-        colon_token = cst_node.colon
-        ds_bytes = ctx.docstring_text.encode("utf-8")
-
-        if isinstance(cst_node, GoogleYield) and colon_token:
-            end = colon_token.range.end
-            if end < len(ds_bytes) and ds_bytes[end : end + 1] == b" ":
-                end += 1
-            fix = Fix(
-                edits=[delete_range(ret_type_token.range.start, end)],
-                applicability=Applicability.SAFE,
-            )
-        elif isinstance(cst_node, NumPyYields):
-            nl_after = ds_bytes.find(b"\n", ret_type_token.range.end)
-            end = nl_after + 1 if nl_after != -1 else ret_type_token.range.end
-            fix = Fix(
-                edits=[delete_range(ret_type_token.range.start, end)],
-                applicability=Applicability.SAFE,
-            )
-        else:
-            fix = Fix(edits=[], applicability=Applicability.SAFE)
-
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=ret_type_token)
+        yield self._make_diagnostic(ctx, self.message, fix=fix, target=cst_node)

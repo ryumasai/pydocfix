@@ -30,11 +30,13 @@ class YLD001(BaseRule):
 
     code = "YLD001"
     message = "Missing Yields section in docstring."
-    target_kinds = {
-        GoogleDocstring,
-        NumPyDocstring,
-        PlainDocstring,
-    }
+    target_kinds = frozenset(
+        {
+            GoogleDocstring,
+            NumPyDocstring,
+            PlainDocstring,
+        }
+    )
 
     @staticmethod
     def _has_yields_section(root) -> bool:
@@ -55,6 +57,9 @@ class YLD001(BaseRule):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
+        if isinstance(root, PlainDocstring):
+            if self.config is None or self.config.skip_short_docstrings:
+                return  # summary-only docstring — skip per skip_short_docstrings
         if not is_generator_function(ctx.parent_ast):
             return
         if self._has_yields_section(root):

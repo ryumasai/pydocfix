@@ -87,6 +87,7 @@ class Diagnostic:
     docstring_line: int = 0
     severity: Severity = Severity.WARNING
     fix: Fix | None = None
+    symbol: str = ""
 
     @property
     def fixable(self) -> bool:
@@ -241,15 +242,50 @@ def apply_edits(source: str, edits: Iterable[Edit]) -> str:
     return buf.decode("utf-8")
 
 
-def is_applicable(diag: Diagnostic, unsafe_fixes: bool) -> bool:
+def _matches_any(code: str, patterns: frozenset[str]) -> bool:
+    """Return True if *code* matches any pattern (exact, prefix, or ``ALL``)."""
+    return "ALL" in patterns or any(code == p or code.startswith(p) for p in patterns)
+
+
+def effective_applicability(diag: Diagnostic, config: Config | None = None) -> Applicability:
+    """Return the effective applicability of a diagnostic's fix, after config overrides."""
+    assert diag.fix is not None
+    applicability = diag.fix.applicability
+    if config is not None:
+        code = diag.rule.upper()
+        safe_patterns = frozenset(c.upper() for c in config.extend_safe_fixes)
+        if safe_patterns and _matches_any(code, safe_patterns):
+            return Applicability.SAFE
+        unsafe_patterns = frozenset(c.upper() for c in config.extend_unsafe_fixes)
+        if unsafe_patterns and _matches_any(code, unsafe_patterns):
+            return Applicability.UNSAFE
+    return applicability
+
+
+def is_applicable(diag: Diagnostic, unsafe_fixes: bool, config: Config | None = None) -> bool:
     """Return True if the diagnostic's fix should be applied."""
     if diag.fix is None:
         return False
-    if diag.fix.applicability == Applicability.SAFE:
+    app = effective_applicability(diag, config)
+    if app == Applicability.SAFE:
         return True
-    if diag.fix.applicability == Applicability.UNSAFE and unsafe_fixes:  # noqa: SIM103
+    if app == Applicability.UNSAFE and unsafe_fixes:  # noqa: SIM103
         return True
     return False
+
+
+class ConfigRequirement(NamedTuple):
+    """Conflict resolution condition for a rule.
+
+    Specifies which ``Config`` attribute must equal one of the allowed values
+    for the rule to win when it is in an active conflict
+    (see ``BaseRule.conflicts_with``).
+    """
+
+    attr: str
+    """Name of the ``Config`` attribute to inspect (e.g. ``"type_annotation_style"``)."""
+    values: frozenset[str]
+    """Allowed values of the attribute (e.g. ``frozenset({"signature"})``)."""
 
 
 class BaseRule:
@@ -258,7 +294,9 @@ class BaseRule:
     code: str = ""
     message: str = ""
     enabled_by_default: bool = True
-    target_kinds: set[type] = set()
+    target_kinds: frozenset[type] = frozenset()
+    conflicts_with: frozenset[str] = frozenset()
+    requires_config: ConfigRequirement | None = None
 
     def __init__(self, config: Config | None = None) -> None:
         self.config = config

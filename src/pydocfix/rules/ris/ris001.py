@@ -30,11 +30,13 @@ class RIS001(BaseRule):
 
     code = "RIS001"
     message = "Missing Raises section in docstring."
-    target_kinds = {
-        GoogleDocstring,
-        NumPyDocstring,
-        PlainDocstring,
-    }
+    target_kinds = frozenset(
+        {
+            GoogleDocstring,
+            NumPyDocstring,
+            PlainDocstring,
+        }
+    )
 
     @staticmethod
     def _has_raises_section(root) -> bool:
@@ -70,6 +72,9 @@ class RIS001(BaseRule):
             return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
+        if isinstance(root, PlainDocstring):
+            if self.config is None or self.config.skip_short_docstrings:
+                return  # summary-only docstring — skip per skip_short_docstrings
 
         raised = get_raised_exceptions(ctx.parent_ast)
         if not raised:

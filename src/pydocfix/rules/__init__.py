@@ -21,6 +21,7 @@ from pydocfix.rules._base import (
     Severity,
     apply_edits,
     delete_range,
+    effective_applicability,
     insert_at,
     is_applicable,
     replace_token,
@@ -28,6 +29,7 @@ from pydocfix.rules._base import (
 
 # --- Docstring-level rules ---
 from pydocfix.rules.doc.doc001 import DOC001
+from pydocfix.rules.doc.doc002 import DOC002
 
 # --- Parameter rules ---
 from pydocfix.rules.prm.prm001 import PRM001
@@ -43,6 +45,8 @@ from pydocfix.rules.prm.prm101 import PRM101
 from pydocfix.rules.prm.prm102 import PRM102
 from pydocfix.rules.prm.prm103 import PRM103
 from pydocfix.rules.prm.prm104 import PRM104
+from pydocfix.rules.prm.prm105 import PRM105
+from pydocfix.rules.prm.prm106 import PRM106
 from pydocfix.rules.prm.prm201 import PRM201
 from pydocfix.rules.prm.prm202 import PRM202
 
@@ -61,6 +65,8 @@ from pydocfix.rules.rtn.rtn101 import RTN101
 from pydocfix.rules.rtn.rtn102 import RTN102
 from pydocfix.rules.rtn.rtn103 import RTN103
 from pydocfix.rules.rtn.rtn104 import RTN104
+from pydocfix.rules.rtn.rtn105 import RTN105
+from pydocfix.rules.rtn.rtn106 import RTN106
 
 # --- Summary rules ---
 from pydocfix.rules.sum.sum001 import SUM001
@@ -74,6 +80,8 @@ from pydocfix.rules.yld.yld101 import YLD101
 from pydocfix.rules.yld.yld102 import YLD102
 from pydocfix.rules.yld.yld103 import YLD103
 from pydocfix.rules.yld.yld104 import YLD104
+from pydocfix.rules.yld.yld105 import YLD105
+from pydocfix.rules.yld.yld106 import YLD106
 
 __all__ = [
     "Applicability",
@@ -84,6 +92,7 @@ __all__ = [
     "SUM002",
     # doc
     "DOC001",
+    "DOC002",
     # prm
     "PRM001",
     "PRM002",
@@ -98,6 +107,8 @@ __all__ = [
     "PRM102",
     "PRM103",
     "PRM104",
+    "PRM105",
+    "PRM106",
     "PRM201",
     "PRM202",
     # ris
@@ -114,6 +125,8 @@ __all__ = [
     "RTN102",
     "RTN103",
     "RTN104",
+    "RTN105",
+    "RTN106",
     # yld
     "YLD001",
     "YLD002",
@@ -122,6 +135,8 @@ __all__ = [
     "YLD102",
     "YLD103",
     "YLD104",
+    "YLD105",
+    "YLD106",
     # **** FRAMEWORK ****
     "DiagnoseContext",
     "Diagnostic",
@@ -136,14 +151,18 @@ __all__ = [
     "build_registry",
     "delete_range",
     "insert_at",
+    "effective_applicability",
     "is_applicable",
     "replace_token",
+    # **** CONSTANTS ****
+    "ALL_RULE_CODES",
 ]
 
 _BUILTIN_RULES: list[type[BaseRule]] = [
     SUM001,
     SUM002,
     DOC001,
+    DOC002,
     PRM001,
     PRM002,
     PRM003,
@@ -157,6 +176,8 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     PRM102,
     PRM103,
     PRM104,
+    PRM105,
+    PRM106,
     PRM201,
     PRM202,
     RIS001,
@@ -171,6 +192,8 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     RTN102,
     RTN103,
     RTN104,
+    RTN105,
+    RTN106,
     YLD001,
     YLD002,
     YLD003,
@@ -178,12 +201,53 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     YLD102,
     YLD103,
     YLD104,
+    YLD105,
+    YLD106,
 ]
+
+ALL_RULE_CODES: frozenset[str] = frozenset(cls.code for cls in _BUILTIN_RULES)
 
 
 def _matches(code: str, patterns: frozenset[str]) -> bool:
     """Return True if *code* matches any pattern (exact or prefix)."""
     return any(code == p or code.startswith(p) for p in patterns)
+
+
+def _resolve_conflicts(candidates: list[BaseRule], config: Config | None) -> list[BaseRule]:
+    """Remove conflicting rules from *candidates*, keeping only config-matched winners.
+
+    A rule declares its conflicts via ``conflicts_with`` (a set of rule codes).
+    When a conflicting counterpart is also present in *candidates*, the rule is
+    kept only if its ``requires_config`` condition is satisfied.  When only one
+    side of a conflict is selected, it is kept unconditionally.
+    """
+    candidate_codes: frozenset[str] = frozenset(r.code for r in candidates)
+    result: list[BaseRule] = []
+    for rule in candidates:
+        active_conflicts = rule.conflicts_with & candidate_codes
+        if not active_conflicts:
+            # No active conflict — keep unconditionally.
+            result.append(rule)
+        elif rule.requires_config is None:
+            # In conflict but no resolution condition declared — keep.
+            result.append(rule)
+        else:
+            actual = getattr(config, rule.requires_config.attr, None) if config else None
+            if actual in rule.requires_config.values:
+                result.append(rule)
+            else:
+                import logging
+
+                allowed = ", ".join(f"'{v}'" for v in sorted(rule.requires_config.values))
+                logging.getLogger(__name__).warning(
+                    "%s conflicts with [%s] and '%s' is not in {%s}; %s excluded.",
+                    rule.code,
+                    ", ".join(sorted(active_conflicts)),
+                    rule.requires_config.attr,
+                    allowed,
+                    rule.code,
+                )
+    return result
 
 
 def build_registry(
@@ -196,16 +260,25 @@ def build_registry(
     selected: frozenset[str] = frozenset(select or [])
     select_all: bool = "ALL" in selected
     has_select: bool = bool(selected)
-    registry = RuleRegistry()
+
+    # Step 1: collect candidates according to select/ignore/default logic.
+    candidates: list[BaseRule] = []
     for cls in _BUILTIN_RULES:
         instance = cls(config)
         if _matches(instance.code, ignored):
             continue
-        if select_all:
-            registry.register(instance)
-        elif has_select:
-            if _matches(instance.code, selected):
-                registry.register(instance)
-        elif instance.enabled_by_default:
-            registry.register(instance)
+        if (
+            select_all
+            or (has_select and _matches(instance.code, selected))
+            or (not has_select and instance.enabled_by_default)
+        ):
+            candidates.append(instance)
+
+    # Step 2: resolve any mutual-exclusion conflicts among candidates.
+    resolved = _resolve_conflicts(candidates, config)
+
+    # Step 3: register survivors.
+    registry = RuleRegistry()
+    for instance in resolved:
+        registry.register(instance)
     return registry

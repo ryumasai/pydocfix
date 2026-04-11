@@ -15,10 +15,10 @@ class YLD003(BaseRule):
 
     code = "YLD003"
     message = "Yields section has no description."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleYield,
         NumPyYields,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

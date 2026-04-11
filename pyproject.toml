@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pydocfix"
-version = "0.1.0a1"
+version = "0.1.0b1"
 description = "A Python docstring linter with auto-fix support"
 readme = "README.md"
 license = "MIT"
@@ -13,7 +13,7 @@ authors = [
     { name = "Ryuma Asai" },
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
-    "pydocstring-rs>=0.1.9",
+    "pydocstring-rs>=0.1.10",
     "click>=8.0",
 ]
 
@@ -48,7 +48,7 @@ target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
+select = ["D", "E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
 
 [tool.pyright]
 pythonVersion = "3.11"

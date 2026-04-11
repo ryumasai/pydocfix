@@ -21,10 +21,10 @@ class RIS004(BaseRule):
 
     code = "RIS004"
     message = "Raised exception not documented in Raises section."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleSection,
         NumPySection,
-    }
+    })
 
     @staticmethod
     def _detect_entry_indent(ds_text: str, section) -> str:

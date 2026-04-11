@@ -35,10 +35,15 @@ DEFAULT_EXCLUDE: frozenset[str] = frozenset(
 class Config:
     """Resolved pydocfix configuration."""
 
+    skip_short_docstrings: bool = True
+    type_annotation_style: str | None = None
+    allow_optional_shorthand: bool = False
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)
-    type_annotation_style: str | None = None
     exclude: list[str] = field(default_factory=list)
+    extend_safe_fixes: list[str] = field(default_factory=list)
+    extend_unsafe_fixes: list[str] = field(default_factory=list)
+    baseline: str | None = None
 
 
 def find_pyproject_toml(start: Path | None = None) -> Path | None:
@@ -72,5 +77,28 @@ def load_config(start: Path | None = None) -> Config:
     ignore: list[str] = [str(code) for code in section.get("ignore", [])]
     select: list[str] = [str(code) for code in section.get("select", [])]
     type_annotation_style: str | None = section.get("type_annotation_style") or None
+    if type_annotation_style is not None and type_annotation_style not in {"signature", "docstring", "both"}:
+        logger.warning(
+            "invalid type_annotation_style %r (expected 'signature', 'docstring', or 'both'); ignoring",
+            type_annotation_style,
+        )
+        type_annotation_style = None
     exclude: list[str] = [str(p) for p in section.get("exclude", [])]
-    return Config(ignore=ignore, select=select, type_annotation_style=type_annotation_style, exclude=exclude)
+    raw_ssd = section.get("skip_short_docstrings")
+    skip_short_docstrings: bool = bool(raw_ssd) if raw_ssd is not None else True
+    raw_aos = section.get("allow_optional_shorthand")
+    allow_optional_shorthand: bool = bool(raw_aos) if raw_aos is not None else False
+    baseline: str | None = section.get("baseline") or None
+    extend_safe_fixes: list[str] = [str(c).upper() for c in section.get("extend-safe-fixes", [])]
+    extend_unsafe_fixes: list[str] = [str(c).upper() for c in section.get("extend-unsafe-fixes", [])]
+    return Config(
+        ignore=ignore,
+        select=select,
+        type_annotation_style=type_annotation_style,
+        exclude=exclude,
+        skip_short_docstrings=skip_short_docstrings,
+        allow_optional_shorthand=allow_optional_shorthand,
+        baseline=baseline,
+        extend_safe_fixes=extend_safe_fixes,
+        extend_unsafe_fixes=extend_unsafe_fixes,
+    )

@@ -28,11 +28,13 @@ class PRM001(BaseRule):
 
     code = "PRM001"
     message = "Missing Args/Parameters section in docstring."
-    target_kinds = {
-        GoogleDocstring,
-        NumPyDocstring,
-        PlainDocstring,
-    }
+    target_kinds = frozenset(
+        {
+            GoogleDocstring,
+            NumPyDocstring,
+            PlainDocstring,
+        }
+    )
 
     # -- helpers -------------------------------------------------------
 
@@ -68,8 +70,8 @@ class PRM001(BaseRule):
         if not sig_params:
             return
         if isinstance(root, PlainDocstring):
-            # Plain docstrings never have sections
-            pass
+            if self.config is None or self.config.skip_short_docstrings:
+                return  # summary-only docstring — skip per skip_short_docstrings
         elif any(is_param_section(sec) for sec in root.sections):
             return
 

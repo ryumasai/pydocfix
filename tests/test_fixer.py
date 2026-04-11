@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from pydocfix.checker import build_rules_map, check_file
+from pydocfix.config import Config
 from pydocfix.rules import (
     DOC001,
     PRM001,
@@ -90,8 +91,8 @@ class TestIterativeFix:
             unsafe_fixes=True,
         )
         assert result is not None
-        # Both PRM005 and PRM006 should be fixed
-        assert len(fixed) >= 2
+        # Both PRM005 and PRM006 should be fixed → fewer violations remaining than initially
+        assert len(diags) - len(fixed) >= 2
         # ``c`` should be gone and ``a`` should come before ``b``
         assert "c: Not in signature" not in result
         a_pos = result.index("a: An integer argument")
@@ -121,7 +122,7 @@ class TestIterativeFix:
             unsafe_fixes=True,
         )
         assert result is not None
-        assert len(fixed) >= 1
+        assert len(diags) - len(fixed) >= 1
         a_pos = result.index("a: An integer argument")
         b_pos = result.index("b: A string argument")
         assert a_pos < b_pos
@@ -173,7 +174,7 @@ class TestDOC001Integration:
         f.write_text(src)
         _, result, fixed = check_file(src, f, build_rules_map([DOC001()]), fix=True, unsafe_fixes=True)
         assert result is not None
-        assert len(fixed) == 1
+        assert len(fixed) == 0  # all violations fixed, none remaining
         assert result.index("Args:") < result.index("Returns:")
 
     def test_prm001_rtn001_doc001_all_together(self, tmp_path: Path):
@@ -181,10 +182,11 @@ class TestDOC001Integration:
         f = tmp_path / "example.py"
         src = 'def add(a: int, b: int) -> int:\n    """Add two numbers."""\n    return a + b\n'
         f.write_text(src)
+        cfg = Config(skip_short_docstrings=False)
         _, result, _ = check_file(
             src,
             f,
-            build_rules_map([PRM001(), RTN001(), DOC001()]),
+            build_rules_map([PRM001(cfg), RTN001(cfg), DOC001()]),
             fix=True,
             unsafe_fixes=True,
         )

@@ -4,21 +4,106 @@ from __future__ import annotations
 
 import difflib
 import logging
+import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Final, Literal
+from typing import Final, Literal, NamedTuple
 
 import click
 
 from pydocfix import __version__
+from pydocfix.config import Config
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Parallel file checking
+# ---------------------------------------------------------------------------
+
+
+class _FileResult(NamedTuple):
+    """Result of checking a single file."""
+
+    filepath: Path
+    source: str
+    diagnostics: list
+    new_source: str | None
+    remaining: list
+
+
+def _check_one_file(
+    filepath: Path,
+    kind_map: dict,
+    fix: bool,
+    unsafe_fixes: bool,
+    config: Config | None,
+) -> _FileResult:
+    """Read and check a single file. Used by both serial and parallel paths."""
+    from pydocfix.checker import check_file
+
+    source = filepath.read_text(encoding="utf-8")
+    diagnostics, new_source, remaining = check_file(
+        source,
+        filepath,
+        kind_map,
+        fix=fix,
+        unsafe_fixes=unsafe_fixes,
+        config=config,
+    )
+    return _FileResult(filepath, source, diagnostics, new_source, remaining)
+
+
+# --- multiprocessing worker ---
+
+_worker_kind_map: dict | None = None
+
+
+def _worker_init(
+    ignore: list[str] | None,
+    select: list[str] | None,
+    config_obj: Config | None,
+) -> None:
+    """Initialize worker process by rebuilding the rule registry."""
+    global _worker_kind_map  # noqa: PLW0603
+    from pydocfix.rules import build_registry
+
+    registry = build_registry(ignore=ignore, select=select, config=config_obj)
+    _worker_kind_map = registry.kind_map
+
+
+def _worker_check(args: tuple) -> _FileResult:
+    """Worker function — runs in a child process."""
+    filepath, fix, unsafe_fixes, config_obj = args
+    assert _worker_kind_map is not None
+    return _check_one_file(filepath, _worker_kind_map, fix, unsafe_fixes, config_obj)
+
+
+def _check_files_parallel(
+    targets: list[Path],
+    num_workers: int,
+    ignore: list[str] | None,
+    select: list[str] | None,
+    config: Config | None,
+    *,
+    fix: bool,
+    unsafe_fixes: bool,
+) -> list[_FileResult]:
+    """Check files using multiple processes."""
+    tasks = [(fp, fix, unsafe_fixes, config) for fp in targets]
+    with ProcessPoolExecutor(
+        max_workers=num_workers,
+        initializer=_worker_init,
+        initargs=(ignore, select, config),
+    ) as pool:
+        return list(pool.map(_worker_check, tasks))
 
 
 @click.group()
 @click.version_option(__version__, "--version", message="pydocfix %(version)s")
 def cli() -> None:
-    """A Python docstring linter with auto-fix support."""
+    """Lint and auto-fix Python docstrings."""
 
 
 @cli.command()
@@ -47,6 +132,25 @@ def cli() -> None:
     metavar="DIRS",
     help="Comma-separated directory names to exclude (e.g. build,dist). Added to default exclusions.",
 )
+@click.option(
+    "--baseline",
+    "baseline_path",
+    default=None,
+    metavar="FILE",
+    help="Path to baseline JSON file. Violations in the baseline are suppressed.",
+)
+@click.option(
+    "--generate-baseline",
+    is_flag=True,
+    help="Generate (or overwrite) the baseline file with all current violations.",
+)
+@click.option(
+    "--jobs",
+    default=None,
+    type=int,
+    metavar="N",
+    help="Number of parallel workers.  Defaults to CPU count for >=8 files, else 1.",
+)
 def check(
     paths: tuple[str, ...],
     fix: bool,
@@ -55,15 +159,45 @@ def check(
     select_codes: tuple[str, ...],
     ignore_codes: tuple[str, ...],
     exclude_dirs: tuple[str, ...],
+    baseline_path: str | None,
+    generate_baseline: bool,
+    jobs: int | None,
 ) -> None:
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
 
-    from pydocfix.checker import check_file
-    from pydocfix.config import DEFAULT_EXCLUDE, load_config
-    from pydocfix.rules import Applicability, build_registry
+    from pydocfix.baseline import (
+        compute_updated_baseline,
+        filter_baseline_violations,
+        load_baseline,
+        normalize_path,
+    )
+    from pydocfix.baseline import (
+        generate_baseline as _generate_baseline,
+    )
+    from pydocfix.baseline import (
+        write_baseline as _write_baseline,
+    )
+    from pydocfix.config import DEFAULT_EXCLUDE, find_pyproject_toml, load_config
+    from pydocfix.rules import Applicability, build_registry, effective_applicability
 
     config = load_config()
+
+    # Determine project root for stable relative-path keys in baseline files
+    _toml = find_pyproject_toml()
+    project_root: Path = _toml.parent if _toml is not None else Path.cwd()
+
+    # Resolve baseline path: CLI > config > None
+    effective_baseline_path: Path | None = None
+    if baseline_path:
+        effective_baseline_path = Path(baseline_path)
+    elif config.baseline:
+        effective_baseline_path = Path(config.baseline)
+
+    # Load existing baseline (empty dict if none)
+    baseline_data = (
+        load_baseline(effective_baseline_path) if (effective_baseline_path and not generate_baseline) else {}
+    )
 
     # CLI --select / --ignore override config file values when provided
     def _parse_codes(raw: tuple[str, ...]) -> list[str]:
@@ -84,18 +218,56 @@ def check(
         logger.warning("no Python files found.")
         sys.exit(0)
 
+    # Decide parallelism: explicit -j, or auto (CPU count for >=8 files)
+    num_workers = jobs if jobs is not None else (os.cpu_count() or 1 if len(targets) >= 8 else 1)
+    num_workers = max(1, min(num_workers, len(targets)))
+
     total_violations = 0
     total_fixed = 0
     total_would_fix = 0
     total_safe_fixable = 0
     total_unsafe_fixable = 0
     remaining_diagnostics: list = []
+    # Collect raw (pre-baseline-filter) violations for baseline generation / auto-regen
+    raw_violations_by_file: dict[str, list] = {}
 
-    for filepath in sorted(targets):
-        source = filepath.read_text(encoding="utf-8")
-        diagnostics, new_source, fixed_indices = check_file(
-            source, filepath, kind_map, fix=(fix or diff), unsafe_fixes=unsafe_fixes, config=config
+    # --- Check files (parallel or sequential) ---
+    do_fix = fix or diff
+    file_results: list[_FileResult]
+    if num_workers > 1:
+        file_results = _check_files_parallel(
+            sorted(targets),
+            num_workers,
+            effective_ignore,
+            effective_select,
+            config,
+            fix=do_fix,
+            unsafe_fixes=unsafe_fixes,
         )
+    else:
+        file_results = [_check_one_file(fp, kind_map, do_fix, unsafe_fixes, config) for fp in sorted(targets)]
+
+    for result in file_results:
+        filepath = result.filepath
+        source = result.source
+        diagnostics = result.diagnostics
+        new_source = result.new_source
+        remaining = result.remaining
+
+        # Collect raw violations keyed by the project-relative path
+        fp_str = normalize_path(filepath, project_root)
+        if diagnostics:
+            raw_violations_by_file[fp_str] = list(diagnostics)
+
+        # When generating the baseline, skip filtering and reporting
+        if generate_baseline:
+            continue
+
+        # Apply baseline filtering to both first-pass and remaining diagnostics
+        if baseline_data:
+            diagnostics = filter_baseline_violations(diagnostics, baseline_data, fp_str)
+            remaining = filter_baseline_violations(remaining, baseline_data, fp_str)
+
         if not diagnostics:
             continue
 
@@ -103,25 +275,50 @@ def check(
 
         for d in diagnostics:
             if d.fix is not None:
-                if d.fix.applicability == Applicability.SAFE:
+                app = effective_applicability(d, config)
+                if app == Applicability.SAFE:
                     total_safe_fixable += 1
-                elif d.fix.applicability == Applicability.UNSAFE:
+                elif app == Applicability.UNSAFE:
                     total_unsafe_fixable += 1
 
         if new_source is not None:
             if diff:
                 _print_diff(filepath, source, new_source)
-                total_would_fix += len(fixed_indices)
+                total_would_fix += len(diagnostics) - len(remaining)
             if fix:
                 filepath.write_text(new_source, encoding="utf-8")
-                total_fixed += len(fixed_indices)
-                diagnostics = [d for i, d in enumerate(diagnostics) if i not in fixed_indices]
+                total_fixed += len(diagnostics) - len(remaining)
+                diagnostics = remaining
 
         for d in diagnostics:
-            hint = _fixable_hint(d, unsafe_fixes)
+            hint = _fixable_hint(d, unsafe_fixes, config)
             click.echo(f"{d.filepath}:{d.lineno}:{d.col}: {d.rule} {d.message}{hint}")
 
         remaining_diagnostics.extend(diagnostics)
+
+    # --- Baseline generation ---
+    if generate_baseline:
+        if effective_baseline_path is None:
+            click.echo(
+                click.style("Error: ", fg="red")
+                + "specify a baseline path with --baseline or [tool.pydocfix] baseline in pyproject.toml.",
+                err=True,
+            )
+            sys.exit(2)
+        _generate_baseline(raw_violations_by_file, effective_baseline_path)
+        total_raw = sum(len(v) for v in raw_violations_by_file.values())
+        click.echo(
+            click.style("Baseline generated: ", fg="green")
+            + f"{effective_baseline_path} ({total_raw} violation(s) across {len(raw_violations_by_file)} file(s))"
+        )
+        sys.exit(0)
+
+    # --- Auto-regenerate baseline when violations have been fixed ---
+    if effective_baseline_path and baseline_data:
+        changed, updated = compute_updated_baseline(baseline_data, raw_violations_by_file)
+        if changed:
+            _write_baseline(updated, effective_baseline_path)
+            logger.info("baseline auto-updated: %s", effective_baseline_path)
 
     remaining = total_violations - total_fixed
 
@@ -131,7 +328,7 @@ def check(
     if total_violations == 0:
         click.echo(click.style("All checks passed.", fg="green") + f" ({len(targets)} file(s) checked)")
     elif fix:
-        _summarize_fix(total_fixed, remaining, remaining_diagnostics, unsafe_fixes)
+        _summarize_fix(total_fixed, remaining, remaining_diagnostics, unsafe_fixes, config)
     elif diff:
         _summarize_diff(total_violations, total_would_fix, total_unsafe_fixable, unsafe_fixes)
     else:
@@ -141,9 +338,11 @@ def check(
         sys.exit(1)
 
 
-def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe fix)", " (display only fix)"]:
+def _fixable_hint(
+    d, unsafe_fixes: bool, config=None
+) -> Literal["", " (fixable)", " (unsafe fix)", " (display only fix)"]:
     """Return a parenthetical hint about fixability."""
-    from pydocfix.rules import Applicability
+    from pydocfix.rules import Applicability, effective_applicability
 
     unfixable: Final = ""
     fixable: Final = " (fixable)"
@@ -152,11 +351,12 @@ def _fixable_hint(d, unsafe_fixes: bool) -> Literal["", " (fixable)", " (unsafe 
 
     if d.fix is None:
         return unfixable
-    if d.fix.applicability == Applicability.SAFE:
+    app = effective_applicability(d, config)
+    if app == Applicability.SAFE:
         return fixable
-    if d.fix.applicability == Applicability.UNSAFE:
+    if app == Applicability.UNSAFE:
         return unsafe if not unsafe_fixes else fixable
-    if d.fix.applicability == Applicability.DISPLAY_ONLY:
+    if app == Applicability.DISPLAY_ONLY:
         return display_only
     return unfixable
 
@@ -177,15 +377,19 @@ def _summarize_check(total: int, safe: int, unsafe: int) -> None:
         click.echo(f"Found {total} violation(s). No auto-fixes available.")
 
 
-def _summarize_fix(total_fixed: int, remaining: int, remaining_diagnostics: list, unsafe_fixes: bool) -> None:
+def _summarize_fix(
+    total_fixed: int, remaining: int, remaining_diagnostics: list, unsafe_fixes: bool, config=None
+) -> None:
     """Print summary for --fix mode."""
-    from pydocfix.rules import Applicability
+    from pydocfix.rules import Applicability, effective_applicability
 
     if total_fixed and not remaining:
         click.echo(click.style(f"Fixed {total_fixed} violation(s). No issues remaining.", fg="green"))
     elif total_fixed and remaining:
         remaining_unsafe = sum(
-            1 for d in remaining_diagnostics if d.fix is not None and d.fix.applicability == Applicability.UNSAFE
+            1
+            for d in remaining_diagnostics
+            if d.fix is not None and effective_applicability(d, config) == Applicability.UNSAFE
         )
         msg = f"Fixed {total_fixed} violation(s). {remaining} remaining"
         if remaining_unsafe and not unsafe_fixes:
@@ -194,7 +398,9 @@ def _summarize_fix(total_fixed: int, remaining: int, remaining_diagnostics: list
         click.echo(msg)
     else:
         remaining_unsafe = sum(
-            1 for d in remaining_diagnostics if d.fix is not None and d.fix.applicability == Applicability.UNSAFE
+            1
+            for d in remaining_diagnostics
+            if d.fix is not None and effective_applicability(d, config) == Applicability.UNSAFE
         )
         if remaining_unsafe and not unsafe_fixes:
             click.echo(f"Found {remaining} violation(s). Run --fix --unsafe-fixes to fix {remaining_unsafe} of them.")
@@ -236,7 +442,6 @@ def _collect_files(
     exclude: frozenset[str] = frozenset(),
 ) -> list[Path]:
     """Resolve paths to a flat list of Python files, skipping excluded directories."""
-
     suffixes: Final = {".py", ".pyi"}
 
     def _walk(directory: Path) -> list[Path]:
@@ -262,6 +467,7 @@ def _collect_files(
 
 
 def main() -> None:
+    """Entry point for console script. Calls the CLI group function."""
     cli()
 
 

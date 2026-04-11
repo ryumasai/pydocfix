@@ -16,10 +16,10 @@ class PRM009(BaseRule):
 
     code = "PRM009"
     message = "Docstring parameter name missing '*' or '**' prefix."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleArg,
         NumPyParameter,
-    }
+    })
 
     def _get_vararg_kwarg_names(self, ast_node: ast.AST) -> dict[str, str]:
         """Return mapping of bare name -> prefixed name for *args/**kwargs."""

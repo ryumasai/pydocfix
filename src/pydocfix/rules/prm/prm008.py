@@ -16,10 +16,10 @@ class PRM008(BaseRule):
 
     code = "PRM008"
     message = "Docstring parameter has empty description."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleArg,
         NumPyParameter,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

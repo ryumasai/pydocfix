@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from pydocstring import GoogleReturn, NumPyReturns
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, replace_token
+from pydocfix.rules._type_helpers import normalize_optional
 
 
 class RTN101(BaseRule):
@@ -15,10 +16,12 @@ class RTN101(BaseRule):
 
     code = "RTN101"
     message = "Docstring return type does not match type hint."
-    target_kinds = {
-        GoogleReturn,
-        NumPyReturns,
-    }
+    target_kinds = frozenset(
+        {
+            GoogleReturn,
+            NumPyReturns,
+        }
+    )
 
     def _get_return_annotation(self, ast_node: ast.AST) -> str | None:
         if not isinstance(ast_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -41,12 +44,17 @@ class RTN101(BaseRule):
             return
 
         doc_type = ret_type_token.text
-        if doc_type == hint_type:
+        cmp_hint = hint_type
+        cmp_doc = doc_type
+        if self.config is not None and self.config.allow_optional_shorthand:
+            cmp_hint = normalize_optional(hint_type)
+            cmp_doc = normalize_optional(doc_type)
+        if cmp_doc == cmp_hint:
             return
 
         fix = Fix(
             edits=[replace_token(ret_type_token, hint_type)],
             applicability=Applicability.UNSAFE,
         )
-        message = f"Docstring return type \'{doc_type}\' does not match type hint \'{hint_type}\'."
+        message = f"Docstring return type '{doc_type}' does not match type hint '{hint_type}'."
         yield self._make_diagnostic(ctx, message, fix=fix, target=ret_type_token)

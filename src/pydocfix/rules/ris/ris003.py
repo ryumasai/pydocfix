@@ -15,10 +15,10 @@ class RIS003(BaseRule):
 
     code = "RIS003"
     message = "Raises entry has no description."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleException,
         NumPyException,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

@@ -16,10 +16,10 @@ class YLD102(BaseRule):
 
     code = "YLD102"
     message = "Yield type not in docstring or signature."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleYield,
         NumPyYields,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst

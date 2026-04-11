@@ -16,10 +16,10 @@ class PRM003(BaseRule):
 
     code = "PRM003"
     message = "Docstring should not document 'self' or 'cls'."
-    target_kinds = {
+    target_kinds = frozenset({
         GoogleArg,
         NumPyParameter,
-    }
+    })
 
     def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = ctx.target_cst
