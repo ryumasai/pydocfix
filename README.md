@@ -5,13 +5,15 @@
 
 A Python docstring linter that checks **signature ↔ docstring consistency** and **auto-fixes** violations.
 
+Inspired by [pydoclint](https://github.com/jsh9/pydoclint), pydocfix goes further by **automatically repairing** the issues it finds.
+
 > [!WARNING]
 > This project is currently under active development (v0.1.0a1).
 > APIs and behavior may change without notice.
 
 ## Why pydocfix?
 
-Existing signature ↔ docstring consistency checkers (such as pydoclint) can report violations but cannot fix them — leaving all corrections to the developer.
+[pydoclint](https://github.com/jsh9/pydoclint) pioneered fast signature ↔ docstring consistency checking for Python. However, it can only *report* violations — all corrections must be done by hand.
 
 pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a **CST (Concrete Syntax Tree) parser** for docstrings written in Rust by the same author. CST preserves every token's byte offset, whitespace, and formatting, enabling:
 
@@ -61,6 +63,9 @@ pydocfix check src/ --select PRM,RTN
 
 # Ignore specific rules
 pydocfix check src/ --ignore SUM001,PRM008
+
+# Parallel execution (auto-detected for ≥8 files; override with --jobs)
+pydocfix check src/ --jobs 4
 ```
 
 ## Suppressing violations
@@ -246,14 +251,38 @@ baseline = ".pydocfix-baseline.json"
 
 ## Benchmark
 
-pydocfix performs linting **and** auto-fix generation in a single pass, yet achieves comparable speed to lint-only tools. Below is a comparison with [pydoclint](https://github.com/jsh9/pydoclint), the closest tool in scope (signature ↔ docstring consistency checking, lint-only):
+### pydocfix vs pydoclint
 
-| Project | Files | Lines | pydocfix | pydoclint |
-|---------|------:|------:|---------:|----------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 251K | 3.1 sec | 3.0 sec |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 635 | 372K | 3.0 sec | 4.3 sec |
+pydocfix performs linting **and** auto-fix generation in a single pass, yet is significantly faster than pydoclint (lint-only) thanks to parallel file processing and a Rust-based CST parser:
 
-> pydocfix is in early development. The majority of processing time is spent in the Rust-based CST parser (pydocstring-rs); adding more Python-side rules has limited impact on overall throughput.
+| Project | Files | Lines | pydocfix | pydoclint | Speedup |
+|---------|------:|------:|---------:|----------:|--------:|
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.74 sec | 2.93 sec | **4.0x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 635 | 372K | 0.70 sec | 4.41 sec | **6.3x** |
+
+> Median of 5 runs (+ 1 warmup). pydocfix automatically parallelises across CPU cores (`-j` flag); pydoclint runs single-threaded.
+
+### Feature comparison
+
+|  | pydocfix | pydoclint |
+|--|:--------:|:---------:|
+| Auto-fix (safe + unsafe) | ✅ | — |
+| Google style | ✅ | ✅ |
+| NumPy style | ✅ | ✅ |
+| Sphinx style | — | ✅ |
+| Parameter checking | ✅ | ✅ |
+| Return type checking | ✅ | ✅ |
+| Yield checking | ✅ | ✅ |
+| Raises checking | ✅ | ✅ |
+| Class docstring / `__init__` rules | 🚧 | ✅ |
+| Class attribute checking | 🚧 | ✅ |
+| Default value checking (`optional` / `default`) | ✅ | — |
+| Byte-level diagnostics | ✅ | — |
+| Baseline suppression | ✅ | ✅ |
+| Inline `# noqa` | ✅ | ✅ |
+| flake8 plugin | — | ✅ |
+| pre-commit hook | — | ✅ |
+| Parallel execution | ✅ | — |
 
 ## License
 

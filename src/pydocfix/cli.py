@@ -4,15 +4,100 @@ from __future__ import annotations
 
 import difflib
 import logging
+import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Final, Literal
+from typing import Final, Literal, NamedTuple
 
 import click
 
 from pydocfix import __version__
+from pydocfix.config import Config
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Parallel file checking
+# ---------------------------------------------------------------------------
+
+
+class _FileResult(NamedTuple):
+    """Result of checking a single file."""
+
+    filepath: Path
+    source: str
+    diagnostics: list
+    new_source: str | None
+    remaining: list
+
+
+def _check_one_file(
+    filepath: Path,
+    kind_map: dict,
+    fix: bool,
+    unsafe_fixes: bool,
+    config: Config | None,
+) -> _FileResult:
+    """Read and check a single file. Used by both serial and parallel paths."""
+    from pydocfix.checker import check_file
+
+    source = filepath.read_text(encoding="utf-8")
+    diagnostics, new_source, remaining = check_file(
+        source,
+        filepath,
+        kind_map,
+        fix=fix,
+        unsafe_fixes=unsafe_fixes,
+        config=config,
+    )
+    return _FileResult(filepath, source, diagnostics, new_source, remaining)
+
+
+# --- multiprocessing worker ---
+
+_worker_kind_map: dict | None = None
+
+
+def _worker_init(
+    ignore: list[str] | None,
+    select: list[str] | None,
+    config_obj: Config | None,
+) -> None:
+    """Initialize worker process by rebuilding the rule registry."""
+    global _worker_kind_map  # noqa: PLW0603
+    from pydocfix.rules import build_registry
+
+    registry = build_registry(ignore=ignore, select=select, config=config_obj)
+    _worker_kind_map = registry.kind_map
+
+
+def _worker_check(args: tuple) -> _FileResult:
+    """Worker function — runs in a child process."""
+    filepath, fix, unsafe_fixes, config_obj = args
+    assert _worker_kind_map is not None
+    return _check_one_file(filepath, _worker_kind_map, fix, unsafe_fixes, config_obj)
+
+
+def _check_files_parallel(
+    targets: list[Path],
+    num_workers: int,
+    ignore: list[str] | None,
+    select: list[str] | None,
+    config: Config | None,
+    *,
+    fix: bool,
+    unsafe_fixes: bool,
+) -> list[_FileResult]:
+    """Check files using multiple processes."""
+    tasks = [(fp, fix, unsafe_fixes, config) for fp in targets]
+    with ProcessPoolExecutor(
+        max_workers=num_workers,
+        initializer=_worker_init,
+        initargs=(ignore, select, config),
+    ) as pool:
+        return list(pool.map(_worker_check, tasks))
 
 
 @click.group()
@@ -59,6 +144,13 @@ def cli() -> None:
     is_flag=True,
     help="Generate (or overwrite) the baseline file with all current violations.",
 )
+@click.option(
+    "--jobs",
+    default=None,
+    type=int,
+    metavar="N",
+    help="Number of parallel workers.  Defaults to CPU count for >=8 files, else 1.",
+)
 def check(
     paths: tuple[str, ...],
     fix: bool,
@@ -69,6 +161,7 @@ def check(
     exclude_dirs: tuple[str, ...],
     baseline_path: str | None,
     generate_baseline: bool,
+    jobs: int | None,
 ) -> None:
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
@@ -85,7 +178,6 @@ def check(
     from pydocfix.baseline import (
         write_baseline as _write_baseline,
     )
-    from pydocfix.checker import check_file
     from pydocfix.config import DEFAULT_EXCLUDE, find_pyproject_toml, load_config
     from pydocfix.rules import Applicability, build_registry, effective_applicability
 
@@ -126,6 +218,10 @@ def check(
         logger.warning("no Python files found.")
         sys.exit(0)
 
+    # Decide parallelism: explicit -j, or auto (CPU count for >=8 files)
+    num_workers = jobs if jobs is not None else (os.cpu_count() or 1 if len(targets) >= 8 else 1)
+    num_workers = max(1, min(num_workers, len(targets)))
+
     total_violations = 0
     total_fixed = 0
     total_would_fix = 0
@@ -135,11 +231,28 @@ def check(
     # Collect raw (pre-baseline-filter) violations for baseline generation / auto-regen
     raw_violations_by_file: dict[str, list] = {}
 
-    for filepath in sorted(targets):
-        source = filepath.read_text(encoding="utf-8")
-        diagnostics, new_source, remaining = check_file(
-            source, filepath, kind_map, fix=(fix or diff), unsafe_fixes=unsafe_fixes, config=config
+    # --- Check files (parallel or sequential) ---
+    do_fix = fix or diff
+    file_results: list[_FileResult]
+    if num_workers > 1:
+        file_results = _check_files_parallel(
+            sorted(targets),
+            num_workers,
+            effective_ignore,
+            effective_select,
+            config,
+            fix=do_fix,
+            unsafe_fixes=unsafe_fixes,
         )
+    else:
+        file_results = [_check_one_file(fp, kind_map, do_fix, unsafe_fixes, config) for fp in sorted(targets)]
+
+    for result in file_results:
+        filepath = result.filepath
+        source = result.source
+        diagnostics = result.diagnostics
+        new_source = result.new_source
+        remaining = result.remaining
 
         # Collect raw violations keyed by the project-relative path
         fp_str = normalize_path(filepath, project_root)
