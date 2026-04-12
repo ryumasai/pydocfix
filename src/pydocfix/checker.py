@@ -12,27 +12,8 @@ from typing import Final, NamedTuple
 
 import pydocstring
 from pydocstring import (
-    GoogleArg,
-    GoogleAttribute,
     GoogleDocstring,
-    GoogleException,
-    GoogleMethod,
-    GoogleReturn,
-    GoogleSectionKind,
-    GoogleSeeAlsoItem,
-    GoogleWarning,
-    GoogleYield,
-    NumPyAttribute,
     NumPyDocstring,
-    NumPyException,
-    NumPyMethod,
-    NumPyParameter,
-    NumPyReference,
-    NumPyReturns,
-    NumPySectionKind,
-    NumPySeeAlsoItem,
-    NumPyWarning,
-    NumPyYields,
     PlainDocstring,
     Visitor,
 )
@@ -60,8 +41,8 @@ class _DocstringInfo(NamedTuple):
     """Extracted info about a docstring from source."""
 
     content: str
-    parent_node: ast.AST
     stmt: ast.stmt
+    parent: ast.AST
 
 
 def _extract_docstrings(source: str, filepath: Path, tree: ast.AST | None = None) -> Iterator[_DocstringInfo]:
@@ -89,8 +70,8 @@ def _extract_docstrings(source: str, filepath: Path, tree: ast.AST | None = None
 
         yield _DocstringInfo(
             docstr,
-            node,
             node.body[0],  # type: ignore
+            node,
         )
 
 
@@ -127,35 +108,12 @@ def _locate_docstring(
     closing: Final[str] = source_bytes[byte_end - len(quote_chars) : byte_end].decode("ascii")
 
     return DocstringLocation(
-        content_offset=Offset(ds_stmt.lineno, matched.end()),
-        byte_start=byte_start,
-        byte_end=byte_end,
-        opening=matched.group(0),
-        closing=closing,
+        content_start=Offset(ds_stmt.lineno, matched.end()),
+        expr_byte_start=byte_start,
+        expr_byte_end=byte_end,
+        opening_quote=matched.group(0),
+        closing_quote=closing,
     )
-
-
-# Mapping from CST node type to the section-level "parent" types,
-# for use in entry-level dispatching.
-_ENTRY_TYPE_TO_SECTION_KIND = {
-    GoogleArg: GoogleSectionKind.ARGS,
-    GoogleReturn: GoogleSectionKind.RETURNS,
-    GoogleException: GoogleSectionKind.RAISES,
-    GoogleYield: GoogleSectionKind.YIELDS,
-    GoogleAttribute: GoogleSectionKind.ATTRIBUTES,
-    GoogleWarning: GoogleSectionKind.WARNINGS,
-    GoogleSeeAlsoItem: GoogleSectionKind.SEE_ALSO,
-    GoogleMethod: GoogleSectionKind.METHODS,
-    NumPyParameter: NumPySectionKind.PARAMETERS,
-    NumPyReturns: NumPySectionKind.RETURNS,
-    NumPyException: NumPySectionKind.RAISES,
-    NumPyYields: NumPySectionKind.YIELDS,
-    NumPyAttribute: NumPySectionKind.ATTRIBUTES,
-    NumPyWarning: NumPySectionKind.WARNINGS,
-    NumPySeeAlsoItem: NumPySectionKind.SEE_ALSO,
-    NumPyReference: NumPySectionKind.REFERENCES,
-    NumPyMethod: NumPySectionKind.METHODS,
-}
 
 
 def build_rules_map(rules: Iterable[BaseRule]) -> dict[type, list[BaseRule]]:
@@ -176,7 +134,7 @@ def _has_overlap(accepted: Iterable[Edit], candidate: Fix) -> bool:
     return False
 
 
-class _DiagnosticCollector(Visitor):
+class _RuleVisitor(Visitor):
     """Walk the CST and collect diagnostics from matching rules."""
 
     def __init__(
@@ -302,14 +260,14 @@ def _diagnose_docstring(
     kind_map: dict[type, list[BaseRule]],
     filepath: Path,
     ds_content: str,
-    parent_ast: ast.AST,
     ds_stmt: ast.stmt,
     ds_loc: DocstringLocation,
+    parent_ast: ast.AST,
     config: Config | None,
 ) -> list[Diagnostic]:
     """Parse and diagnose a single docstring, returning diagnostics."""
     parsed = pydocstring.parse(ds_content)
-    collector = _DiagnosticCollector(
+    collector = _RuleVisitor(
         kind_map=kind_map,
         filepath=filepath,
         ds_content=ds_content,
@@ -512,7 +470,7 @@ def check_file(
         _tree = None
         parent_map = {}
 
-    for ds_content, parent_ast, ds_stmt in _extract_docstrings(source, filepath, _tree):
+    for ds_content, ds_stmt, parent_ast in _extract_docstrings(source, filepath, _tree):
         # Determine where the docstring content starts (after opening triple-quote).
         ds_loc = _locate_docstring(ds_stmt, lines, line_offsets, source_bytes)
         if ds_loc is None:
@@ -522,9 +480,9 @@ def check_file(
             kind_map,
             filepath,
             ds_content,
-            parent_ast,
             ds_stmt,
             ds_loc,
+            parent_ast,
             config,
         )
 
@@ -579,9 +537,9 @@ def check_file(
                     kind_map,
                     filepath,
                     current_content,
-                    parent_ast,
                     ds_stmt,
                     ds_loc,
+                    parent_ast,
                     config,
                 )
                 ds_diagnostics = [dataclasses.replace(d, symbol=symbol) for d in ds_diagnostics]
@@ -600,9 +558,9 @@ def check_file(
             if current_content != ds_content:
                 file_edits.append(
                     (
-                        ds_loc.byte_start,
-                        ds_loc.byte_end,
-                        (ds_loc.opening + current_content + ds_loc.closing).encode("utf-8"),
+                        ds_loc.expr_byte_start,
+                        ds_loc.expr_byte_end,
+                        (ds_loc.opening_quote + current_content + ds_loc.closing_quote).encode("utf-8"),
                     ),
                 )
 
