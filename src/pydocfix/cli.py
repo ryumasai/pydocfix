@@ -35,7 +35,7 @@ class _FileResult(NamedTuple):
 
 def _check_one_file(
     filepath: Path,
-    kind_map: dict,
+    type_to_rules: dict,
     fix: bool,
     unsafe_fixes: bool,
     config: Config | None,
@@ -47,7 +47,7 @@ def _check_one_file(
     diagnostics, new_source, remaining = check_file(
         source,
         filepath,
-        kind_map,
+        type_to_rules,
         fix=fix,
         unsafe_fixes=unsafe_fixes,
         config=config,
@@ -57,7 +57,7 @@ def _check_one_file(
 
 # --- multiprocessing worker ---
 
-_worker_kind_map: dict | None = None
+_worker_type_to_rules: dict | None = None
 
 
 def _worker_init(
@@ -66,18 +66,18 @@ def _worker_init(
     config_obj: Config | None,
 ) -> None:
     """Initialize worker process by rebuilding the rule registry."""
-    global _worker_kind_map  # noqa: PLW0603
+    global _worker_type_to_rules  # noqa: PLW0603
     from pydocfix.rules import build_registry
 
     registry = build_registry(ignore=ignore, select=select, config=config_obj)
-    _worker_kind_map = registry.kind_map
+    _worker_type_to_rules = registry.type_to_rules
 
 
 def _worker_check(args: tuple) -> _FileResult:
     """Worker function — runs in a child process."""
     filepath, fix, unsafe_fixes, config_obj = args
-    assert _worker_kind_map is not None
-    return _check_one_file(filepath, _worker_kind_map, fix, unsafe_fixes, config_obj)
+    assert _worker_type_to_rules is not None
+    return _check_one_file(filepath, _worker_type_to_rules, fix, unsafe_fixes, config_obj)
 
 
 def _check_files_parallel(
@@ -211,7 +211,7 @@ def check(
     effective_exclude: frozenset[str] = DEFAULT_EXCLUDE | frozenset(config.exclude) | frozenset(cli_excludes)
 
     registry: Final = build_registry(ignore=effective_ignore, select=effective_select, config=config)
-    kind_map: Final = registry.kind_map
+    type_to_rules: Final = registry.type_to_rules
 
     targets: Final = _collect_files(list(paths) or ["."], exclude=effective_exclude)
     if not targets:
@@ -245,7 +245,7 @@ def check(
             unsafe_fixes=unsafe_fixes,
         )
     else:
-        file_results = [_check_one_file(fp, kind_map, do_fix, unsafe_fixes, config) for fp in sorted(targets)]
+        file_results = [_check_one_file(fp, type_to_rules, do_fix, unsafe_fixes, config) for fp in sorted(targets)]
 
     for result in file_results:
         filepath = result.filepath

@@ -11,9 +11,9 @@ from pydocfix.rules.prm.prm001 import PRM001
 from pydocfix.rules.rtn.rtn001 import RTN001
 
 
-def _diagnose(filepath: Path, kind_map) -> list:
+def _diagnose(filepath: Path, type_to_rules) -> list:
     source = filepath.read_text(encoding="utf-8")
-    diags, *_ = check_file(source, filepath, kind_map)
+    diags, *_ = check_file(source, filepath, type_to_rules)
     return diags
 
 

@@ -45,6 +45,15 @@ class _DocstringInfo(NamedTuple):
     parent: ast.AST
 
 
+class _NoqaState(NamedTuple):
+    """Intermediate noqa suppression state for a single docstring."""
+
+    directive: NoqaDirective | None
+    span: tuple[int, int] | None
+    used_codes: set[str]
+    suppressed_any: bool
+
+
 def _extract_docstrings(source: str, filepath: Path, tree: ast.AST | None = None) -> Iterator[_DocstringInfo]:
     """Yield `_DocstringInfo` for every docstring in *source*.
 
@@ -118,11 +127,11 @@ def _locate_docstring(
 
 def build_rules_map(rules: Iterable[BaseRule]) -> dict[type, list[BaseRule]]:
     """Build cst->rules dispatch map."""
-    kind_map: dict[type, list[BaseRule]] = {}
+    type_to_rules: dict[type, list[BaseRule]] = {}
     for rule in rules:
         for kind in rule.target_kinds:
-            kind_map.setdefault(kind, []).append(rule)
-    return kind_map
+            type_to_rules.setdefault(kind, []).append(rule)
+    return type_to_rules
 
 
 def _has_overlap(accepted: Iterable[Edit], candidate: Fix) -> bool:
@@ -139,30 +148,28 @@ class _RuleVisitor(Visitor):
 
     def __init__(
         self,
-        kind_map: dict[type, list[BaseRule]],
+        type_to_rules: dict[type, list[BaseRule]],
+        config: Config | None,
         filepath: Path,
-        ds_content: str,
         parsed: GoogleDocstring | NumPyDocstring | PlainDocstring,
         parent_ast: ast.AST,
         ds_stmt: ast.stmt,
+        ds_content: str,
         ds_loc: DocstringLocation,
-        config: Config | None,
     ) -> None:
-        self._kind_map = kind_map
+        self._type_to_rules = type_to_rules
+        self._config = config
         self._filepath = filepath
-        self._ds_content = ds_content
         self._parsed = parsed
         self._parent_ast = parent_ast
         self._ds_stmt = ds_stmt
+        self._ds_content = ds_content
         self._ds_loc = ds_loc
-        self._config = config
         self.diagnostics: list[Diagnostic] = []
-        # Track current section's entries for context
-        self._current_section_entries: list = []
 
-    def _dispatch(self, node, section_entries=None):
+    def _dispatch(self, node, *, walk_ctx=None, section_entries=None):
         """Dispatch a node to matching rules."""
-        matching = self._kind_map.get(type(node), [])
+        matching = self._type_to_rules.get(type(node), [])
         if not matching:
             return
         ctx = DiagnoseContext(
@@ -181,75 +188,75 @@ class _RuleVisitor(Visitor):
 
     # Google style
     def enter_google_docstring(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_google_section(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_google_arg(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_google_return(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_google_exception(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_google_yield(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_google_attribute(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_google_warning(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_google_see_also_item(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_google_method(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     # NumPy style
     def enter_numpy_docstring(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_section(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_parameter(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_returns(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_exception(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_yields(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_attribute(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_deprecation(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_warning(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_see_also_item(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_reference(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     def enter_numpy_method(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
     # Plain
     def enter_plain_docstring(self, node, ctx):
-        self._dispatch(node)
+        self._dispatch(node, walk_ctx=ctx)
 
 
 _MAX_FIX_ITERATIONS: Final[int] = 10
@@ -257,28 +264,28 @@ _MAX_FIX_ITERATIONS: Final[int] = 10
 
 
 def _diagnose_docstring(
-    kind_map: dict[type, list[BaseRule]],
-    filepath: Path,
-    ds_content: str,
-    ds_stmt: ast.stmt,
-    ds_loc: DocstringLocation,
-    parent_ast: ast.AST,
+    type_to_rules: dict[type, list[BaseRule]],
     config: Config | None,
+    filepath: Path,
+    parent_ast: ast.AST,
+    ds_stmt: ast.stmt,
+    ds_content: str,
+    ds_loc: DocstringLocation,
 ) -> list[Diagnostic]:
     """Parse and diagnose a single docstring, returning diagnostics."""
     parsed = pydocstring.parse(ds_content)
-    collector = _RuleVisitor(
-        kind_map=kind_map,
+    visitor = _RuleVisitor(
+        type_to_rules=type_to_rules,
+        config=config,
         filepath=filepath,
-        ds_content=ds_content,
         parsed=parsed,
         parent_ast=parent_ast,
         ds_stmt=ds_stmt,
+        ds_content=ds_content,
         ds_loc=ds_loc,
-        config=config,
     )
-    pydocstring.walk(parsed, collector)
-    return collector.diagnostics
+    pydocstring.walk(parsed, visitor)
+    return visitor.diagnostics
 
 
 def _apply_nonoverlapping_fixes(
@@ -434,10 +441,128 @@ def _check_unused_inline_noqa(
     return diagnostics, source_edit
 
 
+def _process_docstring(
+    type_to_rules: dict[type, list[BaseRule]],
+    config: Config | None,
+    filepath: Path,
+    parent_ast: ast.AST,
+    ds_stmt: ast.stmt,
+    ds_content: str,
+    ds_loc: DocstringLocation,
+    file_noqa: NoqaDirective | None,
+    lines: Sequence[str],
+    parent_map: dict[int, ast.AST],
+) -> tuple[list[Diagnostic], _NoqaState, str]:
+    """Diagnose a docstring, apply noqa suppression, and attach a symbol.
+
+    Returns ``(diagnostics, noqa_state, symbol)``.
+    """
+    ds_diagnostics = _diagnose_docstring(
+        type_to_rules,
+        config,
+        filepath,
+        parent_ast,
+        ds_stmt,
+        ds_content,
+        ds_loc,
+    )
+
+    # Find inline noqa
+    inline_noqa: NoqaDirective | None = None
+    inline_noqa_span: tuple[int, int] | None = None
+    end_line_idx = (ds_stmt.end_lineno or 0) - 1
+    if 0 <= end_line_idx < len(lines):
+        found = find_inline_noqa(lines[end_line_idx])
+        if found is not None:
+            inline_noqa, inline_noqa_span = found
+
+    # Apply noqa suppression
+    used_inline: set[str] = set()
+    inline_suppressed_any: bool = False
+    if inline_noqa is not None or file_noqa is not None:
+        kept: list[Diagnostic] = []
+        for d in ds_diagnostics:
+            suppress_inline = inline_noqa is not None and inline_noqa.suppresses(d.rule)
+            suppress_file = file_noqa is not None and file_noqa.suppresses(d.rule)
+            if suppress_inline or suppress_file:
+                if suppress_inline:
+                    inline_suppressed_any = True
+                    if inline_noqa is not None and inline_noqa.codes is not None:
+                        used_inline.add(d.rule)
+            else:
+                kept.append(d)
+        ds_diagnostics = kept
+
+    # Attach symbol
+    symbol = _compute_symbol(parent_ast, parent_map)
+    ds_diagnostics = [dataclasses.replace(d, symbol=symbol) for d in ds_diagnostics]
+
+    noqa_state = _NoqaState(
+        directive=inline_noqa,
+        span=inline_noqa_span,
+        used_codes=used_inline,
+        suppressed_any=inline_suppressed_any,
+    )
+    return ds_diagnostics, noqa_state, symbol
+
+
+def _fix_docstring(
+    type_to_rules: dict[type, list[BaseRule]],
+    config: Config | None,
+    filepath: Path,
+    parent_ast: ast.AST,
+    ds_stmt: ast.stmt,
+    ds_content: str,
+    ds_loc: DocstringLocation,
+    ds_diagnostics: list[Diagnostic],
+    unsafe_fixes: bool,
+    symbol: str,
+) -> tuple[list[Diagnostic], str | None]:
+    """Apply iterative fixes to a docstring until stable.
+
+    Returns ``(remaining_diagnostics, new_content_or_none)``.
+    """
+    current_content = ds_content
+
+    for _iteration in range(_MAX_FIX_ITERATIONS):
+        new_content, applied = _apply_nonoverlapping_fixes(
+            current_content,
+            ds_diagnostics,
+            unsafe_fixes,
+            config,
+        )
+        if new_content is None:
+            break  # nothing fixable remains
+        current_content = new_content
+
+        # Re-diagnose the fixed docstring, re-annotate symbol
+        ds_diagnostics = _diagnose_docstring(
+            type_to_rules,
+            config,
+            filepath,
+            parent_ast,
+            ds_stmt,
+            current_content,
+            ds_loc,
+        )
+        ds_diagnostics = [dataclasses.replace(d, symbol=symbol) for d in ds_diagnostics]
+        if not ds_diagnostics or not any(is_applicable(d, unsafe_fixes, config) for d in ds_diagnostics):
+            break  # converged — no more fixable diagnostics
+    else:
+        logger.warning(
+            "%s: fix did not converge after %d iterations, stopping",
+            filepath,
+            _MAX_FIX_ITERATIONS,
+        )
+
+    new_content_result = current_content if current_content != ds_content else None
+    return ds_diagnostics, new_content_result
+
+
 def check_file(
     source: str,
     filepath: Path,
-    kind_map: dict[type, list[BaseRule]],
+    type_to_rules: dict[type, list[BaseRule]],
     *,
     fix: bool = False,
     unsafe_fixes: bool = False,
@@ -471,106 +596,55 @@ def check_file(
         parent_map = {}
 
     for ds_content, ds_stmt, parent_ast in _extract_docstrings(source, filepath, _tree):
-        # Determine where the docstring content starts (after opening triple-quote).
         ds_loc = _locate_docstring(ds_stmt, lines, line_offsets, source_bytes)
         if ds_loc is None:
             continue
 
-        ds_diagnostics = _diagnose_docstring(
-            kind_map,
-            filepath,
-            ds_content,
-            ds_stmt,
-            ds_loc,
-            parent_ast,
+        ds_diagnostics, noqa_state, symbol = _process_docstring(
+            type_to_rules,
             config,
+            filepath,
+            parent_ast,
+            ds_stmt,
+            ds_content,
+            ds_loc,
+            file_noqa,
+            lines,
+            parent_map,
         )
-
-        # Apply noqa suppression before reporting or fixing
-        inline_noqa: NoqaDirective | None = None
-        inline_noqa_span: tuple[int, int] | None = None
-        end_line_idx = (ds_stmt.end_lineno or 0) - 1
-        if 0 <= end_line_idx < len(lines):
-            found = find_inline_noqa(lines[end_line_idx])
-            if found is not None:
-                inline_noqa, inline_noqa_span = found
-
-        used_inline: set[str] = set()
-        inline_suppressed_any: bool = False
-        if inline_noqa is not None or file_noqa is not None:
-            kept: list[Diagnostic] = []
-            for d in ds_diagnostics:
-                suppress_inline = inline_noqa is not None and inline_noqa.suppresses(d.rule)
-                suppress_file = file_noqa is not None and file_noqa.suppresses(d.rule)
-                if suppress_inline or suppress_file:
-                    if suppress_inline:
-                        inline_suppressed_any = True
-                        if inline_noqa is not None and inline_noqa.codes is not None:
-                            used_inline.add(d.rule)
-                else:
-                    kept.append(d)
-            ds_diagnostics = kept
-
-        # Attach symbol to each diagnostic for baseline support
-        symbol = _compute_symbol(parent_ast, parent_map)
-        ds_diagnostics = [dataclasses.replace(d, symbol=symbol) for d in ds_diagnostics]
-
         all_diagnostics.extend(ds_diagnostics)
 
         # Fix phase (per-docstring) — iterate until stable
         if fix and ds_diagnostics:
-            current_content = ds_content
-
-            for _iteration in range(_MAX_FIX_ITERATIONS):
-                new_content, applied = _apply_nonoverlapping_fixes(
-                    current_content,
-                    ds_diagnostics,
-                    unsafe_fixes,
-                    config,
-                )
-                if new_content is None:
-                    break  # nothing fixable remains
-                current_content = new_content
-
-                # Re-diagnose the fixed docstring, re-annotate symbol
-                ds_diagnostics = _diagnose_docstring(
-                    kind_map,
-                    filepath,
-                    current_content,
-                    ds_stmt,
-                    ds_loc,
-                    parent_ast,
-                    config,
-                )
-                ds_diagnostics = [dataclasses.replace(d, symbol=symbol) for d in ds_diagnostics]
-                if not ds_diagnostics or not any(is_applicable(d, unsafe_fixes, config) for d in ds_diagnostics):
-                    break  # converged — no more fixable diagnostics
-            else:
-                logger.warning(
-                    "%s: fix did not converge after %d iterations, stopping",
-                    filepath,
-                    _MAX_FIX_ITERATIONS,
-                )
-
-            # The final ds_diagnostics is the ground truth of what remains
-            remaining_after_fix.extend(ds_diagnostics)
-
-            if current_content != ds_content:
+            ds_remaining, new_content = _fix_docstring(
+                type_to_rules,
+                config,
+                filepath,
+                parent_ast,
+                ds_stmt,
+                ds_content,
+                ds_loc,
+                ds_diagnostics,
+                unsafe_fixes,
+                symbol,
+            )
+            remaining_after_fix.extend(ds_remaining)
+            if new_content is not None:
                 file_edits.append(
                     (
                         ds_loc.expr_byte_start,
                         ds_loc.expr_byte_end,
-                        (ds_loc.opening_quote + current_content + ds_loc.closing_quote).encode("utf-8"),
-                    ),
+                        (ds_loc.opening_quote + new_content + ds_loc.closing_quote).encode("utf-8"),
+                    )
                 )
 
         # Generate NOQ001 diagnostics for unused inline noqa codes
-        if inline_noqa is not None and inline_noqa_span is not None:
+        if noqa_state.directive is not None and noqa_state.span is not None:
             noq_diagnostics, noq_source_edit = _check_unused_inline_noqa(
-                inline_noqa=inline_noqa,
-                noqa_span=inline_noqa_span,
-                used_codes=used_inline,
-                any_suppressed=inline_suppressed_any,
+                inline_noqa=noqa_state.directive,
+                noqa_span=noqa_state.span,
+                used_codes=noqa_state.used_codes,
+                any_suppressed=noqa_state.suppressed_any,
                 end_lineno=ds_stmt.end_lineno or 0,
                 lines=lines,
                 line_offsets=line_offsets,
@@ -580,9 +654,7 @@ def check_file(
                 all_diagnostics.extend(noq_diagnostics)
                 if fix and noq_source_edit is not None:
                     file_edits.append(noq_source_edit)
-                    # NOQ001 was fixed — does not appear in remaining_after_fix
                 elif fix:
-                    # NOQ001 not fixable — still remains
                     remaining_after_fix.extend(noq_diagnostics)
 
     fixed_source: str | None = None

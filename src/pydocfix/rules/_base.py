@@ -346,5 +346,5 @@ class RuleRegistry:
         return list(self._rules.values())
 
     @property
-    def kind_map(self) -> dict[type, list[BaseRule]]:
+    def type_to_rules(self) -> dict[type, list[BaseRule]]:
         return dict(self._by_kind)

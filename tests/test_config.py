@@ -115,7 +115,7 @@ class TestIgnoreViaConfig:
 
         source = 'def foo():\n    """No period"""\n    pass\n'
         registry = build_registry(ignore=["SUM002"])
-        diags, *_ = check_file(source, tmp_path / "f.py", registry.kind_map)
+        diags, *_ = check_file(source, tmp_path / "f.py", registry.type_to_rules)
         assert diags == []
 
     def test_non_ignored_rule_still_reported(self, tmp_path: Path):
@@ -124,7 +124,7 @@ class TestIgnoreViaConfig:
 
         source = 'def foo():\n    """No period"""\n    pass\n'
         registry = build_registry(ignore=["PRM101"])
-        diags, *_ = check_file(source, tmp_path / "f.py", registry.kind_map)
+        diags, *_ = check_file(source, tmp_path / "f.py", registry.type_to_rules)
         assert any(d.rule == "SUM002" for d in diags)
 
 
@@ -138,7 +138,7 @@ class TestSelectViaConfig:
         source = 'def foo():\n    """No period"""\n    pass\n'
         # Only PRM101 selected → SUM002 should NOT fire even though it is default-enabled
         registry = build_registry(select=["PRM101"])
-        diags, *_ = check_file(source, tmp_path / "f.py", registry.kind_map)
+        diags, *_ = check_file(source, tmp_path / "f.py", registry.type_to_rules)
         assert not any(d.rule == "SUM002" for d in diags)
 
     def test_select_all_enables_non_default_rule(self, tmp_path: Path):
@@ -165,7 +165,7 @@ class TestSelectViaConfig:
 
         source = 'def foo():\n    """No period"""\n    pass\n'
         registry = build_registry()  # no select → only default-enabled rules
-        diags, *_ = check_file(source, tmp_path / "f.py", registry.kind_map)
+        diags, *_ = check_file(source, tmp_path / "f.py", registry.type_to_rules)
         assert any(d.rule == "SUM002" for d in diags)
 
     def test_non_default_rule_inactive_without_select(self, tmp_path: Path):
