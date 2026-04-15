@@ -293,7 +293,7 @@ Add to `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/qraqras/pydocfix
+  - repo: https://github.com/ryumasai/pydocfix
     rev: v0.1.0b1
     hooks:
       - id: pydocfix
