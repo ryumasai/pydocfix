@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pydocfix"
-version = "0.1.0b1"
+version = "0.1.0b2"
 description = "A Python docstring linter with auto-fix support"
 readme = "README.md"
 license = "MIT"

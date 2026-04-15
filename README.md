@@ -8,7 +8,7 @@ A Python docstring linter that checks **signature ↔ docstring consistency** an
 Inspired by [pydoclint](https://github.com/jsh9/pydoclint), pydocfix goes further by **automatically repairing** the issues it finds.
 
 > [!NOTE]
-> This project is in **beta** (v0.1.0b1).
+> This project is in **beta** (v0.1.0b2).
 > APIs and behavior may change before the stable release.
 
 ## Why pydocfix?
@@ -294,7 +294,7 @@ Add to `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/ryumasai/pydocfix
-    rev: v0.1.0b1
+    rev: v0.1.0b2
     hooks:
       - id: pydocfix
 ```
