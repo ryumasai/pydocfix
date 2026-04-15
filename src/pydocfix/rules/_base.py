@@ -105,11 +105,11 @@ class Diagnostic:
 class DocstringLocation(NamedTuple):
     """Pre-computed positional info for a docstring expression."""
 
-    content_offset: Offset  # where content begins (after opening quote)
-    byte_start: int  # byte offset of expression start in source
-    byte_end: int  # byte offset of expression end in source
-    opening: str  # opening quote string (including prefix like r, u)
-    closing: str  # closing quote string
+    content_start: Offset  # line:col where content begins (after opening quote)
+    expr_byte_start: int  # byte offset of expression start in source file
+    expr_byte_end: int  # byte offset of expression end in source file
+    opening_quote: str  # opening quote string (including prefix like r, u)
+    closing_quote: str  # closing quote string
 
 
 def _byte_offset_to_line_col(text_bytes: bytes, offset: int) -> tuple[int, int]:
@@ -139,7 +139,7 @@ class DiagnoseContext:
         """Convert a CST node/token byte range to a file-level Range."""
         if cst is None:
             cst = self.target_cst
-        ds_offset: Final[Offset] = self.docstring_location.content_offset
+        ds_offset: Final[Offset] = self.docstring_location.content_start
         ds_bytes: Final[bytes] = self.docstring_text.encode("utf-8")
         start_line, start_col = _byte_offset_to_line_col(ds_bytes, cst.range.start)
         end_line, end_col = _byte_offset_to_line_col(ds_bytes, cst.range.end)
@@ -346,5 +346,5 @@ class RuleRegistry:
         return list(self._rules.values())
 
     @property
-    def kind_map(self) -> dict[type, list[BaseRule]]:
+    def type_to_rules(self) -> dict[type, list[BaseRule]]:
         return dict(self._by_kind)

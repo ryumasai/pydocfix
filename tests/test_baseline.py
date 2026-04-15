@@ -29,7 +29,7 @@ def _make_registry():
 def _run(source: str, path: Path | None = None) -> list:
     registry = _make_registry()
     fp = path or Path("test_module.py")
-    diagnostics, _, _ = check_file(source, fp, registry.kind_map)
+    diagnostics, _, _ = check_file(source, fp, registry.type_to_rules)
     return diagnostics
 
 

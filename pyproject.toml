@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pydocfix"
-version = "0.1.0b1"
+version = "0.1.0b2"
 description = "A Python docstring linter with auto-fix support"
 readme = "README.md"
 license = "MIT"
@@ -28,10 +28,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/qraqras/pydocfix"
-Repository = "https://github.com/qraqras/pydocfix"
-Issues = "https://github.com/qraqras/pydocfix/issues"
-Changelog = "https://github.com/qraqras/pydocfix/releases"
+Homepage = "https://github.com/ryumasai/pydocfix"
+Repository = "https://github.com/ryumasai/pydocfix"
+Issues = "https://github.com/ryumasai/pydocfix/issues"
+Changelog = "https://github.com/ryumasai/pydocfix/releases"
 
 [project.scripts]
 pydocfix = "pydocfix.cli:main"
