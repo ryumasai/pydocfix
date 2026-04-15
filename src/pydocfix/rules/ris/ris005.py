@@ -11,20 +11,13 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 from pydocfix.rules.ris._helpers import _bare_exc_name, get_raised_exceptions
 
 
-class RIS005(BaseRule):
+class RIS005(BaseRule[GoogleException | NumPyException]):
     """Raises entry documents an exception not raised in the function body."""
 
     code = "RIS005"
-    message = "Raises entry documents exception not raised in function body."
-    target_kinds = frozenset({
-        GoogleException,
-        NumPyException,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleException, NumPyException)):
-            return
+    def diagnose(self, node: GoogleException | NumPyException, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

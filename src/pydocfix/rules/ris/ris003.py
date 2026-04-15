@@ -10,20 +10,13 @@ from pydocstring import GoogleException, NumPyException
 from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 
 
-class RIS003(BaseRule):
+class RIS003(BaseRule[GoogleException | NumPyException]):
     """Raises entry has no description."""
 
     code = "RIS003"
-    message = "Raises entry has no description."
-    target_kinds = frozenset({
-        GoogleException,
-        NumPyException,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleException, NumPyException)):
-            return
+    def diagnose(self, node: GoogleException | NumPyException, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -32,4 +25,4 @@ class RIS003(BaseRule):
             return
 
         type_token = cst_node.type
-        yield self._make_diagnostic(ctx, self.message, target=type_token or cst_node)
+        yield self._make_diagnostic(ctx, "Raises entry has no description.", target=type_token or cst_node)

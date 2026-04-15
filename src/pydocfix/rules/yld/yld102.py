@@ -11,20 +11,13 @@ from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
-class YLD102(BaseRule):
+class YLD102(BaseRule[GoogleYield | NumPyYields]):
     """Yield type not specified in either docstring or signature."""
 
     code = "YLD102"
-    message = "Yield type not in docstring or signature."
-    target_kinds = frozenset({
-        GoogleYield,
-        NumPyYields,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleYield, NumPyYields)):
-            return
+    def diagnose(self, node: GoogleYield | NumPyYields, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -35,4 +28,4 @@ class YLD102(BaseRule):
         if get_yield_type(ctx.parent_ast) is not None:
             return
 
-        yield self._make_diagnostic(ctx, self.message, target=cst_node)
+        yield self._make_diagnostic(ctx, "Yield type not in docstring or signature.", target=cst_node)

@@ -16,15 +16,10 @@ from pydocfix.rules.ris._helpers import (
 )
 
 
-class RIS004(BaseRule):
+class RIS004(BaseRule[GoogleSection | NumPySection]):
     """Raised exception not documented in the Raises section."""
 
     code = "RIS004"
-    message = "Raised exception not documented in Raises section."
-    target_kinds = frozenset({
-        GoogleSection,
-        NumPySection,
-    })
 
     @staticmethod
     def _detect_entry_indent(ds_text: str, section) -> str:
@@ -37,10 +32,8 @@ class RIS004(BaseRule):
             return f"\n{indent}{exc_name}"
         return f"\n{indent}{exc_name}:"
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        section = ctx.target_cst
-        if not isinstance(section, (GoogleSection, NumPySection)):
-            return
+    def diagnose(self, node: GoogleSection | NumPySection, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        section = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -63,5 +56,5 @@ class RIS004(BaseRule):
                 edits=[Edit(start=section.range.end, end=section.range.end, new_text=entry)],
                 applicability=Applicability.UNSAFE,
             )
-            message = f"Raised exception \'{exc_name}\' not documented in Raises section."
+            message = f"Raised exception '{exc_name}' not documented in Raises section."
             yield self._make_diagnostic(ctx, message, fix=fix, target=header_name or section)

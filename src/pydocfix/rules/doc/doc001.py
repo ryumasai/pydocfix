@@ -123,19 +123,14 @@ def _section_clean_end(section_bytes: bytes) -> int:
     return clean_end
 
 
-class DOC001(BaseRule):
+class DOC001(BaseRule[GoogleDocstring | NumPyDocstring]):
     """Docstring sections are not in canonical order."""
 
     code = "DOC001"
-    message = "Docstring sections are not in canonical order."
     enabled_by_default = True
-    target_kinds = frozenset({
-        GoogleDocstring,
-        NumPyDocstring,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        root = ctx.target_cst
+    def diagnose(self, node: GoogleDocstring | NumPyDocstring, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        root = node
         if isinstance(root, GoogleDocstring):
             order = _GOOGLE_ORDER
         elif isinstance(root, NumPyDocstring):
@@ -208,4 +203,4 @@ class DOC001(BaseRule):
         first_wrong = next(
             sections[i] for i, (actual, expected) in enumerate(zip(sections, sorted_sections)) if actual is not expected
         )
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=first_wrong)
+        yield self._make_diagnostic(ctx, "Docstring sections are not in canonical order.", fix=fix, target=first_wrong)

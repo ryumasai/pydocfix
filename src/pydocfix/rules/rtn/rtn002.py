@@ -14,22 +14,13 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 from pydocfix.rules.rtn._helpers import is_returns_section, returns_a_value
 
 
-class RTN002(BaseRule):
+class RTN002(BaseRule[GoogleSection | NumPySection]):
     """Returns section present but the function does not return a value."""
 
     code = "RTN002"
-    message = "Unnecessary Returns section in docstring."
-    target_kinds = frozenset(
-        {
-            GoogleSection,
-            NumPySection,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        section = ctx.target_cst
-        if not isinstance(section, (GoogleSection, NumPySection)):
-            return
+    def diagnose(self, node: GoogleSection | NumPySection, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        section = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -51,4 +42,4 @@ class RTN002(BaseRule):
             applicability=Applicability.SAFE,
         )
         header_name = section.header_name
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=header_name or section)
+        yield self._make_diagnostic(ctx, "Unnecessary Returns section in docstring.", fix=fix, target=header_name or section)

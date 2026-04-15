@@ -11,20 +11,13 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 from pydocfix.rules.ris._helpers import get_raised_exceptions, is_raises_section
 
 
-class RIS002(BaseRule):
+class RIS002(BaseRule[GoogleSection | NumPySection]):
     """Docstring has a Raises section but function body has no raise statements."""
 
     code = "RIS002"
-    message = "Unnecessary Raises section in docstring."
-    target_kinds = frozenset({
-        GoogleSection,
-        NumPySection,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        section = ctx.target_cst
-        if not isinstance(section, (GoogleSection, NumPySection)):
-            return
+    def diagnose(self, node: GoogleSection | NumPySection, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        section = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -46,4 +39,4 @@ class RIS002(BaseRule):
             applicability=Applicability.SAFE,
         )
         header_name = section.header_name
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=header_name or section)
+        yield self._make_diagnostic(ctx, "Unnecessary Raises section in docstring.", fix=fix, target=header_name or section)

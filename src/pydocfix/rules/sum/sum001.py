@@ -9,16 +9,10 @@ from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 
 
-class SUM001(BaseRule):
+class SUM001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
     """Docstring has no summary line."""
 
     code = "SUM001"
-    message = "Docstring has no summary line."
-    target_kinds = frozenset({
-        GoogleDocstring,
-        NumPyDocstring,
-        PlainDocstring,
-    })
 
     @staticmethod
     def _has_summary(root: GoogleDocstring | NumPyDocstring | PlainDocstring) -> bool:
@@ -28,10 +22,8 @@ class SUM001(BaseRule):
         text = root.summary.text
         return bool(text and text.strip())
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        root = ctx.target_cst
-        if not isinstance(root, (GoogleDocstring, NumPyDocstring, PlainDocstring)):
-            return
+    def diagnose(self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        root = node
         if self._has_summary(root):
             return
-        yield self._make_diagnostic(ctx, self.message, target=root)
+        yield self._make_diagnostic(ctx, "Docstring has no summary line.", target=root)

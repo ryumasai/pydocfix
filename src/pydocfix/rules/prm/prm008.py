@@ -11,20 +11,13 @@ from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 from pydocfix.rules.prm._helpers import get_param_name_token
 
 
-class PRM008(BaseRule):
+class PRM008(BaseRule[GoogleArg | NumPyParameter]):
     """Docstring parameter has no description."""
 
     code = "PRM008"
-    message = "Docstring parameter has empty description."
-    target_kinds = frozenset({
-        GoogleArg,
-        NumPyParameter,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

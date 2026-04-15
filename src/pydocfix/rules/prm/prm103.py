@@ -11,20 +11,13 @@ from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, Dia
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token
 
 
-class PRM103(BaseRule):
+class PRM103(BaseRule[GoogleArg | NumPyParameter]):
     """Docstring parameter has no type annotation (type_annotation_style = "docstring")."""
 
     code = "PRM103"
-    message = "Parameter has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"PRM104"})
     requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
-    target_kinds = frozenset(
-        {
-            GoogleArg,
-            NumPyParameter,
-        }
-    )
 
     def _build_insert_type_fix(self, cst_node, ann: str, ds_text: str) -> Fix:
         """Build a fix that inserts the type annotation into the docstring entry."""
@@ -54,10 +47,8 @@ class PRM103(BaseRule):
                     applicability=Applicability.UNSAFE,
                 )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

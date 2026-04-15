@@ -13,23 +13,13 @@ _DEFAULT_PERIOD: Final[str] = "."
 _PERIOD_SET: Final[frozenset[str]] = frozenset([_DEFAULT_PERIOD, "!", "?"])
 
 
-class SUM002(BaseRule):
+class SUM002(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
     """Summary should end with a period."""
 
     code = "SUM002"
-    message = "Summary should end with a period."
-    target_kinds = frozenset(
-        {
-            GoogleDocstring,
-            NumPyDocstring,
-            PlainDocstring,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        root = ctx.target_cst
-        if not isinstance(root, (GoogleDocstring, NumPyDocstring, PlainDocstring)):
-            return
+    def diagnose(self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        root = node
         if root.summary is None:
             return
 
@@ -42,4 +32,4 @@ class SUM002(BaseRule):
                 edits=[insert_at(token.range.end, _DEFAULT_PERIOD)],
                 applicability=Applicability.SAFE,
             )
-            yield self._make_diagnostic(ctx, self.message, fix=fix, target=token)
+            yield self._make_diagnostic(ctx, "Summary should end with a period.", fix=fix, target=token)

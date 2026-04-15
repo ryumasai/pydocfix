@@ -11,29 +11,20 @@ from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, D
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
-class YLD105(BaseRule):
+class YLD105(BaseRule[GoogleYield | NumPyYields]):
     """Documented yield has no type annotation in the function signature."""
 
     code = "YLD105"
-    message = "Yield has no type annotation in signature."
     enabled_by_default = False
     conflicts_with = frozenset({"YLD102", "YLD106"})
     requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature", "both"}))
-    target_kinds = frozenset(
-        {
-            GoogleYield,
-            NumPyYields,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleYield, NumPyYields)):
-            return
+    def diagnose(self, node: GoogleYield | NumPyYields, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
         if get_yield_type(ctx.parent_ast) is not None:
             return  # has annotation in signature
 
-        yield self._make_diagnostic(ctx, self.message, target=cst_node)
+        yield self._make_diagnostic(ctx, "Yield has no type annotation in signature.", target=cst_node)

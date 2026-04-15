@@ -11,25 +11,16 @@ from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, Dia
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
-class YLD103(BaseRule):
+class YLD103(BaseRule[GoogleYield | NumPyYields]):
     """Docstring yield entry has no type (type_annotation_style = "docstring")."""
 
     code = "YLD103"
-    message = "Yield has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"YLD104"})
     requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
-    target_kinds = frozenset(
-        {
-            GoogleYield,
-            NumPyYields,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleYield, NumPyYields)):
-            return
+    def diagnose(self, node: GoogleYield | NumPyYields, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -51,4 +42,4 @@ class YLD103(BaseRule):
                     applicability=Applicability.UNSAFE,
                 )
 
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=cst_node)
+        yield self._make_diagnostic(ctx, "Yield has no type in docstring.", fix=fix, target=cst_node)

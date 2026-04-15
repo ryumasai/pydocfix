@@ -20,15 +20,10 @@ from pydocfix.rules.prm._helpers import (
 )
 
 
-class PRM006(BaseRule):
+class PRM006(BaseRule[GoogleSection | NumPySection]):
     """Docstring parameters are listed in a different order than the function signature."""
 
     code = "PRM006"
-    message = "Docstring parameters are not in the same order as the function signature."
-    target_kinds = frozenset({
-        GoogleSection,
-        NumPySection,
-    })
 
     @staticmethod
     def _entry_span(ds_bytes: bytes, param_node) -> tuple[int, int]:
@@ -63,10 +58,8 @@ class PRM006(BaseRule):
             applicability=Applicability.UNSAFE,
         )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        section = ctx.target_cst
-        if not isinstance(section, (GoogleSection, NumPySection)):
-            return
+    def diagnose(self, node: GoogleSection | NumPySection, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        section = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
         if not is_param_section(section):

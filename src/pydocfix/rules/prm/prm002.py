@@ -14,20 +14,13 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 from pydocfix.rules.prm._helpers import get_signature_params, is_param_section
 
 
-class PRM002(BaseRule):
+class PRM002(BaseRule[GoogleSection | NumPySection]):
     """Function has no parameters but docstring has an Args/Parameters section."""
 
     code = "PRM002"
-    message = "Function has no parameters but docstring has Args/Parameters section."
-    target_kinds = frozenset({
-        GoogleSection,
-        NumPySection,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        section = ctx.target_cst
-        if not isinstance(section, (GoogleSection, NumPySection)):
-            return
+    def diagnose(self, node: GoogleSection | NumPySection, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        section = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
         if not is_param_section(section):
@@ -46,4 +39,4 @@ class PRM002(BaseRule):
             edits=[delete_range(start, end)],
             applicability=Applicability.SAFE,
         )
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=section.header_name or section)
+        yield self._make_diagnostic(ctx, "Function has no parameters but docstring has Args/Parameters section.", fix=fix, target=section.header_name or section)

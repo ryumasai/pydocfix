@@ -148,7 +148,9 @@ class TestSelectViaConfig:
         class _OptIn(BaseRule):
             code = "_OPTIN"
             enabled_by_default = False
-            target_kinds = set()
+
+            def diagnose(self, node, ctx):
+                yield from ()
 
         from pydocfix.rules import _BUILTIN_RULES
 
@@ -174,7 +176,9 @@ class TestSelectViaConfig:
         class _OptIn(BaseRule):
             code = "_OPTIN2"
             enabled_by_default = False
-            target_kinds = set()
+
+            def diagnose(self, node, ctx):
+                yield from ()
 
         from pydocfix.rules import _BUILTIN_RULES
 

@@ -11,15 +11,10 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 from pydocfix.rules.prm._helpers import get_param_name_token
 
 
-class PRM009(BaseRule):
+class PRM009(BaseRule[GoogleArg | NumPyParameter]):
     """Docstring parameter name missing '*' or '**' prefix."""
 
     code = "PRM009"
-    message = "Docstring parameter name missing '*' or '**' prefix."
-    target_kinds = frozenset({
-        GoogleArg,
-        NumPyParameter,
-    })
 
     def _get_vararg_kwarg_names(self, ast_node: ast.AST) -> dict[str, str]:
         """Return mapping of bare name -> prefixed name for *args/**kwargs."""
@@ -32,10 +27,8 @@ class PRM009(BaseRule):
             result[ast_node.args.kwarg.arg] = f"**{ast_node.args.kwarg.arg}"
         return result
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
 
         name_token = get_param_name_token(cst_node)
         if name_token is None:

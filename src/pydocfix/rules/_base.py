@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import ast
 import enum
+import typing
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from itertools import pairwise
-from typing import TYPE_CHECKING, Any, Final, NamedTuple
+from typing import TYPE_CHECKING, Any, Final, Generic, NamedTuple, TypeVar
 
 from pydocstring import (
     GoogleDocstring,
@@ -84,7 +86,6 @@ class Diagnostic:
     message: str
     filepath: str
     range: Range
-    docstring_line: int = 0
     severity: Severity = Severity.WARNING
     fix: Fix | None = None
     symbol: str = ""
@@ -128,17 +129,13 @@ class DiagnoseContext:
     filepath: Path
     docstring_text: str
     docstring_cst: GoogleDocstring | NumPyDocstring | PlainDocstring
-    target_cst: Any
     parent_ast: ast.AST
     docstring_stmt: ast.stmt
     docstring_location: DocstringLocation
     config: Config | None = None
-    section_entries: list[Any] = field(default_factory=list)
 
-    def cst_node_range(self, cst: Any = None) -> Range:
+    def cst_node_range(self, cst: Any) -> Range:
         """Convert a CST node/token byte range to a file-level Range."""
-        if cst is None:
-            cst = self.target_cst
         ds_offset: Final[Offset] = self.docstring_location.content_start
         ds_bytes: Final[bytes] = self.docstring_text.encode("utf-8")
         start_line, start_col = _byte_offset_to_line_col(ds_bytes, cst.range.start)
@@ -288,22 +285,34 @@ class ConfigRequirement(NamedTuple):
     """Allowed values of the attribute (e.g. ``frozenset({"signature"})``)."""
 
 
-class BaseRule:
-    """Base class for all linting rules."""
+T = TypeVar("T")
+
+
+class BaseRule(ABC, Generic[T]):
+    """Abstract base class for all linting rules."""
 
     code: str = ""
-    message: str = ""
     enabled_by_default: bool = True
-    target_kinds: frozenset[type] = frozenset()
     conflicts_with: frozenset[str] = frozenset()
     requires_config: ConfigRequirement | None = None
+    _targets: frozenset[type] = frozenset()
 
     def __init__(self, config: Config | None = None) -> None:
         self.config = config
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        """Yield zero or more Diagnostics for the given context."""
-        raise NotImplementedError
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Detect the target CST node types from the generic parameter."""
+        super().__init_subclass__(**kwargs)
+        if not cls.code:
+            raise TypeError(f"{cls.__name__} must define a non-empty 'code'")
+        for base in getattr(cls, "__orig_bases__", ()):
+            if typing.get_origin(base) is BaseRule:
+                args = typing.get_args(base)
+                if args:
+                    t = args[0]
+                    inner = typing.get_args(t)
+                    cls._targets = frozenset(inner) if inner else frozenset({t})
+                break
 
     def _make_diagnostic(
         self,
@@ -311,17 +320,21 @@ class BaseRule:
         message: str,
         *,
         fix: Fix | None = None,
-        target: Any = None,
+        target: Any,
     ) -> Diagnostic:
-        """Helper to create a Diagnostic with correct filepath and range."""
+        """Create a Diagnostic with correct filepath and range."""
         return Diagnostic(
             rule=self.code,
             message=message,
             filepath=str(ctx.filepath),
             range=ctx.cst_node_range(target),
-            docstring_line=ctx.docstring_stmt.lineno,
             fix=fix,
         )
+
+    @abstractmethod
+    def diagnose(self, node: T, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        """Yield zero or more Diagnostics for the given context."""
+        ...
 
 
 @dataclass
@@ -333,7 +346,7 @@ class RuleRegistry:
 
     def register(self, rule: BaseRule) -> None:
         self._rules[rule.code] = rule
-        for kind in rule.target_kinds:
+        for kind in rule._targets:
             self._by_kind[kind].append(rule)
 
     def get(self, code: str) -> BaseRule | None:

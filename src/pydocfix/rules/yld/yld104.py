@@ -19,25 +19,16 @@ from pydocfix.rules._base import (
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
-class YLD104(BaseRule):
+class YLD104(BaseRule[GoogleYield | NumPyYields]):
     """Signature has yield type annotation but docstring also specifies type (redundant)."""
 
     code = "YLD104"
-    message = "Redundant yield type in docstring; type annotation exists in signature."
     enabled_by_default = False
     conflicts_with = frozenset({"YLD103"})
     requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature"}))
-    target_kinds = frozenset(
-        {
-            GoogleYield,
-            NumPyYields,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleYield, NumPyYields)):
-            return
+    def diagnose(self, node: GoogleYield | NumPyYields, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -69,4 +60,4 @@ class YLD104(BaseRule):
         else:
             fix = Fix(edits=[], applicability=Applicability.SAFE)
 
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=ret_type_token)
+        yield self._make_diagnostic(ctx, "Redundant yield type in docstring; type annotation exists in signature.", fix=fix, target=ret_type_token)

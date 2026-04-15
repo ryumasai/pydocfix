@@ -10,20 +10,13 @@ from pydocstring import GoogleReturn, NumPyReturns
 from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 
 
-class RTN003(BaseRule):
+class RTN003(BaseRule[GoogleReturn | NumPyReturns]):
     """Returns section entry has no description."""
 
     code = "RTN003"
-    message = "Returns section has no description."
-    target_kinds = frozenset({
-        GoogleReturn,
-        NumPyReturns,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleReturn, NumPyReturns)):
-            return
+    def diagnose(self, node: GoogleReturn | NumPyReturns, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -32,4 +25,4 @@ class RTN003(BaseRule):
             return
 
         ret_type = cst_node.return_type
-        yield self._make_diagnostic(ctx, self.message, target=ret_type or cst_node)
+        yield self._make_diagnostic(ctx, "Returns section has no description.", target=ret_type or cst_node)

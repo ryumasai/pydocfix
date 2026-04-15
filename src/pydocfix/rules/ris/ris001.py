@@ -25,18 +25,10 @@ from pydocfix.rules._base import (
 from pydocfix.rules.ris._helpers import get_raised_exceptions
 
 
-class RIS001(BaseRule):
+class RIS001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
     """Function has raise statements but docstring has no Raises section."""
 
     code = "RIS001"
-    message = "Missing Raises section in docstring."
-    target_kinds = frozenset(
-        {
-            GoogleDocstring,
-            NumPyDocstring,
-            PlainDocstring,
-        }
-    )
 
     @staticmethod
     def _has_raises_section(root) -> bool:
@@ -66,10 +58,8 @@ class RIS001(BaseRule):
                 lines.append(f"{entry_indent}{name}:")
         return "\n".join(lines)
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        root = ctx.target_cst
-        if not isinstance(root, (GoogleDocstring, NumPyDocstring, PlainDocstring)):
-            return
+    def diagnose(self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        root = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
         if isinstance(root, PlainDocstring):
@@ -92,4 +82,4 @@ class RIS001(BaseRule):
             applicability=Applicability.UNSAFE,
         )
         summary_token = root.summary
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=summary_token or root)
+        yield self._make_diagnostic(ctx, "Missing Raises section in docstring.", fix=fix, target=summary_token or root)

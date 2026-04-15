@@ -49,37 +49,14 @@ _NUMPY_ENTRY_TYPES: frozenset[type] = frozenset(
 )
 
 
-class DOC002(BaseRule):
+class DOC002(BaseRule[GoogleArg | GoogleReturn | GoogleException | GoogleYield | GoogleAttribute | GoogleWarning | GoogleSeeAlsoItem | GoogleMethod | NumPyParameter | NumPyReturns | NumPyException | NumPyYields | NumPyAttribute | NumPyWarning | NumPySeeAlsoItem | NumPyReference | NumPyMethod]):
     """Incorrect indentation of a docstring section entry."""
 
     code = "DOC002"
-    message = "Incorrect indentation of section entry."
     enabled_by_default = True
-    target_kinds = frozenset(
-        {
-            GoogleArg,
-            GoogleReturn,
-            GoogleException,
-            GoogleYield,
-            GoogleAttribute,
-            GoogleWarning,
-            GoogleSeeAlsoItem,
-            GoogleMethod,
-            NumPyParameter,
-            NumPyReturns,
-            NumPyException,
-            NumPyYields,
-            NumPyAttribute,
-            NumPyWarning,
-            NumPySeeAlsoItem,
-            NumPyReference,
-            NumPyMethod,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+    def diagnose(self, node: GoogleArg | GoogleReturn | GoogleException | GoogleYield | GoogleAttribute | GoogleWarning | GoogleSeeAlsoItem | GoogleMethod | NumPyParameter | NumPyReturns | NumPyException | NumPyYields | NumPyAttribute | NumPyWarning | NumPySeeAlsoItem | NumPyReference | NumPyMethod, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         """Yield DOC002 diagnostics for incorrectly indented docstring entries."""
-        node = ctx.target_cst
         ds_text = ctx.docstring_text
 
         # Find the start of the line on which this entry appears.

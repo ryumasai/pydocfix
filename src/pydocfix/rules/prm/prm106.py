@@ -11,25 +11,16 @@ from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, D
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token, get_signature_params
 
 
-class PRM106(BaseRule):
+class PRM106(BaseRule[GoogleArg | NumPyParameter]):
     """Documented parameter has a type annotation in the function signature (types belong in docstring)."""
 
     code = "PRM106"
-    message = "Parameter has a type annotation in signature; types belong in the docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"PRM105"})
     requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring"}))
-    target_kinds = frozenset(
-        {
-            GoogleArg,
-            NumPyParameter,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

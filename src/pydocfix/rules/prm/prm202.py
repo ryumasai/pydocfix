@@ -14,16 +14,11 @@ from pydocfix.rules.prm._helpers import bare_name, get_param_name_token
 _DEFAULT_RE = re.compile(r"\bdefault[s]?\b", re.IGNORECASE)
 
 
-class PRM202(BaseRule):
+class PRM202(BaseRule[GoogleArg | NumPyParameter]):
     """Parameter has a default value but docstring does not mention ``default``."""
 
     code = "PRM202"
-    message = "Parameter with default value missing 'default' in docstring."
     enabled_by_default = False
-    target_kinds = frozenset({
-        GoogleArg,
-        NumPyParameter,
-    })
 
     @staticmethod
     def _get_default_values(func: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[str, str]:
@@ -49,10 +44,8 @@ class PRM202(BaseRule):
         desc = cst_node.description
         return bool(desc and _DEFAULT_RE.search(desc.text))
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

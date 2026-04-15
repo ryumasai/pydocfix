@@ -11,22 +11,13 @@ from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token, get_signature_params
 
 
-class PRM102(BaseRule):
+class PRM102(BaseRule[GoogleArg | NumPyParameter]):
     """Parameter has no type annotation in either docstring or signature."""
 
     code = "PRM102"
-    message = "Parameter has no type in docstring or signature."
-    target_kinds = frozenset(
-        {
-            GoogleArg,
-            NumPyParameter,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

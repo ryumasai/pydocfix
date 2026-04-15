@@ -11,15 +11,10 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 from pydocfix.rules.prm._helpers import bare_name, delete_entry_fix, get_param_name_token
 
 
-class PRM005(BaseRule):
+class PRM005(BaseRule[GoogleArg | NumPyParameter]):
     """Docstring documents a parameter that does not exist in the function signature."""
 
     code = "PRM005"
-    message = "Docstring has parameter not in function signature."
-    target_kinds = frozenset({
-        GoogleArg,
-        NumPyParameter,
-    })
 
     @staticmethod
     def _get_signature_names(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
@@ -33,10 +28,8 @@ class PRM005(BaseRule):
             names.add(func.args.kwarg.arg)
         return names
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

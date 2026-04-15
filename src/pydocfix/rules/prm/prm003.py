@@ -11,20 +11,13 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 from pydocfix.rules.prm._helpers import delete_entry_fix, get_param_name_token
 
 
-class PRM003(BaseRule):
+class PRM003(BaseRule[GoogleArg | NumPyParameter]):
     """Docstring should not document ``self`` or ``cls``."""
 
     code = "PRM003"
-    message = "Docstring should not document 'self' or 'cls'."
-    target_kinds = frozenset({
-        GoogleArg,
-        NumPyParameter,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

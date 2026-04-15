@@ -19,20 +19,13 @@ from pydocfix.rules._base import (
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token
 
 
-class PRM104(BaseRule):
+class PRM104(BaseRule[GoogleArg | NumPyParameter]):
     """Signature has type annotation but docstring also specifies type (redundant)."""
 
     code = "PRM104"
-    message = "Redundant type in docstring; type annotation exists in signature."
     enabled_by_default = False
     conflicts_with = frozenset({"PRM103"})
     requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature"}))
-    target_kinds = frozenset(
-        {
-            GoogleArg,
-            NumPyParameter,
-        }
-    )
 
     def _build_delete_type_fix(self, cst_node, ds_text: str) -> Fix:
         """Build a fix that removes the type annotation from the docstring entry."""
@@ -55,10 +48,8 @@ class PRM104(BaseRule):
                 )
         return Fix(edits=[], applicability=Applicability.SAFE)
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

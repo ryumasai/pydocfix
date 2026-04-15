@@ -24,20 +24,13 @@ from pydocfix.rules.prm._helpers import (
 )
 
 
-class PRM007(BaseRule):
+class PRM007(BaseRule[GoogleSection | NumPySection]):
     """Docstring documents a parameter more than once."""
 
     code = "PRM007"
-    message = "Duplicate parameter in docstring."
-    target_kinds = frozenset({
-        GoogleSection,
-        NumPySection,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        section = ctx.target_cst
-        if not isinstance(section, (GoogleSection, NumPySection)):
-            return
+    def diagnose(self, node: GoogleSection | NumPySection, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        section = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
         if not is_param_section(section):

@@ -10,25 +10,16 @@ from pydocstring import GoogleReturn, NumPyReturns
 from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic, Edit, Fix
 
 
-class RTN103(BaseRule):
+class RTN103(BaseRule[GoogleReturn | NumPyReturns]):
     """Docstring return entry has no type (type_annotation_style = "docstring")."""
 
     code = "RTN103"
-    message = "Return has no type in docstring."
     enabled_by_default = False
     conflicts_with = frozenset({"RTN104"})
     requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
-    target_kinds = frozenset(
-        {
-            GoogleReturn,
-            NumPyReturns,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleReturn, NumPyReturns)):
-            return
+    def diagnose(self, node: GoogleReturn | NumPyReturns, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -55,4 +46,4 @@ class RTN103(BaseRule):
                     applicability=Applicability.UNSAFE,
                 )
 
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=cst_node)
+        yield self._make_diagnostic(ctx, "Return has no type in docstring.", fix=fix, target=cst_node)

@@ -129,7 +129,7 @@ def build_rules_map(rules: Iterable[BaseRule]) -> dict[type, list[BaseRule]]:
     """Build cst->rules dispatch map."""
     type_to_rules: dict[type, list[BaseRule]] = {}
     for rule in rules:
-        for kind in rule.target_kinds:
+        for kind in rule._targets:
             type_to_rules.setdefault(kind, []).append(rule)
     return type_to_rules
 
@@ -167,7 +167,7 @@ class _RuleVisitor(Visitor):
         self._ds_loc = ds_loc
         self.diagnostics: list[Diagnostic] = []
 
-    def _dispatch(self, node, *, walk_ctx=None, section_entries=None):
+    def _dispatch(self, node, *, walk_ctx=None):
         """Dispatch a node to matching rules."""
         matching = self._type_to_rules.get(type(node), [])
         if not matching:
@@ -176,15 +176,13 @@ class _RuleVisitor(Visitor):
             filepath=self._filepath,
             docstring_text=self._ds_content,
             docstring_cst=self._parsed,
-            target_cst=node,
             parent_ast=self._parent_ast,
             docstring_stmt=self._ds_stmt,
             docstring_location=self._ds_loc,
             config=self._config,
-            section_entries=section_entries or [],
         )
         for rule in matching:
-            self.diagnostics.extend(rule.diagnose(ctx))
+            self.diagnostics.extend(rule.diagnose(node, ctx))
 
     # Google style
     def enter_google_docstring(self, node, ctx):

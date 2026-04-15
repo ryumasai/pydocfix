@@ -12,22 +12,13 @@ from pydocfix.rules._type_helpers import normalize_optional
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
-class YLD101(BaseRule):
+class YLD101(BaseRule[GoogleYield | NumPyYields]):
     """Docstring yield type does not match type hint."""
 
     code = "YLD101"
-    message = "Docstring yield type does not match type hint."
-    target_kinds = frozenset(
-        {
-            GoogleYield,
-            NumPyYields,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleYield, NumPyYields)):
-            return
+    def diagnose(self, node: GoogleYield | NumPyYields, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

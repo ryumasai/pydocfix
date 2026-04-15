@@ -11,17 +11,10 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 from pydocfix.rules._type_helpers import normalize_optional
 
 
-class RTN101(BaseRule):
+class RTN101(BaseRule[GoogleReturn | NumPyReturns]):
     """Docstring return type does not match type hint."""
 
     code = "RTN101"
-    message = "Docstring return type does not match type hint."
-    target_kinds = frozenset(
-        {
-            GoogleReturn,
-            NumPyReturns,
-        }
-    )
 
     def _get_return_annotation(self, ast_node: ast.AST) -> str | None:
         if not isinstance(ast_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -30,10 +23,8 @@ class RTN101(BaseRule):
             return None
         return ast.unparse(ast_node.returns)
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleReturn, NumPyReturns)):
-            return
+    def diagnose(self, node: GoogleReturn | NumPyReturns, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
 
         ret_type_token = cst_node.return_type
         if ret_type_token is None:

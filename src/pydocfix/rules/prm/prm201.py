@@ -11,15 +11,10 @@ from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagn
 from pydocfix.rules.prm._helpers import bare_name, get_param_name_token
 
 
-class PRM201(BaseRule):
+class PRM201(BaseRule[GoogleArg | NumPyParameter]):
     """Parameter has a default value but docstring does not mention ``optional``."""
 
     code = "PRM201"
-    message = "Parameter with default value missing 'optional' in docstring."
-    target_kinds = frozenset({
-        GoogleArg,
-        NumPyParameter,
-    })
 
     @staticmethod
     def _get_default_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
@@ -35,10 +30,8 @@ class PRM201(BaseRule):
                 names.add(arg.arg)
         return names
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 

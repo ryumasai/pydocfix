@@ -10,20 +10,13 @@ from pydocstring import GoogleReturn, NumPyReturns
 from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 
 
-class RTN102(BaseRule):
+class RTN102(BaseRule[GoogleReturn | NumPyReturns]):
     """Return type not specified in either docstring or signature."""
 
     code = "RTN102"
-    message = "Return type not in docstring or signature."
-    target_kinds = frozenset({
-        GoogleReturn,
-        NumPyReturns,
-    })
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleReturn, NumPyReturns)):
-            return
+    def diagnose(self, node: GoogleReturn | NumPyReturns, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -35,4 +28,4 @@ class RTN102(BaseRule):
         if func.returns is not None:  # type: ignore[union-attr]
             return  # has type in signature
 
-        yield self._make_diagnostic(ctx, self.message, target=cst_node)
+        yield self._make_diagnostic(ctx, "Return type not in docstring or signature.", target=cst_node)

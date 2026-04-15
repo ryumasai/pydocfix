@@ -10,25 +10,16 @@ from pydocstring import GoogleReturn, NumPyReturns
 from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic
 
 
-class RTN105(BaseRule):
+class RTN105(BaseRule[GoogleReturn | NumPyReturns]):
     """Documented return has no type annotation in the function signature."""
 
     code = "RTN105"
-    message = "Return has no type annotation in signature."
     enabled_by_default = False
     conflicts_with = frozenset({"RTN102", "RTN106"})
     requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature", "both"}))
-    target_kinds = frozenset(
-        {
-            GoogleReturn,
-            NumPyReturns,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleReturn, NumPyReturns)):
-            return
+    def diagnose(self, node: GoogleReturn | NumPyReturns, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -36,4 +27,4 @@ class RTN105(BaseRule):
         if func.returns is not None:  # type: ignore[union-attr]
             return  # has annotation in signature
 
-        yield self._make_diagnostic(ctx, self.message, target=cst_node)
+        yield self._make_diagnostic(ctx, "Return has no type annotation in signature.", target=cst_node)

@@ -18,25 +18,16 @@ from pydocfix.rules._base import (
 )
 
 
-class RTN104(BaseRule):
+class RTN104(BaseRule[GoogleReturn | NumPyReturns]):
     """Signature has return type annotation but docstring also specifies type (redundant)."""
 
     code = "RTN104"
-    message = "Redundant return type in docstring; type annotation exists in signature."
     enabled_by_default = False
     conflicts_with = frozenset({"RTN103"})
     requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature"}))
-    target_kinds = frozenset(
-        {
-            GoogleReturn,
-            NumPyReturns,
-        }
-    )
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleReturn, NumPyReturns)):
-            return
+    def diagnose(self, node: GoogleReturn | NumPyReturns, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
 
@@ -69,4 +60,4 @@ class RTN104(BaseRule):
         else:
             fix = Fix(edits=[], applicability=Applicability.SAFE)
 
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=ret_type_token)
+        yield self._make_diagnostic(ctx, "Redundant return type in docstring; type annotation exists in signature.", fix=fix, target=ret_type_token)

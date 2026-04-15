@@ -16,17 +16,10 @@ if TYPE_CHECKING:
     from pydocfix.config import Config
 
 
-class PRM101(BaseRule):
+class PRM101(BaseRule[GoogleArg | NumPyParameter]):
     """Docstring parameter type does not match type hint."""
 
     code = "PRM101"
-    message = "Docstring parameter type does not match type hint."
-    target_kinds = frozenset(
-        {
-            GoogleArg,
-            NumPyParameter,
-        }
-    )
 
     def __init__(self, config: Config | None = None):
         super().__init__(config)
@@ -43,10 +36,8 @@ class PRM101(BaseRule):
         self._ann_cache = (node_id, result)
         return result
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleArg, NumPyParameter)):
-            return
+    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+        cst_node = node
 
         if isinstance(cst_node, GoogleArg):
             name_token = get_param_name_token(cst_node)
