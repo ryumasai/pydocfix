@@ -149,7 +149,6 @@ class _RuleVisitor(Visitor):
     def __init__(
         self,
         type_to_rules: dict[type, list[BaseRule]],
-        config: Config | None,
         filepath: Path,
         parsed: GoogleDocstring | NumPyDocstring | PlainDocstring,
         parent_ast: ast.AST,
@@ -158,13 +157,14 @@ class _RuleVisitor(Visitor):
         ds_loc: DocstringLocation,
     ) -> None:
         self._type_to_rules = type_to_rules
-        self._config = config
-        self._filepath = filepath
-        self._parsed = parsed
-        self._parent_ast = parent_ast
-        self._ds_stmt = ds_stmt
-        self._ds_content = ds_content
-        self._ds_loc = ds_loc
+        self._ctx = DiagnoseContext(
+            filepath=filepath,
+            docstring_text=ds_content,
+            docstring_cst=parsed,
+            parent_ast=parent_ast,
+            docstring_stmt=ds_stmt,
+            docstring_location=ds_loc,
+        )
         self.diagnostics: list[Diagnostic] = []
 
     def _dispatch(self, node, *, walk_ctx=None):
@@ -172,17 +172,8 @@ class _RuleVisitor(Visitor):
         matching = self._type_to_rules.get(type(node), [])
         if not matching:
             return
-        ctx = DiagnoseContext(
-            filepath=self._filepath,
-            docstring_text=self._ds_content,
-            docstring_cst=self._parsed,
-            parent_ast=self._parent_ast,
-            docstring_stmt=self._ds_stmt,
-            docstring_location=self._ds_loc,
-            config=self._config,
-        )
         for rule in matching:
-            self.diagnostics.extend(rule.diagnose(node, ctx))
+            self.diagnostics.extend(rule.diagnose(node, self._ctx))
 
     # Google style
     def enter_google_docstring(self, node, ctx):
@@ -274,7 +265,6 @@ def _diagnose_docstring(
     parsed = pydocstring.parse(ds_content)
     visitor = _RuleVisitor(
         type_to_rules=type_to_rules,
-        config=config,
         filepath=filepath,
         parsed=parsed,
         parent_ast=parent_ast,

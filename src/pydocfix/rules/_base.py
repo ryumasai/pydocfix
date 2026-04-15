@@ -132,7 +132,6 @@ class DiagnoseContext:
     parent_ast: ast.AST
     docstring_stmt: ast.stmt
     docstring_location: DocstringLocation
-    config: Config | None = None
 
     def cst_node_range(self, cst: Any) -> Range:
         """Convert a CST node/token byte range to a file-level Range."""

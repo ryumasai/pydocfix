@@ -1930,7 +1930,6 @@ class TestPRM103:
 
     def test_both_mode_no_sig_annotation_still_fires(self):
         """'both' mode: signature has no annotation → PRM103 still fires (docstring must have type)."""
-        from pydocfix.config import Config
 
         ds = "Summary.\n\nArgs:\n    x: desc.\n"
         func = "def foo(x):\n    pass\n"
@@ -1944,7 +1943,6 @@ class TestPRM103:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="both"),
         )
         diag = next(iter(PRM103().diagnose(node, ctx)), None)
         assert diag is not None
@@ -1952,7 +1950,6 @@ class TestPRM103:
 
     def test_both_mode_with_sig_annotation_fires(self):
         """'both' mode: signature has annotation but docstring lacks type → PRM103 fires."""
-        from pydocfix.config import Config
 
         ds = "Summary.\n\nArgs:\n    x: desc.\n"
         func = "def foo(x: int):\n    pass\n"
@@ -1966,7 +1963,6 @@ class TestPRM103:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="both"),
         )
         diag = next(iter(PRM103().diagnose(node, ctx)), None)
         assert diag is not None
@@ -1974,7 +1970,6 @@ class TestPRM103:
 
     def test_docstring_mode_no_sig_annotation_still_fires(self):
         """'docstring' mode: fires even when signature has no annotation."""
-        from pydocfix.config import Config
 
         ds = "Summary.\n\nArgs:\n    x: desc.\n"
         func = "def foo(x):\n    pass\n"
@@ -1988,7 +1983,6 @@ class TestPRM103:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="docstring"),
         )
         diag = next(iter(PRM103().diagnose(node, ctx)), None)
         assert diag is not None
@@ -2054,7 +2048,6 @@ class TestPRM105:
     """PRM105: no type annotation in signature (type_annotation_style = 'both')."""
 
     def test_no_sig_annotation_fires(self):
-        from pydocfix.config import Config
         from pydocfix.rules.prm.prm105 import PRM105
 
         ds = "Summary.\n\nArgs:\n    x: desc.\n"
@@ -2069,14 +2062,12 @@ class TestPRM105:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="both"),
         )
         diag = next(iter(PRM105().diagnose(node, ctx)), None)
         assert diag is not None
         assert diag.rule == "PRM105"
 
     def test_has_sig_annotation_no_diagnostic(self):
-        from pydocfix.config import Config
         from pydocfix.rules.prm.prm105 import PRM105
 
         ds = "Summary.\n\nArgs:\n    x: desc.\n"
@@ -2091,7 +2082,6 @@ class TestPRM105:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="both"),
         )
         diag = next(iter(PRM105().diagnose(node, ctx)), None)
         assert diag is None
@@ -2114,7 +2104,6 @@ class TestPRM106:
     """PRM106: redundant type annotation in signature (type_annotation_style = 'docstring')."""
 
     def test_has_sig_annotation_fires(self):
-        from pydocfix.config import Config
         from pydocfix.rules.prm.prm106 import PRM106
 
         ds = "Summary.\n\nArgs:\n    x: desc.\n"
@@ -2129,14 +2118,12 @@ class TestPRM106:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="docstring"),
         )
         diag = next(iter(PRM106().diagnose(node, ctx)), None)
         assert diag is not None
         assert diag.rule == "PRM106"
 
     def test_no_sig_annotation_no_diagnostic(self):
-        from pydocfix.config import Config
         from pydocfix.rules.prm.prm106 import PRM106
 
         ds = "Summary.\n\nArgs:\n    x: desc.\n"
@@ -2151,7 +2138,6 @@ class TestPRM106:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="docstring"),
         )
         diag = next(iter(PRM106().diagnose(node, ctx)), None)
         assert diag is None
@@ -2571,7 +2557,6 @@ class TestRTN105:
     """RTN105: no return type annotation in signature (type_annotation_style = 'both')."""
 
     def test_no_sig_annotation_fires(self):
-        from pydocfix.config import Config
         from pydocfix.rules.rtn.rtn105 import RTN105
 
         ds = "Summary.\n\nReturns:\n    The result.\n"
@@ -2584,14 +2569,12 @@ class TestRTN105:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="both"),
         )
         diag = next(iter(RTN105().diagnose(node, ctx)), None)
         assert diag is not None
         assert diag.rule == "RTN105"
 
     def test_has_sig_annotation_no_diagnostic(self):
-        from pydocfix.config import Config
         from pydocfix.rules.rtn.rtn105 import RTN105
 
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
@@ -2604,7 +2587,6 @@ class TestRTN105:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="both"),
         )
         diag = next(iter(RTN105().diagnose(node, ctx)), None)
         assert diag is None
@@ -2627,7 +2609,6 @@ class TestRTN106:
     """RTN106: redundant return type annotation in signature (type_annotation_style = 'docstring')."""
 
     def test_has_sig_annotation_fires(self):
-        from pydocfix.config import Config
         from pydocfix.rules.rtn.rtn106 import RTN106
 
         ds = "Summary.\n\nReturns:\n    int: The result.\n"
@@ -2640,14 +2621,12 @@ class TestRTN106:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="docstring"),
         )
         diag = next(iter(RTN106().diagnose(node, ctx)), None)
         assert diag is not None
         assert diag.rule == "RTN106"
 
     def test_no_sig_annotation_no_diagnostic(self):
-        from pydocfix.config import Config
         from pydocfix.rules.rtn.rtn106 import RTN106
 
         ds = "Summary.\n\nReturns:\n    The result.\n"
@@ -2660,7 +2639,6 @@ class TestRTN106:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="docstring"),
         )
         diag = next(iter(RTN106().diagnose(node, ctx)), None)
         assert diag is None
@@ -3194,7 +3172,6 @@ class TestYLD105:
     """YLD105: no yield type annotation in signature (type_annotation_style = 'both')."""
 
     def test_no_sig_annotation_fires(self):
-        from pydocfix.config import Config
         from pydocfix.rules.yld.yld105 import YLD105
 
         ds = "Summary.\n\nYields:\n    An item.\n"
@@ -3207,14 +3184,12 @@ class TestYLD105:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="both"),
         )
         diag = next(iter(YLD105().diagnose(node, ctx)), None)
         assert diag is not None
         assert diag.rule == "YLD105"
 
     def test_has_sig_annotation_no_diagnostic(self):
-        from pydocfix.config import Config
         from pydocfix.rules.yld.yld105 import YLD105
 
         ds = "Summary.\n\nYields:\n    int: An item.\n"
@@ -3228,7 +3203,6 @@ class TestYLD105:
             parent_ast=tree.body[1],
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="both"),
         )
         diag = next(iter(YLD105().diagnose(node, ctx)), None)
         assert diag is None
@@ -3251,7 +3225,6 @@ class TestYLD106:
     """YLD106: redundant yield type annotation in signature (type_annotation_style = 'docstring')."""
 
     def test_has_sig_annotation_fires(self):
-        from pydocfix.config import Config
         from pydocfix.rules.yld.yld106 import YLD106
 
         ds = "Summary.\n\nYields:\n    int: An item.\n"
@@ -3265,14 +3238,12 @@ class TestYLD106:
             parent_ast=tree.body[1],
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="docstring"),
         )
         diag = next(iter(YLD106().diagnose(node, ctx)), None)
         assert diag is not None
         assert diag.rule == "YLD106"
 
     def test_no_sig_annotation_no_diagnostic(self):
-        from pydocfix.config import Config
         from pydocfix.rules.yld.yld106 import YLD106
 
         ds = "Summary.\n\nYields:\n    An item.\n"
@@ -3285,7 +3256,6 @@ class TestYLD106:
             parent_ast=ctx.parent_ast,
             docstring_stmt=ctx.docstring_stmt,
             docstring_location=ctx.docstring_location,
-            config=Config(type_annotation_style="docstring"),
         )
         diag = next(iter(YLD106().diagnose(node, ctx)), None)
         assert diag is None

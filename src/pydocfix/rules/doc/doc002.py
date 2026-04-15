@@ -49,13 +49,53 @@ _NUMPY_ENTRY_TYPES: frozenset[type] = frozenset(
 )
 
 
-class DOC002(BaseRule[GoogleArg | GoogleReturn | GoogleException | GoogleYield | GoogleAttribute | GoogleWarning | GoogleSeeAlsoItem | GoogleMethod | NumPyParameter | NumPyReturns | NumPyException | NumPyYields | NumPyAttribute | NumPyWarning | NumPySeeAlsoItem | NumPyReference | NumPyMethod]):
+class DOC002(
+    BaseRule[
+        GoogleArg
+        | GoogleReturn
+        | GoogleException
+        | GoogleYield
+        | GoogleAttribute
+        | GoogleWarning
+        | GoogleSeeAlsoItem
+        | GoogleMethod
+        | NumPyParameter
+        | NumPyReturns
+        | NumPyException
+        | NumPyYields
+        | NumPyAttribute
+        | NumPyWarning
+        | NumPySeeAlsoItem
+        | NumPyReference
+        | NumPyMethod
+    ]
+):
     """Incorrect indentation of a docstring section entry."""
 
     code = "DOC002"
     enabled_by_default = True
 
-    def diagnose(self, node: GoogleArg | GoogleReturn | GoogleException | GoogleYield | GoogleAttribute | GoogleWarning | GoogleSeeAlsoItem | GoogleMethod | NumPyParameter | NumPyReturns | NumPyException | NumPyYields | NumPyAttribute | NumPyWarning | NumPySeeAlsoItem | NumPyReference | NumPyMethod, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+    def diagnose(
+        self,
+        node: GoogleArg
+        | GoogleReturn
+        | GoogleException
+        | GoogleYield
+        | GoogleAttribute
+        | GoogleWarning
+        | GoogleSeeAlsoItem
+        | GoogleMethod
+        | NumPyParameter
+        | NumPyReturns
+        | NumPyException
+        | NumPyYields
+        | NumPyAttribute
+        | NumPyWarning
+        | NumPySeeAlsoItem
+        | NumPyReference
+        | NumPyMethod,
+        ctx: DiagnoseContext,
+    ) -> Iterator[Diagnostic]:
         """Yield DOC002 diagnostics for incorrectly indented docstring entries."""
         ds_text = ctx.docstring_text
 
@@ -80,13 +120,12 @@ class DOC002(BaseRule[GoogleArg | GoogleReturn | GoogleException | GoogleYield |
         if actual_indent == expected_indent:
             return
 
-        yield Diagnostic(
-            rule=self.code,
-            message=f"Expected {expected_indent}-space indentation, found {actual_indent}.",
-            filepath=str(ctx.filepath),
-            range=ctx.cst_node_range(node),
+        yield self._make_diagnostic(
+            ctx,
+            f"Expected {expected_indent}-space indentation, found {actual_indent}.",
             fix=Fix(
                 edits=[Edit(start=line_start, end=node.range.start, new_text=" " * expected_indent)],
                 applicability=Applicability.SAFE,
             ),
+            target=node,
         )

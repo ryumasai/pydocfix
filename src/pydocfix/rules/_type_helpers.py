@@ -9,10 +9,10 @@ def normalize_optional(type_str: str) -> str:
     """Strip ``Optional[T]`` / ``T | None`` / ``Union[T, None]`` to ``T``.
 
     Handles:
-    - ``Optional[T]``            → ``T``
+    - ``Optional[T]``             → ``T``
     - ``T | None`` / ``None | T`` → ``T``
-    - ``Union[T, None]``         → ``T``
-    - ``Union[T, S, None]``      → ``Union[T, S]``
+    - ``Union[T, None]``          → ``T``
+    - ``Union[T, S, None]``       → ``Union[T, S]``
 
     All other forms are returned unchanged.  On ``SyntaxError`` the original
     string is returned verbatim.
