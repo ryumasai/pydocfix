@@ -48,7 +48,7 @@ target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["D", "E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
 
 [tool.pyright]
 pythonVersion = "3.11"
@@ -56,6 +56,3 @@ extraPaths = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-[tool.pydocfix]
-ignore = ["PRM001", "RTN001", "YLD001", "RIS001"]

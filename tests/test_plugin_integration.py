@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
 from pydocfix.checker import build_rules_map, check_file
 from pydocfix.config import Config
-from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic, Fix
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 
 class TESTPLUGIN001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):

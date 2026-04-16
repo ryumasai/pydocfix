@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from pydocfix.checker import build_rules_map, check_file
 from pydocfix.config import Config
-from pydocfix.rules.doc.doc001 import DOC001
 from pydocfix.rules.sum.sum002 import SUM002
 
 DUMMY_PATH = Path("test.py")

@@ -32,7 +32,7 @@ class RIS005(BaseRule[GoogleException | NumPyException]):
         if documented_name in raised_names:
             return
 
-        fix = delete_entry_fix(ctx.docstring_text, cst_node, Applicability.UNSAFE)
+        fix = delete_entry_fix(ctx.docstring_text, cst_node.range, Applicability.UNSAFE)
 
         message = f"Raises entry '{type_token.text}' not raised in function body."
         yield self._make_diagnostic(ctx, message, fix=fix, target=type_token)

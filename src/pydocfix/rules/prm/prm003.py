@@ -29,6 +29,6 @@ class PRM003(BaseRule[GoogleArg | NumPyParameter]):
         if name_token.text not in ("self", "cls"):
             return
 
-        fix = delete_entry_fix(ctx.docstring_text, cst_node, Applicability.SAFE)
+        fix = delete_entry_fix(ctx.docstring_text, cst_node.range, Applicability.SAFE)
         message = f"Docstring should not document '{name_token.text}'."
         yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)

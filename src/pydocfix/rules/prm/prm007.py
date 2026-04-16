@@ -46,7 +46,7 @@ class PRM007(BaseRule[GoogleSection | NumPySection]):
             if name_token is None:
                 continue
             if name in seen:
-                fix = delete_entry_fix(ctx.docstring_text, param_node, Applicability.UNSAFE)
+                fix = delete_entry_fix(ctx.docstring_text, param_node.range, Applicability.UNSAFE)
                 message = f"Parameter '{name}' is documented more than once."
                 yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)
             else:

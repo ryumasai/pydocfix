@@ -43,6 +43,6 @@ class PRM005(BaseRule[GoogleArg | NumPyParameter]):
         if b in sig_names:
             return
 
-        fix = delete_entry_fix(ctx.docstring_text, cst_node, Applicability.UNSAFE)
+        fix = delete_entry_fix(ctx.docstring_text, cst_node.range, Applicability.UNSAFE)
         message = f"Parameter '{name_token.text}' not in function signature."
         yield self._make_diagnostic(ctx, message, fix=fix, target=name_token)
