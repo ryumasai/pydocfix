@@ -116,6 +116,11 @@ extend-unsafe-fixes = ["RTN", "YLD"]
 #   both       — missing docstring types flagged (x103); missing signature annotations flagged (x105)
 type_annotation_style = "signature"
 
+# Preferred docstring style: "google" (default) | "numpy"
+# Controls the format of auto-generated sections for plain (summary-only) docstrings.
+# Existing Google/NumPy-style docstrings are always fixed in their detected style.
+preferred_style = "google"
+
 # Paths/patterns to exclude (in addition to built-in defaults)
 exclude = ["tests/", "docs/"]
 

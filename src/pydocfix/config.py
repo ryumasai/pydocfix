@@ -38,6 +38,7 @@ class Config:
     skip_short_docstrings: bool = True
     type_annotation_style: str | None = None
     allow_optional_shorthand: bool = False
+    preferred_style: str = "google"
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
@@ -83,6 +84,13 @@ def load_config(start: Path | None = None) -> Config:
             type_annotation_style,
         )
         type_annotation_style = None
+    preferred_style: str = section.get("preferred_style", "google").lower()
+    if preferred_style not in {"google", "numpy"}:
+        logger.warning(
+            "invalid preferred_style %r (expected 'google' or 'numpy'); defaulting to 'google'",
+            preferred_style,
+        )
+        preferred_style = "google"
     exclude: list[str] = [str(p) for p in section.get("exclude", [])]
     raw_ssd = section.get("skip_short_docstrings")
     skip_short_docstrings: bool = bool(raw_ssd) if raw_ssd is not None else True
@@ -95,6 +103,7 @@ def load_config(start: Path | None = None) -> Config:
         ignore=ignore,
         select=select,
         type_annotation_style=type_annotation_style,
+        preferred_style=preferred_style,
         exclude=exclude,
         skip_short_docstrings=skip_short_docstrings,
         allow_optional_shorthand=allow_optional_shorthand,

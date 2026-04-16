@@ -58,7 +58,9 @@ class RIS001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
                 lines.append(f"{entry_indent}{name}:")
         return "\n".join(lines)
 
-    def diagnose(self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+    def diagnose(
+        self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext
+    ) -> Iterator[Diagnostic]:
         root = node
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
@@ -74,6 +76,8 @@ class RIS001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
             return
 
         is_numpy = isinstance(root, NumPyDocstring)
+        if isinstance(root, PlainDocstring) and self.config is not None:
+            is_numpy = self.config.preferred_style == "numpy"
         section_indent = detect_section_indent(ctx.docstring_text, ctx.docstring_stmt.col_offset)
         stub = self._build_stub(raised, is_numpy=is_numpy, section_indent=section_indent)
 

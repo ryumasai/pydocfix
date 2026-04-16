@@ -458,3 +458,127 @@ class TestExtendSafeUnsafeFixes:
         )
         cfg = Config(extend_safe_fixes=["ALL"])
         assert effective_applicability(diag, cfg) == Applicability.SAFE
+
+
+class TestPreferredStyle:
+    """Config loading and integration tests for preferred_style."""
+
+    def test_default_google(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text("[tool.pydocfix]\n")
+        config = load_config(tmp_path)
+        assert config.preferred_style == "google"
+
+    def test_numpy_from_toml(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\npreferred_style = "numpy"\n')
+        config = load_config(tmp_path)
+        assert config.preferred_style == "numpy"
+
+    def test_google_explicit(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\npreferred_style = "google"\n')
+        config = load_config(tmp_path)
+        assert config.preferred_style == "google"
+
+    def test_invalid_falls_back_to_google(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\npreferred_style = "sphinx"\n')
+        config = load_config(tmp_path)
+        assert config.preferred_style == "google"
+
+    def test_case_insensitive(self, tmp_path: Path):
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\npreferred_style = "NumPy"\n')
+        config = load_config(tmp_path)
+        assert config.preferred_style == "numpy"
+
+    def test_prm001_plain_google_style(self, tmp_path: Path):
+        """PlainDocstring + preferred_style='google' generates Args section."""
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm001 import PRM001
+
+        source = 'def foo(x: int):\n    """Summary."""\n    pass\n'
+        cfg = Config(skip_short_docstrings=False, preferred_style="google")
+        rules_map = build_rules_map([PRM001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert any(d.rule == "PRM001" for d in diags)
+        diag = next(d for d in diags if d.rule == "PRM001")
+        assert diag.fix is not None
+        assert "Args:" in diag.fix.edits[0].new_text
+
+    def test_prm001_plain_numpy_style(self, tmp_path: Path):
+        """PlainDocstring + preferred_style='numpy' generates Parameters section."""
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.prm.prm001 import PRM001
+
+        source = 'def foo(x: int):\n    """Summary."""\n    pass\n'
+        cfg = Config(skip_short_docstrings=False, preferred_style="numpy")
+        rules_map = build_rules_map([PRM001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert any(d.rule == "PRM001" for d in diags)
+        diag = next(d for d in diags if d.rule == "PRM001")
+        assert diag.fix is not None
+        assert "Parameters" in diag.fix.edits[0].new_text
+        assert "----------" in diag.fix.edits[0].new_text
+
+    def test_rtn001_plain_numpy_style(self, tmp_path: Path):
+        """PlainDocstring + preferred_style='numpy' generates NumPy Returns section."""
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn001 import RTN001
+
+        source = 'def foo() -> int:\n    """Summary."""\n    pass\n'
+        cfg = Config(skip_short_docstrings=False, preferred_style="numpy")
+        rules_map = build_rules_map([RTN001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert any(d.rule == "RTN001" for d in diags)
+        diag = next(d for d in diags if d.rule == "RTN001")
+        assert diag.fix is not None
+        assert "Returns\n" in diag.fix.edits[0].new_text
+        assert "-------" in diag.fix.edits[0].new_text
+
+    def test_ris001_plain_numpy_style(self, tmp_path: Path):
+        """PlainDocstring + preferred_style='numpy' generates NumPy Raises section."""
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.ris.ris001 import RIS001
+
+        source = 'def foo():\n    """Summary."""\n    raise ValueError("bad")\n'
+        cfg = Config(skip_short_docstrings=False, preferred_style="numpy")
+        rules_map = build_rules_map([RIS001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert any(d.rule == "RIS001" for d in diags)
+        diag = next(d for d in diags if d.rule == "RIS001")
+        assert diag.fix is not None
+        assert "Raises\n" in diag.fix.edits[0].new_text
+        assert "------" in diag.fix.edits[0].new_text
+
+    def test_yld001_plain_numpy_style(self, tmp_path: Path):
+        """PlainDocstring + preferred_style='numpy' generates NumPy Yields section."""
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.yld.yld001 import YLD001
+
+        source = 'def foo():\n    """Summary."""\n    yield 1\n'
+        cfg = Config(skip_short_docstrings=False, preferred_style="numpy")
+        rules_map = build_rules_map([YLD001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert any(d.rule == "YLD001" for d in diags)
+        diag = next(d for d in diags if d.rule == "YLD001")
+        assert diag.fix is not None
+        assert "Yields\n" in diag.fix.edits[0].new_text
+        assert "------" in diag.fix.edits[0].new_text
+
+    def test_existing_google_docstring_ignores_preferred_numpy(self, tmp_path: Path):
+        """A Google-style docstring should get Google-style fix regardless of preferred_style."""
+        from pydocfix.checker import build_rules_map, check_file
+        from pydocfix.config import Config
+        from pydocfix.rules.rtn.rtn001 import RTN001
+
+        source = 'def foo(x: int) -> int:\n    """Summary.\n\n    Args:\n        x (int): Desc.\n    """\n    pass\n'
+        cfg = Config(preferred_style="numpy")
+        rules_map = build_rules_map([RTN001(cfg)])
+        diags, *_ = check_file(source, tmp_path / "f.py", rules_map)
+        assert any(d.rule == "RTN001" for d in diags)
+        diag = next(d for d in diags if d.rule == "RTN001")
+        assert diag.fix is not None
+        assert "Returns:" in diag.fix.edits[0].new_text
+        assert "-------" not in diag.fix.edits[0].new_text
