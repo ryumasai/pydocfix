@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic, Edit, Fix
+from pydocfix.rules._base import ActivationCondition, Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token
 
 
@@ -17,7 +17,7 @@ class PRM103(BaseRule[GoogleArg | NumPyParameter]):
     code = "PRM103"
     enabled_by_default = False
     conflicts_with = frozenset({"PRM104"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
+    activation_condition = ActivationCondition("type_annotation_style", frozenset({"docstring", "both"}))
 
     def _build_insert_type_fix(self, cst_node, ann: str, ds_text: str) -> Fix:
         """Build a fix that inserts the type annotation into the docstring entry."""

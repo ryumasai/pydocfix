@@ -8,9 +8,9 @@ from collections.abc import Iterator
 from pydocstring import GoogleReturn, NumPyReturns
 
 from pydocfix.rules._base import (
+    ActivationCondition,
     Applicability,
     BaseRule,
-    ConfigRequirement,
     DiagnoseContext,
     Diagnostic,
     Fix,
@@ -24,7 +24,7 @@ class RTN104(BaseRule[GoogleReturn | NumPyReturns]):
     code = "RTN104"
     enabled_by_default = False
     conflicts_with = frozenset({"RTN103"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature"}))
+    activation_condition = ActivationCondition("type_annotation_style", frozenset({"signature"}))
 
     def diagnose(self, node: GoogleReturn | NumPyReturns, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = node
@@ -60,4 +60,9 @@ class RTN104(BaseRule[GoogleReturn | NumPyReturns]):
         else:
             fix = Fix(edits=[], applicability=Applicability.SAFE)
 
-        yield self._make_diagnostic(ctx, "Redundant return type in docstring; type annotation exists in signature.", fix=fix, target=ret_type_token)
+        yield self._make_diagnostic(
+            ctx,
+            "Redundant return type in docstring; type annotation exists in signature.",
+            fix=fix,
+            target=ret_type_token,
+        )

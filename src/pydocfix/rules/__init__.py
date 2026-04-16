@@ -213,13 +213,23 @@ def _matches(code: str, patterns: frozenset[str]) -> bool:
     return any(code == p or code.startswith(p) for p in patterns)
 
 
+def _check_activation(rule: BaseRule, config: Config | None) -> bool:
+    """Return True if *rule*'s activation condition is satisfied (or absent)."""
+    cond = rule.activation_condition
+    if cond is None:
+        return True
+    actual = getattr(config, cond.attr, None) if config else None
+    return actual in cond.values
+
+
 def _resolve_conflicts(candidates: list[BaseRule], config: Config | None) -> list[BaseRule]:
-    """Remove conflicting rules from *candidates*, keeping only config-matched winners.
+    """Remove rules that lose their conflict due to unmet activation conditions.
 
     A rule declares its conflicts via ``conflicts_with`` (a set of rule codes).
     When a conflicting counterpart is also present in *candidates*, the rule is
-    kept only if its ``requires_config`` condition is satisfied.  When only one
-    side of a conflict is selected, it is kept unconditionally.
+    kept only if its ``activation_condition`` is satisfied.  When only one side
+    of a conflict is selected (the counterpart is absent), the rule is kept
+    unconditionally — the activation condition is only used as a tie-breaker.
     """
     candidate_codes: frozenset[str] = frozenset(r.code for r in candidates)
     result: list[BaseRule] = []
@@ -228,25 +238,23 @@ def _resolve_conflicts(candidates: list[BaseRule], config: Config | None) -> lis
         if not active_conflicts:
             # No active conflict — keep unconditionally.
             result.append(rule)
-        elif rule.requires_config is None:
-            # In conflict but no resolution condition declared — keep.
+        elif _check_activation(rule, config):
+            # In conflict and activation condition met — keep.
             result.append(rule)
         else:
-            actual = getattr(config, rule.requires_config.attr, None) if config else None
-            if actual in rule.requires_config.values:
-                result.append(rule)
-            else:
-                import logging
+            import logging
 
-                allowed = ", ".join(f"'{v}'" for v in sorted(rule.requires_config.values))
-                logging.getLogger(__name__).warning(
-                    "%s conflicts with [%s] and '%s' is not in {%s}; %s excluded.",
-                    rule.code,
-                    ", ".join(sorted(active_conflicts)),
-                    rule.requires_config.attr,
-                    allowed,
-                    rule.code,
-                )
+            cond = rule.activation_condition
+            assert cond is not None
+            allowed = ", ".join(f"'{v}'" for v in sorted(cond.values))
+            logging.getLogger(__name__).warning(
+                "%s conflicts with [%s] and '%s' is not in {%s}; %s excluded.",
+                rule.code,
+                ", ".join(sorted(active_conflicts)),
+                cond.attr,
+                allowed,
+                rule.code,
+            )
     return result
 
 

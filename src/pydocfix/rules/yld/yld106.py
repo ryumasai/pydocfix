@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
-from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic
+from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext, Diagnostic
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
@@ -17,7 +17,7 @@ class YLD106(BaseRule[GoogleYield | NumPyYields]):
     code = "YLD106"
     enabled_by_default = False
     conflicts_with = frozenset({"YLD105"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring"}))
+    activation_condition = ActivationCondition("type_annotation_style", frozenset({"docstring"}))
 
     def diagnose(self, node: GoogleYield | NumPyYields, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = node
@@ -27,4 +27,6 @@ class YLD106(BaseRule[GoogleYield | NumPyYields]):
         if get_yield_type(ctx.parent_ast) is None:
             return  # no annotation in signature — nothing to flag
 
-        yield self._make_diagnostic(ctx, "Yield has a type annotation in signature; types belong in the docstring.", target=cst_node)
+        yield self._make_diagnostic(
+            ctx, "Yield has a type annotation in signature; types belong in the docstring.", target=cst_node
+        )

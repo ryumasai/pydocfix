@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic
+from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext, Diagnostic
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token, get_signature_params
 
 
@@ -17,7 +17,7 @@ class PRM106(BaseRule[GoogleArg | NumPyParameter]):
     code = "PRM106"
     enabled_by_default = False
     conflicts_with = frozenset({"PRM105"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring"}))
+    activation_condition = ActivationCondition("type_annotation_style", frozenset({"docstring"}))
 
     def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = node

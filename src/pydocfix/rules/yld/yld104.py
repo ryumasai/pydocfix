@@ -8,9 +8,9 @@ from collections.abc import Iterator
 from pydocstring import GoogleYield, NumPyYields
 
 from pydocfix.rules._base import (
+    ActivationCondition,
     Applicability,
     BaseRule,
-    ConfigRequirement,
     DiagnoseContext,
     Diagnostic,
     Fix,
@@ -25,7 +25,7 @@ class YLD104(BaseRule[GoogleYield | NumPyYields]):
     code = "YLD104"
     enabled_by_default = False
     conflicts_with = frozenset({"YLD103"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature"}))
+    activation_condition = ActivationCondition("type_annotation_style", frozenset({"signature"}))
 
     def diagnose(self, node: GoogleYield | NumPyYields, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = node
@@ -60,4 +60,9 @@ class YLD104(BaseRule[GoogleYield | NumPyYields]):
         else:
             fix = Fix(edits=[], applicability=Applicability.SAFE)
 
-        yield self._make_diagnostic(ctx, "Redundant yield type in docstring; type annotation exists in signature.", fix=fix, target=ret_type_token)
+        yield self._make_diagnostic(
+            ctx,
+            "Redundant yield type in docstring; type annotation exists in signature.",
+            fix=fix,
+            target=ret_type_token,
+        )

@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic
+from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext, Diagnostic
 
 
 class RTN106(BaseRule[GoogleReturn | NumPyReturns]):
@@ -16,7 +16,7 @@ class RTN106(BaseRule[GoogleReturn | NumPyReturns]):
     code = "RTN106"
     enabled_by_default = False
     conflicts_with = frozenset({"RTN105"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring"}))
+    activation_condition = ActivationCondition("type_annotation_style", frozenset({"docstring"}))
 
     def diagnose(self, node: GoogleReturn | NumPyReturns, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
         cst_node = node
@@ -27,4 +27,6 @@ class RTN106(BaseRule[GoogleReturn | NumPyReturns]):
         if func.returns is None:  # type: ignore[union-attr]
             return  # no annotation in signature — nothing to flag
 
-        yield self._make_diagnostic(ctx, "Return has a type annotation in signature; types belong in the docstring.", target=cst_node)
+        yield self._make_diagnostic(
+            ctx, "Return has a type annotation in signature; types belong in the docstring.", target=cst_node
+        )

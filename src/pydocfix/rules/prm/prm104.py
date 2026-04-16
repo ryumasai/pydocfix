@@ -8,9 +8,9 @@ from collections.abc import Iterator
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import (
+    ActivationCondition,
     Applicability,
     BaseRule,
-    ConfigRequirement,
     DiagnoseContext,
     Diagnostic,
     Fix,
@@ -25,7 +25,7 @@ class PRM104(BaseRule[GoogleArg | NumPyParameter]):
     code = "PRM104"
     enabled_by_default = False
     conflicts_with = frozenset({"PRM103"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature"}))
+    activation_condition = ActivationCondition("type_annotation_style", frozenset({"signature"}))
 
     def _build_delete_type_fix(self, cst_node, ds_text: str) -> Fix:
         """Build a fix that removes the type annotation from the docstring entry."""

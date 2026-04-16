@@ -270,12 +270,11 @@ def is_applicable(diag: Diagnostic, unsafe_fixes: bool, config: Config | None = 
     return False
 
 
-class ConfigRequirement(NamedTuple):
-    """Conflict resolution condition for a rule.
+class ActivationCondition(NamedTuple):
+    """Config-based activation condition for a rule.
 
     Specifies which ``Config`` attribute must equal one of the allowed values
-    for the rule to win when it is in an active conflict
-    (see ``BaseRule.conflicts_with``).
+    for the rule to be active.
     """
 
     attr: str
@@ -293,7 +292,7 @@ class BaseRule(ABC, Generic[T]):
     code: str = ""
     enabled_by_default: bool = True
     conflicts_with: frozenset[str] = frozenset()
-    requires_config: ConfigRequirement | None = None
+    activation_condition: ActivationCondition | None = None
     _targets: frozenset[type] = frozenset()
 
     def __init__(self, config: Config | None = None) -> None:
