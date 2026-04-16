@@ -39,6 +39,7 @@ def _check_one_file(
     fix: bool,
     unsafe_fixes: bool,
     config: Config | None,
+    known_rule_codes: frozenset[str] | None = None,
 ) -> _FileResult:
     """Read and check a single file. Used by both serial and parallel paths."""
     from pydocfix.checker import check_file
@@ -51,6 +52,7 @@ def _check_one_file(
         fix=fix,
         unsafe_fixes=unsafe_fixes,
         config=config,
+        known_rule_codes=known_rule_codes,
     )
     return _FileResult(filepath, source, diagnostics, new_source, remaining)
 
@@ -58,26 +60,36 @@ def _check_one_file(
 # --- multiprocessing worker ---
 
 _worker_type_to_rules: dict | None = None
+_worker_known_rule_codes: frozenset[str] | None = None
 
 
 def _worker_init(
     ignore: list[str] | None,
     select: list[str] | None,
     config_obj: Config | None,
+    plugin_rule_classes: list[type] | None = None,
 ) -> None:
     """Initialize worker process by rebuilding the rule registry."""
-    global _worker_type_to_rules  # noqa: PLW0603
+    global _worker_type_to_rules, _worker_known_rule_codes  # noqa: PLW0603
     from pydocfix.rules import build_registry
 
-    registry = build_registry(ignore=ignore, select=select, config=config_obj)
+    registry = build_registry(
+        ignore=ignore,
+        select=select,
+        config=config_obj,
+        plugin_rules=plugin_rule_classes,
+    )
     _worker_type_to_rules = registry.type_to_rules
+    _worker_known_rule_codes = registry.all_codes()
 
 
 def _worker_check(args: tuple) -> _FileResult:
     """Worker function — runs in a child process."""
     filepath, fix, unsafe_fixes, config_obj = args
+
     assert _worker_type_to_rules is not None
-    return _check_one_file(filepath, _worker_type_to_rules, fix, unsafe_fixes, config_obj)
+    assert _worker_known_rule_codes is not None
+    return _check_one_file(filepath, _worker_type_to_rules, fix, unsafe_fixes, config_obj, _worker_known_rule_codes)
 
 
 def _check_files_parallel(
@@ -89,13 +101,14 @@ def _check_files_parallel(
     *,
     fix: bool,
     unsafe_fixes: bool,
+    plugin_rule_classes: list[type] | None = None,
 ) -> list[_FileResult]:
     """Check files using multiple processes."""
     tasks = [(fp, fix, unsafe_fixes, config) for fp in targets]
     with ProcessPoolExecutor(
         max_workers=num_workers,
         initializer=_worker_init,
-        initargs=(ignore, select, config),
+        initargs=(ignore, select, config, plugin_rule_classes),
     ) as pool:
         return list(pool.map(_worker_check, tasks))
 
@@ -179,9 +192,23 @@ def check(
         write_baseline as _write_baseline,
     )
     from pydocfix.config import DEFAULT_EXCLUDE, find_pyproject_toml, load_config
-    from pydocfix.rules import Applicability, build_registry, effective_applicability
+    from pydocfix.rules import Applicability, build_registry, effective_applicability, load_plugin_rules
 
     config = load_config()
+
+    # Load plugin rules from config
+    plugin_rule_classes: list[type] = []
+    if config.plugin_modules or config.plugin_paths:
+        plugin_paths_objs = [Path(p) for p in config.plugin_paths]
+        try:
+            plugin_rule_classes = load_plugin_rules(
+                plugin_modules=config.plugin_modules or None,
+                plugin_paths=plugin_paths_objs or None,
+            )
+            if plugin_rule_classes:
+                logger.info(f"Loaded {len(plugin_rule_classes)} plugin rule(s)")
+        except Exception as e:
+            logger.error(f"Failed to load plugins: {e}")
 
     # Determine project root for stable relative-path keys in baseline files
     _toml = find_pyproject_toml()
@@ -210,8 +237,14 @@ def check(
     cli_excludes = [d.strip() for group in exclude_dirs for d in group.split(",") if d.strip()]
     effective_exclude: frozenset[str] = DEFAULT_EXCLUDE | frozenset(config.exclude) | frozenset(cli_excludes)
 
-    registry: Final = build_registry(ignore=effective_ignore, select=effective_select, config=config)
+    registry: Final = build_registry(
+        ignore=effective_ignore,
+        select=effective_select,
+        config=config,
+        plugin_rules=plugin_rule_classes or None,
+    )
     type_to_rules: Final = registry.type_to_rules
+    known_rule_codes: Final = registry.all_codes()
 
     targets: Final = _collect_files(list(paths) or ["."], exclude=effective_exclude)
     if not targets:
@@ -243,9 +276,12 @@ def check(
             config,
             fix=do_fix,
             unsafe_fixes=unsafe_fixes,
+            plugin_rule_classes=plugin_rule_classes or None,
         )
     else:
-        file_results = [_check_one_file(fp, type_to_rules, do_fix, unsafe_fixes, config) for fp in sorted(targets)]
+        file_results = [
+            _check_one_file(fp, type_to_rules, do_fix, unsafe_fixes, config, known_rule_codes) for fp in sorted(targets)
+        ]
 
     for result in file_results:
         filepath = result.filepath
@@ -254,7 +290,6 @@ def check(
         new_source = result.new_source
         remaining = result.remaining
 
-        # Collect raw violations keyed by the project-relative path
         fp_str = normalize_path(filepath, project_root)
         if diagnostics:
             raw_violations_by_file[fp_str] = list(diagnostics)

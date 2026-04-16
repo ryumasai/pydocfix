@@ -38,6 +38,12 @@ from pydocfix.rules._helpers import (
 # --- Docstring-level rules ---
 from pydocfix.rules.doc.doc001 import DOC001
 from pydocfix.rules.doc.doc002 import DOC002
+from pydocfix.rules.plugin_loader import (
+    discover_rules_in_module,
+    discover_rules_in_package,
+    discover_rules_in_path,
+    load_plugin_rules,
+)
 
 # --- Parameter rules ---
 from pydocfix.rules.prm.prm001 import PRM001
@@ -169,8 +175,11 @@ __all__ = [
     "detect_docstring_style",
     "find_section",
     "has_section",
-    # **** CONSTANTS ****
-    "ALL_RULE_CODES",
+    # **** PLUGIN SYSTEM ****
+    "discover_rules_in_module",
+    "discover_rules_in_package",
+    "discover_rules_in_path",
+    "load_plugin_rules",
 ]
 
 _BUILTIN_RULES: list[type[BaseRule]] = [
@@ -219,8 +228,6 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     YLD105,
     YLD106,
 ]
-
-ALL_RULE_CODES: frozenset[str] = frozenset(cls.code for cls in _BUILTIN_RULES)
 
 
 def _matches(code: str, patterns: frozenset[str]) -> bool:
@@ -277,16 +284,33 @@ def build_registry(
     ignore: list[str] | None = None,
     select: list[str] | None = None,
     config: Config | None = None,
+    plugin_rules: list[type[BaseRule]] | None = None,
 ) -> RuleRegistry:
-    """Create a registry populated with built-in rules."""
+    """Create a registry populated with built-in rules and optional plugins.
+
+    Args:
+        ignore: List of rule codes to ignore (supports prefixes).
+        select: List of rule codes to select (supports prefixes).
+        config: Configuration object for rule activation.
+        plugin_rules: Additional rule classes from plugins.
+
+    Returns:
+        A RuleRegistry with all applicable rules registered.
+
+    """
     ignored: frozenset[str] = frozenset(ignore or [])
     selected: frozenset[str] = frozenset(select or [])
     select_all: bool = "ALL" in selected
     has_select: bool = bool(selected)
 
+    # Combine built-in and plugin rules
+    all_rule_classes = list(_BUILTIN_RULES)
+    if plugin_rules:
+        all_rule_classes.extend(plugin_rules)
+
     # Step 1: collect candidates according to select/ignore/default logic.
     candidates: list[BaseRule] = []
-    for cls in _BUILTIN_RULES:
+    for cls in all_rule_classes:
         instance = cls(config)
         if _matches(instance.code, ignored):
             continue

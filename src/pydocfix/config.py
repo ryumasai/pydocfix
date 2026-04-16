@@ -45,6 +45,8 @@ class Config:
     extend_safe_fixes: list[str] = field(default_factory=list)
     extend_unsafe_fixes: list[str] = field(default_factory=list)
     baseline: str | None = None
+    plugin_modules: list[str] = field(default_factory=list)
+    plugin_paths: list[str] = field(default_factory=list)
 
 
 def find_pyproject_toml(start: Path | None = None) -> Path | None:
@@ -99,6 +101,8 @@ def load_config(start: Path | None = None) -> Config:
     baseline: str | None = section.get("baseline") or None
     extend_safe_fixes: list[str] = [str(c).upper() for c in section.get("extend-safe-fixes", [])]
     extend_unsafe_fixes: list[str] = [str(c).upper() for c in section.get("extend-unsafe-fixes", [])]
+    plugin_modules: list[str] = [str(m) for m in section.get("plugin-modules", [])]
+    plugin_paths: list[str] = [str(p) for p in section.get("plugin-paths", [])]
     return Config(
         ignore=ignore,
         select=select,
@@ -110,4 +114,6 @@ def load_config(start: Path | None = None) -> Config:
         baseline=baseline,
         extend_safe_fixes=extend_safe_fixes,
         extend_unsafe_fixes=extend_unsafe_fixes,
+        plugin_modules=plugin_modules,
+        plugin_paths=plugin_paths,
     )

@@ -343,19 +343,71 @@ class RuleRegistry:
     _by_kind: dict[type, list[BaseRule]] = field(default_factory=lambda: defaultdict(list))
 
     def register(self, rule: BaseRule) -> None:
+        """Register a rule instance."""
         self._rules[rule.code] = rule
         for kind in rule._targets:
             self._by_kind[kind].append(rule)
 
     def get(self, code: str) -> BaseRule | None:
+        """Get a rule by code."""
         return self._rules.get(code)
 
     def rules_for_kind(self, kind: type) -> list[BaseRule]:
+        """Get all rules that handle a specific CST node type."""
         return self._by_kind.get(kind, [])
 
     def all_rules(self) -> list[BaseRule]:
+        """Get all registered rules."""
         return list(self._rules.values())
+
+    def all_codes(self) -> frozenset[str]:
+        """Get all registered rule codes."""
+        return frozenset(self._rules.keys())
 
     @property
     def type_to_rules(self) -> dict[type, list[BaseRule]]:
+        """Get the CST node type to rules mapping."""
         return dict(self._by_kind)
+
+    def build_type_to_rules_map(self) -> dict[type, list[BaseRule]]:
+        """Build CST node type to rules dispatch map.
+
+        This is equivalent to the type_to_rules property but provided
+        as a method for clarity when used in check_file().
+
+        Returns:
+            Dictionary mapping CST node types to lists of applicable rules.
+
+        """
+        return self.type_to_rules
+
+    def filter_by_codes(
+        self,
+        ignore: frozenset[str] | None = None,
+        select: frozenset[str] | None = None,
+    ) -> RuleRegistry:
+        """Create a new registry filtered by rule codes.
+
+        Args:
+            ignore: Rule codes to exclude (supports prefixes).
+            select: Rule codes to include (supports prefixes).
+
+        Returns:
+            A new RuleRegistry containing only filtered rules.
+
+        """
+        ignored = ignore or frozenset()
+        selected = select or frozenset()
+
+        def _matches(code: str, patterns: frozenset[str]) -> bool:
+            return any(code == p or code.startswith(p) for p in patterns)
+
+        filtered = RuleRegistry()
+        for rule in self.all_rules():
+            if _matches(rule.code, ignored):
+                continue
+            if selected and not _matches(rule.code, selected):
+                continue
+            filtered.register(rule)
+
+        return filtered

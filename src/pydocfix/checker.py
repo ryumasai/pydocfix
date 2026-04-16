@@ -21,7 +21,6 @@ from pydocstring import (
 from pydocfix.config import Config
 from pydocfix.noqa import NoqaDirective, find_inline_noqa, parse_file_noqa
 from pydocfix.rules import (
-    ALL_RULE_CODES,
     BaseRule,
     DiagnoseContext,
     Diagnostic,
@@ -126,7 +125,18 @@ def _locate_docstring(
 
 
 def build_rules_map(rules: Iterable[BaseRule]) -> dict[type, list[BaseRule]]:
-    """Build cst->rules dispatch map."""
+    """Build cst->rules dispatch map.
+
+    Deprecated: Use RuleRegistry instead.
+    This function is kept for backward compatibility with existing tests.
+
+    Args:
+        rules: Iterable of rule instances.
+
+    Returns:
+        Dictionary mapping CST node types to lists of applicable rules.
+
+    """
     type_to_rules: dict[type, list[BaseRule]] = {}
     for rule in rules:
         for kind in rule._targets:
@@ -356,14 +366,16 @@ def _check_unused_inline_noqa(
     lines: Sequence[str],
     line_offsets: Sequence[int],
     filepath: Path,
+    known_rule_codes: frozenset[str],
 ) -> tuple[list[Diagnostic], tuple[int, int, bytes] | None]:
     """Return NOQ001 diagnostics and an optional source edit for unused noqa codes.
 
     *used_codes*: pydocfix codes that actually suppressed at least one diagnostic.
     *any_suppressed*: True if the blanket noqa suppressed at least one diagnostic.
     *noqa_span*: ``(start, end)`` character positions of the match in the closing line.
+    *known_rule_codes*: All known rule codes (builtin + plugins).
 
-    Codes not in ``ALL_RULE_CODES`` (e.g. other tools' codes) are ignored so that
+    Codes not in *known_rule_codes* (e.g. other tools' codes) are ignored so that
     suppression comments like ``# noqa: PRM001, pylint-disable`` are handled safely.
     """
     if end_lineno <= 0 or end_lineno > len(lines):
@@ -399,7 +411,7 @@ def _check_unused_inline_noqa(
             source_edit = (_byte_pos(ws_start), _byte_pos(char_end), b"")
     else:
         # Specific codes: flag each known-but-unused pydocfix code
-        unused_known = (inline_noqa.codes & ALL_RULE_CODES) - used_codes
+        unused_known = (inline_noqa.codes & known_rule_codes) - used_codes
         if unused_known:
             for code in sorted(unused_known):
                 diagnostics.append(
@@ -555,12 +567,25 @@ def check_file(
     fix: bool = False,
     unsafe_fixes: bool = False,
     config: Config | None = None,
+    known_rule_codes: frozenset[str] | None = None,
 ) -> tuple[list[Diagnostic], str | None, list[Diagnostic]]:
     """Diagnose and optionally fix all docstrings, iterating until stable.
 
-    Returns (all_diagnostics, fixed_source_or_none, remaining_after_fix).
-    *remaining_after_fix* is the list of diagnostics that still exist after
-    all fixes have been applied (empty when fix=False).
+    Args:
+        source: Source code text to check.
+        filepath: Path to the file being checked.
+        type_to_rules: Mapping from CST node types to applicable rules.
+        fix: Whether to apply fixes.
+        unsafe_fixes: Whether to apply unsafe fixes.
+        config: Configuration object.
+        known_rule_codes: Set of all known rule codes (for noqa validation).
+            If None, extracted from type_to_rules.
+
+    Returns:
+        Tuple of (all_diagnostics, fixed_source_or_none, remaining_after_fix).
+        *remaining_after_fix* is the list of diagnostics that still exist after
+        all fixes have been applied (empty when fix=False).
+
     """
     lines: Final[list[str]] = source.splitlines(keepends=True)
     source_bytes: Final[bytes] = source.encode("utf-8")
@@ -573,6 +598,10 @@ def check_file(
     all_diagnostics: list[Diagnostic] = []
     remaining_after_fix: list[Diagnostic] = []
     file_edits: list[tuple[int, int, bytes]] = []
+
+    # Extract known rule codes for noqa validation
+    if known_rule_codes is None:
+        known_rule_codes = frozenset(rule.code for rules in type_to_rules.values() for rule in rules)
 
     # Build parent map once for symbol computation
     parent_map: dict[int, ast.AST]
@@ -637,6 +666,7 @@ def check_file(
                 lines=lines,
                 line_offsets=line_offsets,
                 filepath=filepath,
+                known_rule_codes=known_rule_codes,
             )
             if noq_diagnostics:
                 all_diagnostics.extend(noq_diagnostics)

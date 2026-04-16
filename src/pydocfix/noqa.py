@@ -19,8 +19,9 @@ _RE_FILE_NOQA: re.Pattern[str] = re.compile(
     re.IGNORECASE,
 )
 
-# Extracts individual rule codes (e.g. PRM001, SUM002) from raw text.
-_RE_CODE: re.Pattern[str] = re.compile(r"[A-Za-z]{2,5}\d{3}")
+# Extracts individual rule codes (e.g. PRM001, SUM002, PLUGIN001) from raw text.
+# Supports 2-20 letter prefix to accommodate both builtin and plugin rule codes.
+_RE_CODE: re.Pattern[str] = re.compile(r"[A-Za-z]{2,20}\d{3}")
 
 
 def _parse_codes(raw: str) -> frozenset[str]:

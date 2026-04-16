@@ -8,7 +8,7 @@ import pytest
 
 from pydocfix.checker import build_rules_map, check_file
 from pydocfix.noqa import NoqaDirective, parse_file_noqa, parse_inline_noqa
-from pydocfix.rules import SUM002
+from pydocfix.rules import build_registry
 from pydocfix.rules.prm.prm001 import PRM001
 from pydocfix.rules.rtn.rtn001 import RTN001
 from pydocfix.rules.sum.sum002 import SUM002
@@ -138,7 +138,9 @@ class TestInlineNoqaIntegration:
     def test_wrong_code_noqa_does_not_suppress(self, tmp_path: Path):
         f = tmp_path / "example.py"
         f.write_text('def foo():\n    """No period"""  # noqa: PRM001\n    pass\n')
-        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
+        # Need all builtin rule codes for noqa validation
+        all_codes = build_registry(select=["ALL"]).all_codes()
+        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]), known_rule_codes=all_codes)
         # SUM002 violation + NOQ001 for unused PRM001
         rules = {d.rule for d in diags}
         assert "SUM002" in rules
@@ -278,9 +280,11 @@ class TestNOQ001:
     def test_non_pydocfix_code_ignored(self, tmp_path: Path):
         """# noqa: SUM002, pylint-something — non-pydocfix codes are not flagged."""
         f = tmp_path / "example.py"
-        # pylint000 doesn't match pydocfix code pattern so it won't appear in ALL_RULE_CODES
+        # pylint000 doesn't match pydocfix code pattern so it won't be recognized
         f.write_text('def foo():\n    """No period."""  # noqa: SUM002, RTN001\n    pass\n')
-        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]))
+        # Need all builtin rule codes for noqa validation
+        all_codes = build_registry(select=["ALL"]).all_codes()
+        diags, *_ = check_file(f.read_text(), f, build_rules_map([SUM002()]), known_rule_codes=all_codes)
         # SUM002 is unused, RTN001 is known to pydocfix but also unused
         noq_codes = {d.rule for d in diags if d.rule == "NOQ001"}
         assert "NOQ001" in noq_codes
