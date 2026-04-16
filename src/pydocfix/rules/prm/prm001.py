@@ -7,7 +7,9 @@ from collections.abc import Iterator
 
 from pydocstring import (
     GoogleDocstring,
+    GoogleSectionKind,
     NumPyDocstring,
+    NumPySectionKind,
     PlainDocstring,
 )
 
@@ -20,36 +22,14 @@ from pydocfix.rules._base import (
     detect_section_indent,
     section_append_edit,
 )
-from pydocfix.rules.prm._helpers import get_signature_params, is_param_section
+from pydocfix.rules._helpers import build_section_stub, detect_docstring_style, has_section
+from pydocfix.rules.prm._helpers import get_signature_params
 
 
 class PRM001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
     """Function has parameters but docstring has no Args/Parameters section."""
 
     code = "PRM001"
-
-    # -- helpers -------------------------------------------------------
-
-    @staticmethod
-    def _build_stub(params: list[tuple[str, str | None]], *, is_numpy: bool, section_indent: str) -> str:
-        entry_indent = section_indent + "    "
-        lines: list[str] = []
-        if is_numpy:
-            lines.append(f"{section_indent}Parameters")
-            lines.append(f"{section_indent}----------")
-            for name, ann in params:
-                if ann:
-                    lines.append(f"{section_indent}{name} : {ann}")
-                else:
-                    lines.append(f"{section_indent}{name}")
-        else:
-            lines.append(f"{section_indent}Args:")
-            for name, ann in params:
-                if ann:
-                    lines.append(f"{entry_indent}{name} ({ann}):")
-                else:
-                    lines.append(f"{entry_indent}{name}:")
-        return "\n".join(lines)
 
     def diagnose(
         self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext
@@ -61,23 +41,25 @@ class PRM001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
         sig_params = get_signature_params(ctx.parent_ast)
         if not sig_params:
             return
-        if isinstance(root, PlainDocstring):
-            if self.config is None or self.config.skip_short_docstrings:
-                return  # summary-only docstring — skip per skip_short_docstrings
-        elif any(is_param_section(sec) for sec in root.sections):
+        if isinstance(root, PlainDocstring) and (self.config is None or self.config.skip_short_docstrings):
+            return  # summary-only docstring — skip per skip_short_docstrings
+        if not isinstance(root, PlainDocstring) and has_section(
+            root, GoogleSectionKind.ARGS, NumPySectionKind.PARAMETERS
+        ):
             return
 
-        is_numpy = isinstance(root, NumPyDocstring)
-        if isinstance(root, PlainDocstring) and self.config is not None:
-            is_numpy = self.config.preferred_style == "numpy"
+        style = detect_docstring_style(root, self.config)
         section_indent = detect_section_indent(ctx.docstring_text, ctx.docstring_stmt.col_offset)
-        stub = self._build_stub(sig_params, is_numpy=is_numpy, section_indent=section_indent)
+        stub = build_section_stub("args", style, section_indent, sig_params)
 
         fix = Fix(
             edits=[section_append_edit(ctx.docstring_text, root.range.end, stub)],
             applicability=Applicability.UNSAFE,
         )
         summary_token = root.summary
+        yield self._make_diagnostic(
+            ctx, "Missing Args/Parameters section in docstring.", fix=fix, target=summary_token or root
+        )
         yield self._make_diagnostic(
             ctx, "Missing Args/Parameters section in docstring.", fix=fix, target=summary_token or root
         )

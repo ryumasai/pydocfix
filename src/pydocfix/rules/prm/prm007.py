@@ -16,8 +16,8 @@ from pydocfix.rules._base import (
     DiagnoseContext,
     Diagnostic,
 )
+from pydocfix.rules._helpers import delete_entry_fix
 from pydocfix.rules.prm._helpers import (
-    delete_entry_fix,
     get_documented_param_nodes,
     get_param_name_token,
     is_param_section,

@@ -15,8 +15,6 @@ from pydocstring import (
     Visitor,
 )
 
-from pydocfix.rules._base import Applicability, Fix, delete_range
-
 
 def bare_name(name: str) -> str:
     """Strip leading ``*`` or ``**`` from a parameter name."""
@@ -107,16 +105,3 @@ def get_documented_param_nodes(parsed, section: GoogleSection | NumPySection) ->
 
     pydocstring.walk(parsed, _Collector())
     return result
-
-
-def delete_entry_fix(ds_text: str, node, applicability: Applicability) -> Fix:
-    """Build a Fix that deletes the full line(s) of a docstring entry node."""
-    ds_bytes = ds_text.encode("utf-8")
-    nl_before = ds_bytes.rfind(b"\n", 0, node.range.start)
-    start = nl_before + 1 if nl_before != -1 else node.range.start
-    nl_after = ds_bytes.find(b"\n", node.range.end)
-    end = nl_after + 1 if nl_after != -1 else node.range.end
-    return Fix(
-        edits=[delete_range(start, end)],
-        applicability=applicability,
-    )

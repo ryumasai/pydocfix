@@ -7,7 +7,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleException, NumPyException
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
+from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.rules._helpers import delete_entry_fix
 from pydocfix.rules.ris._helpers import _bare_exc_name, get_raised_exceptions
 
 
@@ -31,15 +32,7 @@ class RIS005(BaseRule[GoogleException | NumPyException]):
         if documented_name in raised_names:
             return
 
-        ds_bytes = ctx.docstring_text.encode("utf-8")
-        nl_before = ds_bytes.rfind(b"\n", 0, cst_node.range.start)
-        start = nl_before + 1 if nl_before != -1 else cst_node.range.start
-        nl_after = ds_bytes.find(b"\n", cst_node.range.end)
-        end = nl_after + 1 if nl_after != -1 else cst_node.range.end
+        fix = delete_entry_fix(ctx.docstring_text, cst_node, Applicability.UNSAFE)
 
-        fix = Fix(
-            edits=[delete_range(start, end)],
-            applicability=Applicability.UNSAFE,
-        )
         message = f"Raises entry '{type_token.text}' not raised in function body."
         yield self._make_diagnostic(ctx, message, fix=fix, target=type_token)

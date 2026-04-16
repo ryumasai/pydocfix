@@ -8,7 +8,8 @@ from collections.abc import Iterator
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic
-from pydocfix.rules.prm._helpers import delete_entry_fix, get_param_name_token
+from pydocfix.rules._helpers import delete_entry_fix
+from pydocfix.rules.prm._helpers import get_param_name_token
 
 
 class PRM003(BaseRule[GoogleArg | NumPyParameter]):

@@ -7,7 +7,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleSection, NumPySection
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
+from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.rules._helpers import delete_section_fix
 from pydocfix.rules.yld._helpers import is_generator_function, is_yields_section
 
 
@@ -27,15 +28,10 @@ class YLD002(BaseRule[GoogleSection | NumPySection]):
         if is_generator_function(ctx.parent_ast):
             return
 
-        ds_bytes = ctx.docstring_text.encode("utf-8")
-        nl_before = ds_bytes.rfind(b"\n", 0, section.range.start)
-        start = nl_before if nl_before != -1 else section.range.start
-        nl_after = ds_bytes.find(b"\n", section.range.end)
-        end = nl_after + 1 if nl_after != -1 else section.range.end
+        # Delete the entire Yields section
+        fix = delete_section_fix(ctx.docstring_text, section, Applicability.SAFE)
 
-        fix = Fix(
-            edits=[delete_range(start, end)],
-            applicability=Applicability.SAFE,
-        )
         header_name = section.header_name
-        yield self._make_diagnostic(ctx, "Unnecessary Yields section in docstring.", fix=fix, target=header_name or section)
+        yield self._make_diagnostic(
+            ctx, "Unnecessary Yields section in docstring.", fix=fix, target=header_name or section
+        )

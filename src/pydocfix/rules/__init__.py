@@ -26,6 +26,14 @@ from pydocfix.rules._base import (
     is_applicable,
     replace_token,
 )
+from pydocfix.rules._helpers import (
+    build_section_stub,
+    delete_entry_fix,
+    delete_section_fix,
+    detect_docstring_style,
+    find_section,
+    has_section,
+)
 
 # --- Docstring-level rules ---
 from pydocfix.rules.doc.doc001 import DOC001
@@ -154,6 +162,13 @@ __all__ = [
     "effective_applicability",
     "is_applicable",
     "replace_token",
+    # **** HELPERS ****
+    "build_section_stub",
+    "delete_entry_fix",
+    "delete_section_fix",
+    "detect_docstring_style",
+    "find_section",
+    "has_section",
     # **** CONSTANTS ****
     "ALL_RULE_CODES",
 ]

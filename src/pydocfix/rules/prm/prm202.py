@@ -36,7 +36,7 @@ class PRM202(BaseRule[GoogleArg | NumPyParameter]):
         return result
 
     def _has_default_mention(self, cst_node) -> bool:
-        """Check if the docstring entry already mentions \'default\'."""
+        r"""Check if the docstring entry already mentions 'default'."""
         # NumPy style: check for default_keyword
         if isinstance(cst_node, NumPyParameter) and cst_node.default_keyword is not None:
             return True
