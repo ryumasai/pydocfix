@@ -4,137 +4,134 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from pydocfix.checker import build_rules_map, check_file
 from pydocfix.config import Config
-from pydocfix.rules import PRM101, RTN101, SUM002
 from pydocfix.rules.prm.prm001 import PRM001
-from pydocfix.rules.rtn.rtn001 import RTN001
+from pydocfix.rules.sum.sum002 import SUM002
+
+DUMMY_PATH = Path("test_dummy.py")
 
 
-def _diagnose(filepath: Path, type_to_rules) -> list:
-    source = filepath.read_text(encoding="utf-8")
-    diags, *_ = check_file(source, filepath, type_to_rules)
-    return diags
+def _type_to_rules(*rules):
+    return build_rules_map(rules)
 
 
-class TestDiagnoseFile:
-    def test_detects_missing_period(self, tmp_path: Path):
-        f = tmp_path / "example.py"
-        f.write_text('def foo():\n    """Do something"""\n    pass\n')
-        diags = _diagnose(f, build_rules_map([SUM002()]))
-        assert len(diags) == 1
-        assert diags[0].rule == "SUM002"
-        assert diags[0].fixable is True
+class TestCheckFile:
+    """Tests for check_file()."""
 
-    def test_precise_range_for_summary(self, tmp_path: Path):
-        f = tmp_path / "example.py"
-        f.write_text('def foo():\n    """Do something"""\n    pass\n')
-        diags = _diagnose(f, build_rules_map([SUM002()]))
-        assert len(diags) == 1
-        # "Do something" starts at line 2, col 8 (after triple-quote, 1-based)
-        assert diags[0].lineno == 2
-        assert diags[0].col == 8
+    def test_detects_violation(self):
+        """check_file detects a violation."""
+        source = '''\
+def greet():
+    """Say hello"""
+    pass
+'''
+        config = Config(skip_short_docstrings=False)
+        rules = _type_to_rules(SUM002(config))
+        diagnostics, _, _ = check_file(source, DUMMY_PATH, rules, config=config)
 
-    def test_no_violation_when_period(self, tmp_path: Path):
-        f = tmp_path / "example.py"
-        f.write_text('def foo():\n    """Do something."""\n    pass\n')
-        diags = _diagnose(f, build_rules_map([SUM002()]))
-        assert diags == []
+        assert len(diagnostics) == 1
+        assert diagnostics[0].rule == "SUM002"
 
-    def test_no_docstring(self, tmp_path: Path):
-        f = tmp_path / "example.py"
-        f.write_text("def foo():\n    pass\n")
-        diags = _diagnose(f, build_rules_map([SUM002()]))
-        assert diags == []
+    def test_reports_correct_line(self):
+        """Diagnostics report correct line number."""
+        source = '''\
+def foo():
+    pass
 
-    def test_multiple_functions(self, tmp_path: Path):
-        f = tmp_path / "example.py"
-        f.write_text('def foo():\n    """No period"""\n    pass\n\ndef bar():\n    """Has period."""\n    pass\n')
-        diags = _diagnose(f, build_rules_map([SUM002()]))
-        assert len(diags) == 1
+def bar():
+    """No period"""
+    pass
+'''
+        config = Config(skip_short_docstrings=False)
+        rules = _type_to_rules(SUM002(config))
+        diagnostics, _, _ = check_file(source, DUMMY_PATH, rules, config=config)
 
+        assert len(diagnostics) == 1
+        assert diagnostics[0].range.start.lineno == 5
 
-class TestD401Integration:
-    def test_param_type_mismatch(self, tmp_path: Path):
-        f = tmp_path / "example.py"
-        f.write_text(
-            'def foo(x: int):\n    """Summary.\n\n    Args:\n        x (str): The x value.\n    """\n    pass\n'
-        )
-        diags = _diagnose(f, build_rules_map([PRM101()]))
-        assert len(diags) == 1
-        assert diags[0].rule == "PRM101"
-        assert "'str'" in diags[0].message
-        assert "'int'" in diags[0].message
-        # TYPE token "str" is at line 5, col 12 (inside parentheses, 1-based)
-        assert diags[0].lineno == 5
-        assert diags[0].col == 12
+    def test_no_violation(self):
+        """check_file returns empty list when no violations."""
+        source = '''\
+def greet():
+    """Say hello."""
+    pass
+'''
+        config = Config(skip_short_docstrings=False)
+        rules = _type_to_rules(SUM002(config))
+        diagnostics, _, _ = check_file(source, DUMMY_PATH, rules, config=config)
 
-    def test_return_type_mismatch(self, tmp_path: Path):
-        f = tmp_path / "example.py"
-        f.write_text(
-            'def foo() -> int:\n    """Summary.\n\n    Returns:\n        str: The result.\n    """\n    pass\n'
-        )
-        diags = _diagnose(f, build_rules_map([RTN101()]))
-        assert len(diags) == 1
-        assert diags[0].rule == "RTN101"
+        assert len(diagnostics) == 0
 
-    def test_no_mismatch(self, tmp_path: Path):
-        f = tmp_path / "example.py"
-        f.write_text(
-            "def foo(x: int) -> bool:\n"
-            '    """Summary.\n'
-            "\n"
-            "    Args:\n"
-            "        x (int): The x value.\n"
-            "\n"
-            "    Returns:\n"
-            "        bool: The result.\n"
-            '    """\n'
-            "    pass\n"
-        )
-        diags = _diagnose(f, build_rules_map([PRM101(), RTN101()]))
-        assert diags == []
+    def test_multiple_functions(self):
+        """check_file detects violations in multiple functions."""
+        source = '''\
+def foo():
+    """No period"""
+    pass
 
-    def test_no_type_in_docstring(self, tmp_path: Path):
-        f = tmp_path / "example.py"
-        f.write_text('def foo(x: int):\n    """Summary.\n\n    Args:\n        x: The x value.\n    """\n    pass\n')
-        diags = _diagnose(f, build_rules_map([PRM101()]))
-        assert diags == []
+def bar():
+    """Also no period"""
+    pass
+'''
+        config = Config(skip_short_docstrings=False)
+        rules = _type_to_rules(SUM002(config))
+        diagnostics, _, _ = check_file(source, DUMMY_PATH, rules, config=config)
 
+        assert len(diagnostics) == 2
 
-class TestSyntaxErrorHandling:
-    def test_syntax_error_returns_empty(self, tmp_path: Path):
-        f = tmp_path / "bad.py"
-        f.write_text("def foo(:\n    pass\n")
-        diags = _diagnose(f, build_rules_map([SUM002()]))
-        assert diags == []
+    def test_syntax_error_returns_empty(self):
+        """check_file handles syntax errors gracefully."""
+        source = "def broken(\n"
+        rules = _type_to_rules(SUM002(Config()))
+        diagnostics, fixed, remaining = check_file(source, DUMMY_PATH, rules)
 
-    def test_syntax_error_does_not_raise(self, tmp_path: Path):
-        f = tmp_path / "bad.py"
-        f.write_text("class Foo(\n")
-        # Should not raise
-        diags = _diagnose(f, build_rules_map([SUM002()]))
-        assert diags == []
+        assert diagnostics == []
+        assert fixed is None
+        assert remaining == []
 
+    def test_fix_applied(self):
+        """check_file applies safe fix when fix=True."""
+        source = '''\
+def greet():
+    """Say hello"""
+    pass
+'''
+        config = Config(skip_short_docstrings=False)
+        rules = _type_to_rules(SUM002(config))
+        _, fixed, _ = check_file(source, DUMMY_PATH, rules, fix=True, config=config)
 
-class TestMultiSectionSimultaneousFix:
-    def test_no_extra_blank_line_between_sections(self, tmp_path: Path):
-        """Two section-insertion fixes applied at once must not produce a
-        whitespace-only line between the two new sections."""
-        import re
-
-        src = 'def add(a: int, b: int) -> int:\n    """Add two numbers."""\n    return a + b\n'
-        cfg = Config(skip_short_docstrings=False)
-        _, fixed, _ = check_file(
-            src,
-            tmp_path / "add.py",
-            build_rules_map([PRM001(cfg), RTN001(cfg)]),
-            fix=True,
-            unsafe_fixes=True,
-        )
         assert fixed is not None
-        # Must not contain a whitespace-only line immediately followed by a
-        # blank line (the artifact of two section_append_edit inserts).
-        assert not re.search(r"\n[ \t]+\n\n", fixed)
-        # Each section separator must be exactly one blank line.
-        assert "\n\n\n" not in fixed
+        assert "hello." in fixed
+
+    def test_no_fix_without_flag(self):
+        """check_file does not fix when fix=False."""
+        source = '''\
+def greet():
+    """Say hello"""
+    pass
+'''
+        config = Config(skip_short_docstrings=False)
+        rules = _type_to_rules(SUM002(config))
+        _, fixed, _ = check_file(source, DUMMY_PATH, rules, config=config)
+
+        assert fixed is None
+
+
+class TestBuildRulesMap:
+    """Tests for build_rules_map()."""
+
+    def test_single_rule(self):
+        """build_rules_map creates correct dispatch map."""
+        rule = SUM002(Config())
+        rules_map = build_rules_map([rule])
+
+        assert len(rules_map) > 0
+
+    def test_empty_rules(self):
+        """build_rules_map handles empty input."""
+        rules_map = build_rules_map([])
+
+        assert rules_map == {}

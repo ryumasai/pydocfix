@@ -1,0 +1,20 @@
+# serializer version: 1
+# name: TestPRM202Snapshot.test_fix_basic
+  '''
+  """Test fixture for PRM202: Parameter with default value missing 'default' in docstring.
+  
+  Expected: 1 violation(s) (PRM202)
+  Fix: unsafe
+  """
+  
+  
+  def missing_default_mention(x: int = 42) -> None:
+      """Do something.
+  
+      Args:
+          x (int, optional): The argument value. Defaults to 42.
+      """
+      pass
+  
+  '''
+# ---

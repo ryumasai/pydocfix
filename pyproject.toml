@@ -38,8 +38,8 @@ pydocfix = "pydocfix.cli:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=6.0",
+    "pytest>=9.0",
+    "syrupy>=5.0",
     "ruff>=0.11",
 ]
 

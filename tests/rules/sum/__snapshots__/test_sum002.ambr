@@ -1,0 +1,38 @@
+# serializer version: 1
+# name: TestSUM002Snapshot.test_fix_basic
+  '''
+  """Test fixture for SUM002: Summary should end with a period.
+  
+  Expected: 1 violation(s) (SUM002)
+  Fix: yes
+  """
+  
+  
+  def missing_period():
+      """Do something."""
+      pass
+  
+  '''
+# ---
+# name: TestSUM002Snapshot.test_fix_multiline
+  '''
+  """Test fixture for SUM002: multiline docstring missing period on summary.
+  
+  Expected: 1 violation(s) (SUM002)
+  Fix: yes
+  """
+  
+  
+  def multiline_missing_period(x: int) -> int:
+      """Do something with x.
+  
+      Args:
+          x (int): The input value.
+  
+      Returns:
+          int: The result.
+      """
+      return x
+  
+  '''
+# ---

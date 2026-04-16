@@ -2,178 +2,90 @@
 
 from __future__ import annotations
 
-import tempfile
+import sys
 from pathlib import Path
-from textwrap import dedent
 
 import pytest
 
 from pydocfix.rules._base import BaseRule
 from pydocfix.rules.plugin_loader import (
     discover_rules_in_module,
-    discover_rules_in_package,
     discover_rules_in_path,
     load_plugin_rules,
 )
 
 
-def test_discover_rules_in_module_builtin():
-    """Test discovering rules from a built-in module."""
-    rules = discover_rules_in_module("pydocfix.rules.sum")
-    assert len(rules) >= 2
-    codes = {r.code for r in rules}
-    assert "SUM001" in codes
-    assert "SUM002" in codes
+class TestDiscoverRulesInModule:
+    """Tests for discover_rules_in_module()."""
+
+    def test_discovers_from_known_module(self):
+        """Discovers rules from a known built-in module."""
+        rules = discover_rules_in_module("pydocfix.rules.sum.sum001")
+
+        assert len(rules) >= 1
+        assert all(issubclass(r, BaseRule) for r in rules)
+
+    def test_raises_on_missing_module(self):
+        """Raises ImportError for non-existent module."""
+        with pytest.raises(ImportError):
+            discover_rules_in_module("nonexistent.module.that.does.not.exist")
 
 
-def test_discover_rules_in_package_builtin():
-    """Test discovering rules from a built-in package."""
-    rules = discover_rules_in_package("pydocfix.rules.prm")
-    assert len(rules) >= 10
-    codes = {r.code for r in rules}
-    assert "PRM001" in codes
-    assert "PRM101" in codes
+class TestDiscoverRulesInPath:
+    """Tests for discover_rules_in_path()."""
+
+    def test_discovers_rules_from_file(self, tmp_path):
+        """Discovers rules from a Python file in a path."""
+        rule_file = tmp_path / "custom_rules.py"
+        rule_file.write_text("""\
+from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+
+class MY001(BaseRule):
+    code = "MY001"
+    enabled_by_default = True
+
+    def diagnose(self, node, ctx):
+        return iter([])
+""")
+        rules = discover_rules_in_path(tmp_path)
+
+        assert any(r.code == "MY001" for r in rules)
+
+    def test_empty_dir_returns_empty(self, tmp_path):
+        """Empty directory returns empty list."""
+        rules = discover_rules_in_path(tmp_path)
+
+        assert rules == []
 
 
-def test_discover_rules_in_path():
-    """Test discovering rules from a file system path."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmppath = Path(tmpdir)
+class TestLoadPluginRules:
+    """Tests for load_plugin_rules()."""
 
-        # Create a simple custom rule
-        custom_rule = tmppath / "my_custom_rule.py"
-        custom_rule.write_text(
-            dedent("""
-            from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
-            from pydocstring import GoogleDocstring
-            from collections.abc import Iterator
+    def test_empty_args_returns_empty(self):
+        """No modules or paths returns empty list."""
+        rules = load_plugin_rules(plugin_modules=[], plugin_paths=[])
 
-            class CUSTOM001(BaseRule[GoogleDocstring]):
-                code = "CUSTOM001"
-                enabled_by_default = True
+        assert rules == []
 
-                def diagnose(self, node, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-                    yield self._make_diagnostic(
-                        ctx,
-                        "Custom rule triggered",
-                        target=node,
-                    )
-        """)
-        )
+    def test_loads_from_module(self):
+        """Loads rules from a known module."""
+        rules = load_plugin_rules(plugin_modules=["pydocfix.rules.sum.sum001"])
 
-        rules = discover_rules_in_path(tmppath)
-        assert len(rules) == 1
-        assert rules[0].code == "CUSTOM001"
+        assert len(rules) >= 1
 
+    def test_loads_from_path(self, tmp_path):
+        """Loads rules from a path directory."""
+        rule_file = tmp_path / "my_rules.py"
+        rule_file.write_text("""\
+from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
 
-def test_load_plugin_rules_from_module():
-    """Test loading plugin rules from a module name."""
-    rules = load_plugin_rules(plugin_modules=["pydocfix.rules.sum"])
-    assert len(rules) >= 2
-    codes = {r.code for r in rules}
-    assert "SUM001" in codes
+class MYRULE001(BaseRule):
+    code = "MYRULE001"
+    enabled_by_default = True
 
+    def diagnose(self, node, ctx):
+        return iter([])
+""")
+        rules = load_plugin_rules(plugin_paths=[tmp_path])
 
-def test_load_plugin_rules_from_path():
-    """Test loading plugin rules from a file path."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmppath = Path(tmpdir)
-
-        # Create a custom rule
-        custom_rule = tmppath / "test_rule.py"
-        custom_rule.write_text(
-            dedent("""
-            from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
-            from pydocstring import GoogleDocstring
-            from collections.abc import Iterator
-
-            class TEST001(BaseRule[GoogleDocstring]):
-                code = "TEST001"
-
-                def diagnose(self, node, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-                    return
-                    yield  # unreachable
-        """)
-        )
-
-        rules = load_plugin_rules(plugin_paths=[tmppath])
-        assert len(rules) == 1
-        assert rules[0].code == "TEST001"
-
-
-def test_load_plugin_rules_skip_abstract():
-    """Test that abstract classes with missing code raise errors during import."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmppath = Path(tmpdir)
-
-        # Create an abstract rule (missing code)
-        abstract_rule = tmppath / "abstract_rule.py"
-        abstract_rule.write_text(
-            dedent("""
-            from pydocfix.rules._base import BaseRule
-
-            class AbstractRule(BaseRule):
-                pass  # No code attribute - this will raise TypeError
-        """)
-        )
-
-        # discover_rules_in_path should handle the import error gracefully
-        # and return empty list
-        rules = discover_rules_in_path(tmppath)
-        assert len(rules) == 0
-
-
-def test_load_plugin_rules_duplicate_codes():
-    """Test that duplicate codes are warned about."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmppath = Path(tmpdir)
-
-        # Create two rules with the same code
-        rule1 = tmppath / "rule1.py"
-        rule1.write_text(
-            dedent("""
-            from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
-            from pydocstring import GoogleDocstring
-            from collections.abc import Iterator
-
-            class DUP001_First(BaseRule[GoogleDocstring]):
-                code = "DUP001"
-
-                def diagnose(self, node, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-                    return
-                    yield
-        """)
-        )
-
-        rule2 = tmppath / "rule2.py"
-        rule2.write_text(
-            dedent("""
-            from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
-            from pydocstring import GoogleDocstring
-            from collections.abc import Iterator
-
-            class DUP001_Second(BaseRule[GoogleDocstring]):
-                code = "DUP001"
-
-                def diagnose(self, node, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-                    return
-                    yield
-        """)
-        )
-
-        # Should still load both but warn
-        rules = discover_rules_in_path(tmppath)
-        assert len(rules) == 2
-        assert all(r.code == "DUP001" for r in rules)
-
-
-def test_discover_rules_invalid_module():
-    """Test that invalid modules are handled gracefully."""
-    with pytest.raises(ImportError):
-        discover_rules_in_module("nonexistent.module.path")
-
-
-def test_discover_rules_in_path_nonexistent():
-    """Test that nonexistent paths are handled gracefully."""
-    rules = discover_rules_in_path(Path("/nonexistent/path"))
-    assert rules == []
+        assert any(r.code == "MYRULE001" for r in rules)

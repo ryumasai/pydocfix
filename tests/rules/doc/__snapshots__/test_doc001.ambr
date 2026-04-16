@@ -1,0 +1,23 @@
+# serializer version: 1
+# name: TestDOC001Snapshot.test_fix_basic
+  '''
+  """Test fixture for DOC001: Docstring sections not in canonical order.
+  
+  Expected: 1 violation(s) (DOC001)
+  Fix: unsafe
+  """
+  
+  
+  def wrong_order(x: int) -> int:
+      """Do something.
+  
+      Args:
+          x (int): The input.
+  
+      Returns:
+          int: The result.
+      """
+      return x
+  
+  '''
+# ---

@@ -1,0 +1,16 @@
+"""Test fixture for YLD104: Redundant yield type in docstring (type_annotation_style = "signature").
+
+Expected: 1 violation(s) (YLD104)
+Fix: yes
+"""
+
+from collections.abc import Iterator
+
+
+def redundant_yield_type_in_docstring() -> Iterator[int]:
+    """Do something.
+
+    Yields:
+        int: Redundant type when signature style is required.
+    """
+    yield 42

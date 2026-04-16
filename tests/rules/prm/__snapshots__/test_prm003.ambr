@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: TestPRM003Snapshot.test_fix_basic
+  '''
+  """Test fixture for PRM003: Docstring documents self or cls.
+  
+  Expected: 1 violation(s) (PRM003)
+  Fix: yes
+  """
+  
+  
+  class MyClass:
+      def my_method(self, x: int) -> None:
+          """Do something.
+  
+          Args:
+              x (int): The argument.
+          """
+          pass
+  
+  '''
+# ---

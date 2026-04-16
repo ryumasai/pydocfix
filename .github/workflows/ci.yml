@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e . pytest pytest-cov
+          pip install -e . pytest syrupy
 
       - name: Run tests
         run: pytest tests/ --tb=short -q

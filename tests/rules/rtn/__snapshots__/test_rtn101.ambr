@@ -1,0 +1,20 @@
+# serializer version: 1
+# name: TestRTN101Snapshot.test_fix_basic
+  '''
+  """Test fixture for RTN101: Docstring return type doesn't match type hint.
+  
+  Expected: 1 violation(s) (RTN101)
+  Fix: unsafe
+  """
+  
+  
+  def return_type_mismatch() -> int:
+      """Do something.
+  
+      Returns:
+          int: Wrong type in docstring.
+      """
+      return 42
+  
+  '''
+# ---

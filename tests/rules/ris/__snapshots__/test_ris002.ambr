@@ -1,0 +1,17 @@
+# serializer version: 1
+# name: TestRIS002Snapshot.test_fix_basic
+  '''
+  """Test fixture for RIS002: Function has Raises section but doesn't raise.
+  
+  Expected: 1 violation(s) (RIS002)
+  Fix: yes
+  """
+  
+  
+  def no_raise_has_raises_section():
+      """Do something.
+      """
+      return 42
+  
+  '''
+# ---
