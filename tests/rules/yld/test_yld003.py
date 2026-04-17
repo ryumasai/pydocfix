@@ -18,7 +18,7 @@ class TestYLD003:
 
     def test_violation_basic(self):
         """Yields entry with empty description triggers YLD003."""
-        fixture = load_fixture("yld003_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld003/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -27,7 +27,7 @@ class TestYLD003:
 
     def test_no_violation(self):
         """Yields entry with description should not trigger."""
-        fixture = load_fixture("yld003_no_violation.py", CATEGORY)
+        fixture = load_fixture("yld003/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0

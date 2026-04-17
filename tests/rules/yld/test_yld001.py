@@ -19,7 +19,7 @@ class TestYLD001:
 
     def test_violation_basic(self):
         """Generator function without Yields section triggers YLD001."""
-        fixture = load_fixture("yld001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld001/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) >= 1
@@ -29,7 +29,7 @@ class TestYLD001:
 
     def test_no_violation(self):
         """Generator with Yields section or non-generator should not trigger."""
-        fixture = load_fixture("yld001_no_violation.py", CATEGORY)
+        fixture = load_fixture("yld001/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0

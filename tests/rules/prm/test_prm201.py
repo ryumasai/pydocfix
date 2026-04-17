@@ -15,7 +15,7 @@ class TestPRM201:
 
     def test_violation_basic(self):
         """Default param without 'optional' in docstring type triggers PRM201."""
-        fixture = load_fixture("prm201_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm201/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM201()])
 
         assert len(diagnostics) == 1
@@ -25,14 +25,14 @@ class TestPRM201:
 
     def test_no_violation(self):
         """Default param with 'optional' or required param should not trigger."""
-        fixture = load_fixture("prm201_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm201/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM201()])
 
         assert len(diagnostics) == 0
 
     def test_fix_adds_optional(self):
         """Auto-fix should add 'optional' to the type annotation."""
-        fixture = load_fixture("prm201_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm201/violation_basic.py", CATEGORY)
         _, fixed, original = check_fixture_file(fixture, [PRM201()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None
@@ -44,7 +44,7 @@ class TestPRM201Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix inserts 'optional' into the type brackets."""
-        fixture = load_fixture("prm201_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm201/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM201()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None

@@ -15,7 +15,7 @@ class TestRTN101:
 
     def test_violation_basic(self):
         """Docstring return type differs from signature annotation triggers RTN101."""
-        fixture = load_fixture("rtn101_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn101/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [RTN101()])
 
         assert len(diagnostics) == 1
@@ -27,14 +27,14 @@ class TestRTN101:
 
     def test_no_violation(self):
         """Matching return types or no docstring type should not trigger."""
-        fixture = load_fixture("rtn101_no_violation.py", CATEGORY)
+        fixture = load_fixture("rtn101/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [RTN101()])
 
         assert len(diagnostics) == 0
 
     def test_fix_replaces_return_type(self):
         """Auto-fix should replace the wrong docstring return type."""
-        fixture = load_fixture("rtn101_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn101/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [RTN101()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None
@@ -43,7 +43,7 @@ class TestRTN101:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice produces no further violations."""
-        fixture = load_fixture("rtn101_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn101/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [RTN101()], fix=True, unsafe_fixes=True)
         assert fixed is not None
 
@@ -59,7 +59,7 @@ class TestRTN101Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix replaces the wrong return type with the correct one."""
-        fixture = load_fixture("rtn101_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn101/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [RTN101()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None

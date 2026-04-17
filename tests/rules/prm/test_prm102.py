@@ -14,7 +14,7 @@ class TestPRM102:
 
     def test_violation_basic(self):
         """Parameter with no type anywhere triggers PRM102."""
-        fixture = load_fixture("prm102_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm102/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM102()])
 
         assert len(diagnostics) == 1
@@ -23,7 +23,7 @@ class TestPRM102:
 
     def test_no_violation(self):
         """Parameter with type in signature or docstring should not trigger."""
-        fixture = load_fixture("prm102_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm102/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM102()])
 
         assert len(diagnostics) == 0

@@ -14,7 +14,7 @@ class TestDOC002:
 
     def test_violation_basic(self):
         """Under-indented entry triggers DOC002."""
-        fixture = load_fixture("doc002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("doc002/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [DOC002()])
 
         assert len(diagnostics) == 1
@@ -23,14 +23,14 @@ class TestDOC002:
 
     def test_no_violation(self):
         """Correctly indented entries should not trigger."""
-        fixture = load_fixture("doc002_no_violation.py", CATEGORY)
+        fixture = load_fixture("doc002/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [DOC002()])
 
         assert len(diagnostics) == 0
 
     def test_fix_corrects_indentation(self):
         """Auto-fix should correct the entry indentation."""
-        fixture = load_fixture("doc002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("doc002/violation_basic.py", CATEGORY)
         diagnostics, fixed, original = check_fixture_file(fixture, [DOC002()], fix=True)
 
         assert len(diagnostics) == 1
@@ -39,7 +39,7 @@ class TestDOC002:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice produces no further violations."""
-        fixture = load_fixture("doc002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("doc002/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [DOC002()], fix=True)
         assert fixed is not None
 
@@ -55,7 +55,7 @@ class TestDOC002Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix corrects indentation to expected level."""
-        fixture = load_fixture("doc002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("doc002/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [DOC002()], fix=True)
 
         assert fixed is not None

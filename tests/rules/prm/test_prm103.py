@@ -19,7 +19,7 @@ class TestPRM103:
 
     def test_violation_basic(self):
         """Parameter lacking docstring type with docstring style triggers PRM103."""
-        fixture = load_fixture("prm103_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm103/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -29,7 +29,7 @@ class TestPRM103:
 
     def test_no_violation(self):
         """Parameter with docstring type should not trigger."""
-        fixture = load_fixture("prm103_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm103/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0
@@ -38,7 +38,7 @@ class TestPRM103:
         """Rule should not fire when conflicting rule present and no config."""
         from pydocfix.checker import check_file
 
-        fixture = load_fixture("prm103_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm103/violation_basic.py", CATEGORY)
         source = fixture.read_text()
         registry = build_registry(select=["PRM103", "PRM104"], config=Config())
         type_to_rules = registry.type_to_rules
@@ -51,7 +51,7 @@ class TestPRM103:
 
     def test_fix_inserts_type(self):
         """Auto-fix should insert the type from signature into docstring."""
-        fixture = load_fixture("prm103_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm103/violation_basic.py", CATEGORY)
         _, fixed, original = check_fixture_file(fixture, [self._rule()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None

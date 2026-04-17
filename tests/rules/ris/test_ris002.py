@@ -19,7 +19,7 @@ class TestRIS002:
 
     def test_violation_basic(self):
         """Non-raising function with Raises section triggers RIS002."""
-        fixture = load_fixture("ris002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("ris002/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -29,14 +29,14 @@ class TestRIS002:
 
     def test_no_violation(self):
         """Function that raises with section or neither should not trigger."""
-        fixture = load_fixture("ris002_no_violation.py", CATEGORY)
+        fixture = load_fixture("ris002/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0
 
     def test_fix_removes_raises_section(self):
         """Auto-fix should remove the Raises section."""
-        fixture = load_fixture("ris002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("ris002/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [self._rule()], fix=True)
 
         assert fixed is not None
@@ -48,6 +48,6 @@ class TestRIS002Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Snapshot test for RIS002 fix."""
-        fixture = load_fixture("ris002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("ris002/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [RIS002(Config())], fix=True)
         assert fixed == snapshot

@@ -19,7 +19,7 @@ class TestRTN104:
 
     def test_violation_basic(self):
         """Returns entry with docstring type redundant with signature triggers RTN104."""
-        fixture = load_fixture("rtn104_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn104/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -29,7 +29,7 @@ class TestRTN104:
 
     def test_no_violation(self):
         """Returns entry with no docstring type should not trigger."""
-        fixture = load_fixture("rtn104_no_violation.py", CATEGORY)
+        fixture = load_fixture("rtn104/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0
@@ -38,7 +38,7 @@ class TestRTN104:
         """Rule should not fire when conflicting rule present and no config."""
         from pydocfix.checker import check_file
 
-        fixture = load_fixture("rtn104_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn104/violation_basic.py", CATEGORY)
         source = fixture.read_text()
         registry = build_registry(select=["RTN103", "RTN104"], config=Config())
         type_to_rules = registry.type_to_rules
@@ -50,7 +50,7 @@ class TestRTN104:
 
     def test_fix_removes_return_type(self):
         """Auto-fix should remove the type from the docstring return entry."""
-        fixture = load_fixture("rtn104_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn104/violation_basic.py", CATEGORY)
         _, fixed, original = check_fixture_file(fixture, [self._rule()], fix=True)
 
         assert fixed is not None

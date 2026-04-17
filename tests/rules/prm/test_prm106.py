@@ -19,7 +19,7 @@ class TestPRM106:
 
     def test_violation_basic(self):
         """Documented parameter with signature annotation triggers PRM106 in docstring style."""
-        fixture = load_fixture("prm106_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm106/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -28,7 +28,7 @@ class TestPRM106:
 
     def test_no_violation(self):
         """Parameter without signature annotation should not trigger."""
-        fixture = load_fixture("prm106_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm106/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0
@@ -37,7 +37,7 @@ class TestPRM106:
         """Rule should not fire when conflicting rule present and no config."""
         from pydocfix.checker import check_file
 
-        fixture = load_fixture("prm106_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm106/violation_basic.py", CATEGORY)
         source = fixture.read_text()
         registry = build_registry(select=["PRM105", "PRM106"], config=Config())
         type_to_rules = registry.type_to_rules

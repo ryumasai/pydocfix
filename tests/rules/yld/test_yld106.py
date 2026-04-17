@@ -19,7 +19,7 @@ class TestYLD106:
 
     def test_violation_basic(self):
         """Generator function with signature annotation in docstring style triggers YLD106."""
-        fixture = load_fixture("yld106_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld106/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -28,7 +28,7 @@ class TestYLD106:
 
     def test_no_violation(self):
         """Generator without signature annotation should not trigger."""
-        fixture = load_fixture("yld106_no_violation.py", CATEGORY)
+        fixture = load_fixture("yld106/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0
@@ -37,7 +37,7 @@ class TestYLD106:
         """Rule should not fire when conflicting rule present and no config."""
         from pydocfix.checker import check_file
 
-        fixture = load_fixture("yld106_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld106/violation_basic.py", CATEGORY)
         source = fixture.read_text()
         registry = build_registry(select=["YLD105", "YLD106"], config=Config())
         type_to_rules = registry.type_to_rules

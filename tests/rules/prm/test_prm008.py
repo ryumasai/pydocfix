@@ -14,7 +14,7 @@ class TestPRM008:
 
     def test_violation_basic(self):
         """Parameter with empty description triggers PRM008."""
-        fixture = load_fixture("prm008_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm008/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM008()])
 
         assert len(diagnostics) == 1
@@ -23,7 +23,7 @@ class TestPRM008:
 
     def test_no_violation(self):
         """Parameter with description should not trigger."""
-        fixture = load_fixture("prm008_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm008/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM008()])
 
         assert len(diagnostics) == 0

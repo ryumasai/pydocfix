@@ -19,7 +19,7 @@ class TestYLD103:
 
     def test_violation_basic(self):
         """Yields entry with no docstring type in docstring style triggers YLD103."""
-        fixture = load_fixture("yld103_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld103/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -29,7 +29,7 @@ class TestYLD103:
 
     def test_no_violation(self):
         """Yields entry with docstring type should not trigger."""
-        fixture = load_fixture("yld103_no_violation.py", CATEGORY)
+        fixture = load_fixture("yld103/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0
@@ -38,7 +38,7 @@ class TestYLD103:
         """Rule should not fire when conflicting rule present and no config."""
         from pydocfix.checker import check_file
 
-        fixture = load_fixture("yld103_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld103/violation_basic.py", CATEGORY)
         source = fixture.read_text()
         registry = build_registry(select=["YLD103", "YLD104"], config=Config())
         type_to_rules = registry.type_to_rules

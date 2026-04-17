@@ -15,7 +15,7 @@ class TestPRM007:
 
     def test_violation_basic(self):
         """Duplicate parameter in docstring triggers PRM007."""
-        fixture = load_fixture("prm007_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm007/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM007()])
 
         assert len(diagnostics) == 1
@@ -25,14 +25,14 @@ class TestPRM007:
 
     def test_no_violation(self):
         """Unique parameter entries should not trigger."""
-        fixture = load_fixture("prm007_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm007/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM007()])
 
         assert len(diagnostics) == 0
 
     def test_fix_removes_duplicate(self):
         """Auto-fix should remove the duplicate entry."""
-        fixture = load_fixture("prm007_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm007/violation_basic.py", CATEGORY)
         diagnostics, fixed, original = check_fixture_file(fixture, [PRM007()], fix=True, unsafe_fixes=True)
 
         assert len(diagnostics) == 1
@@ -41,7 +41,7 @@ class TestPRM007:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice produces no further violations."""
-        fixture = load_fixture("prm007_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm007/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM007()], fix=True, unsafe_fixes=True)
         assert fixed is not None
 
@@ -57,7 +57,7 @@ class TestPRM007Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix removes the duplicate parameter entry."""
-        fixture = load_fixture("prm007_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm007/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM007()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None

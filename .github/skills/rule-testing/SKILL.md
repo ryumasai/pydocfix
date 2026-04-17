@@ -22,9 +22,10 @@ This skill provides comprehensive support for testing pydocfix docstring linting
 tests/rules/{category}/
 ├── test_{rule_code}.py          # Test code
 └── fixtures/
-    ├── {rule_code}_no_violation.py
-    ├── {rule_code}_violation_basic.py
-    └── {rule_code}_violation_complex.py
+    └── {rule_code}/
+        ├── no_violation.py
+        ├── violation_basic.py
+        └── violation_complex.py
 ```
 
 ### Fixture File Format
@@ -75,16 +76,16 @@ Create a comprehensive test file for a pydocfix rule with all edge cases, includ
 
 3. **Create fixture files** in `tests/rules/{category}/fixtures/`:
 
-   **Required fixtures:**
-   - `{rule_code}_violation_basic.py` - Simple violation case
-   - `{rule_code}_no_violation.py` - Valid code that should pass
+   **Required fixtures** (in `tests/rules/{category}/fixtures/{rule_code}/`):
+   - `violation_basic.py` - Simple violation case
+   - `no_violation.py` - Valid code that should pass
 
    **Additional fixtures (as needed):**
-   - `{rule_code}_violation_complex.py` - Complex case (*args, **kwargs, etc.)
-   - `{rule_code}_numpy_style.py` - NumPy-style docstring variant
-   - `{rule_code}_async.py` - Async function variant
-   - `{rule_code}_multiple.py` - Multiple violations in one file
-   - `{rule_code}_edge_empty.py` - Empty docstring edge case
+   - `violation_complex.py` - Complex case (*args, **kwargs, etc.)
+   - `numpy_style.py` - NumPy-style docstring variant
+   - `async.py` - Async function variant
+   - `multiple.py` - Multiple violations in one file
+   - `edge_empty.py` - Empty docstring edge case
 
    **Fixture file template:**
    ```python
@@ -124,7 +125,7 @@ Create a comprehensive test file for a pydocfix rule with all edge cases, includ
 
 5. **Implementation guidelines:**
    - Use `load_fixture()` and `check_fixture_file()` from conftest.py
-   - Follow naming conventions: `{rule_code}_{scenario}.py`
+   - Follow naming conventions: `{rule_code}/{scenario}.py` (e.g., `"prm001/violation_basic.py"`)
    - Include descriptive docstrings for all test methods
    - Ensure fixture metadata matches actual expectations
    - All edge cases from SKILL.md checklist should have fixtures
@@ -153,9 +154,9 @@ Verify that a test file meets all SKILL.md checklist requirements.
 4. Read the rule specification from `tests/rules/SKILL.md`
 5. Check against the SKILL.md checklist:
 
-   **Basic fixtures:**
-   - [ ] `{rule_code}_violation_basic.py` exists
-   - [ ] `{rule_code}_no_violation.py` exists
+   **Basic fixtures** (in `fixtures/{rule_code}/`):
+   - [ ] `violation_basic.py` exists
+   - [ ] `no_violation.py` exists
    - [ ] NumPy style fixture exists (if applicable)
 
    **Basic tests:**
@@ -202,8 +203,8 @@ Generate snapshot tests for rules with auto-fix capability using fixture files.
 4. Check if fixture files exist for this rule
 5. Read existing test file to see if `Test{RULE_CODE}Snapshot` class exists
 6. Create or extend the snapshot test class with these methods:
-   - `test_fix_basic()` - Use `{rule_code}_violation_basic.py` fixture
-   - `test_fix_complex()` - Use `{rule_code}_violation_complex.py` fixture
+   - `test_fix_basic()` - Use `{rule_code}/violation_basic.py` fixture
+   - `test_fix_complex()` - Use `{rule_code}/violation_complex.py` fixture
    - `test_fix_numpy_style()` - Use NumPy style fixture
 
 7. Each snapshot test should:
@@ -233,8 +234,8 @@ The following files are essential context for all tasks:
 
 **Primary: Fixture-based testing**
 ```python
-# Load a fixture file by name
-fixture_path = load_fixture("prm001_violation_basic.py", "prm")
+# Load a fixture file by name (rule_code/scenario.py)
+fixture_path = load_fixture("prm001/violation_basic.py", "prm")
 
 # Check fixture file with rules
 diagnostics, fixed_source, original_source = check_fixture_file(
@@ -275,7 +276,7 @@ class Test{RULE_CODE}:
 
     def test_violation_basic(self):
         """Basic violation case."""
-        fixture = load_fixture("{rule_code}_violation_basic.py", CATEGORY)
+        fixture = load_fixture("{rule_code}/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM001()])
 
         assert len(diagnostics) == 1
@@ -284,14 +285,14 @@ class Test{RULE_CODE}:
 
     def test_no_violation(self):
         """Valid code should not trigger violation."""
-        fixture = load_fixture("{rule_code}_no_violation.py", CATEGORY)
+        fixture = load_fixture("{rule_code}/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [{RULE_CODE}()])
 
         assert len(diagnostics) == 0
 
     def test_fix_idempotent(self):
         """Applying fix twice should produce same result."""
-        fixture = load_fixture("{rule_code}_violation_basic.py", CATEGORY)
+        fixture = load_fixture("{rule_code}/violation_basic.py", CATEGORY)
 
         # First fix
         _, fixed1, _ = check_fixture_file(fixture, [{RULE_CODE}()], fix=True)
@@ -310,7 +311,7 @@ class Test{RULE_CODE}Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Basic fix snapshot."""
-        fixture = load_fixture("{rule_code}_violation_basic.py", CATEGORY)
+        fixture = load_fixture("{rule_code}/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [{RULE_CODE}()], fix=True)
 
         assert fixed is not None
@@ -318,7 +319,7 @@ class Test{RULE_CODE}Snapshot:
 
     def test_fix_complex(self, snapshot):
         """Complex case fix snapshot."""
-        fixture = load_fixture("{rule_code}_violation_complex.py", CATEGORY)
+        fixture = load_fixture("{rule_code}/violation_complex.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [{RULE_CODE}()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None
@@ -344,15 +345,17 @@ class Test{RULE_CODE}:
 
 ### Fixture Naming Conventions
 
-| Fixture Type | File Name Pattern | Description |
-|--------------|-------------------|-------------|
-| Basic violation | `{rule_code}_violation_basic.py` | Simple, minimal violation case |
-| No violation | `{rule_code}_no_violation.py` | Valid code that should pass |
-| Complex violation | `{rule_code}_violation_complex.py` | *args, **kwargs, defaults, etc. |
-| NumPy style | `{rule_code}_numpy_style.py` | NumPy-style docstring variant |
-| Async function | `{rule_code}_async.py` | Async function variant |
-| Multiple violations | `{rule_code}_multiple.py` | Multiple issues in one file |
-| Edge cases | `{rule_code}_edge_{description}.py` | Specific edge cases |
+Fixtures live in `tests/rules/{category}/fixtures/{rule_code}/`:
+
+| Fixture Type | File Name | Description |
+|--------------|-----------|-------------|
+| Basic violation | `violation_basic.py` | Simple, minimal violation case |
+| No violation | `no_violation.py` | Valid code that should pass |
+| Complex violation | `violation_complex.py` | *args, **kwargs, defaults, etc. |
+| NumPy style | `numpy_style.py` | NumPy-style docstring variant |
+| Async function | `async.py` | Async function variant |
+| Multiple violations | `multiple.py` | Multiple issues in one file |
+| Edge cases | `edge_{description}.py` | Specific edge cases |
 
 ### Important Notes
 
@@ -373,7 +376,7 @@ class Test{RULE_CODE}:
 ## Tips
 
 ### Fixture Management
-- **Naming**: Use descriptive fixture names: `{rule_code}_{scenario}.py`
+- **Naming**: Each rule gets its own subdirectory: `fixtures/{rule_code}/{scenario}.py`
 - **Metadata**: Always include expected violations/fixes in fixture docstring
 - **Reusability**: One fixture can be used in multiple tests
 - **Organization**: Group related fixtures (e.g., all numpy style together)

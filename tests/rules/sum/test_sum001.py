@@ -14,7 +14,7 @@ class TestSUM001:
 
     def test_violation_basic(self):
         """Docstring with only sections and no summary triggers SUM001."""
-        fixture = load_fixture("sum001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("sum001/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [SUM001()])
 
         assert len(diagnostics) == 1
@@ -23,7 +23,7 @@ class TestSUM001:
 
     def test_no_violation(self):
         """Valid docstrings with summaries should not trigger."""
-        fixture = load_fixture("sum001_no_violation.py", CATEGORY)
+        fixture = load_fixture("sum001/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [SUM001()])
 
         assert len(diagnostics) == 0

@@ -19,7 +19,7 @@ class TestRTN105:
 
     def test_violation_basic(self):
         """Returns entry without signature annotation in signature style triggers RTN105."""
-        fixture = load_fixture("rtn105_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn105/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -28,7 +28,7 @@ class TestRTN105:
 
     def test_no_violation(self):
         """Returns entry with signature annotation should not trigger."""
-        fixture = load_fixture("rtn105_no_violation.py", CATEGORY)
+        fixture = load_fixture("rtn105/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0
@@ -37,7 +37,7 @@ class TestRTN105:
         """Rule should not fire when conflicting rules present and no config."""
         from pydocfix.checker import check_file
 
-        fixture = load_fixture("rtn105_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn105/violation_basic.py", CATEGORY)
         source = fixture.read_text()
         registry = build_registry(select=["RTN105", "RTN106"], config=Config())
         type_to_rules = registry.type_to_rules

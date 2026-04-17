@@ -19,7 +19,7 @@ class TestRTN001:
 
     def test_violation_basic(self):
         """Function with return annotation but no Returns section triggers RTN001."""
-        fixture = load_fixture("rtn001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn001/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) >= 1
@@ -29,14 +29,14 @@ class TestRTN001:
 
     def test_no_violation(self):
         """Function with Returns section or no annotation should not trigger."""
-        fixture = load_fixture("rtn001_no_violation.py", CATEGORY)
+        fixture = load_fixture("rtn001/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0
 
     def test_fix_adds_returns_section(self):
         """Auto-fix should add a Returns section."""
-        fixture = load_fixture("rtn001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn001/violation_basic.py", CATEGORY)
         _, fixed, original = check_fixture_file(fixture, [self._rule()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None
@@ -45,7 +45,7 @@ class TestRTN001:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice produces no further violations."""
-        fixture = load_fixture("rtn001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn001/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [self._rule()], fix=True, unsafe_fixes=True)
         assert fixed is not None
 
@@ -61,7 +61,7 @@ class TestRTN001Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix adds a Returns section with the correct type."""
-        fixture = load_fixture("rtn001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn001/violation_basic.py", CATEGORY)
         rule = RTN001(Config(skip_short_docstrings=False))
         _, fixed, _ = check_fixture_file(fixture, [rule], fix=True, unsafe_fixes=True)
 

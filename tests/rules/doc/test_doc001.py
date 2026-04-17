@@ -14,7 +14,7 @@ class TestDOC001:
 
     def test_violation_basic(self):
         """Returns section before Args triggers DOC001."""
-        fixture = load_fixture("doc001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("doc001/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [DOC001()])
 
         assert len(diagnostics) == 1
@@ -23,14 +23,14 @@ class TestDOC001:
 
     def test_no_violation(self):
         """Sections in canonical order should not trigger."""
-        fixture = load_fixture("doc001_no_violation.py", CATEGORY)
+        fixture = load_fixture("doc001/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [DOC001()])
 
         assert len(diagnostics) == 0
 
     def test_fix_reorders_sections(self):
         """Auto-fix should put Args before Returns."""
-        fixture = load_fixture("doc001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("doc001/violation_basic.py", CATEGORY)
         diagnostics, fixed, original = check_fixture_file(fixture, [DOC001()], fix=True, unsafe_fixes=True)
 
         assert len(diagnostics) == 1
@@ -39,7 +39,7 @@ class TestDOC001:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice produces no further violations."""
-        fixture = load_fixture("doc001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("doc001/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [DOC001()], fix=True, unsafe_fixes=True)
         assert fixed is not None
 
@@ -55,7 +55,7 @@ class TestDOC001Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix reorders Returns before Args into canonical order."""
-        fixture = load_fixture("doc001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("doc001/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [DOC001()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None

@@ -14,7 +14,7 @@ class TestRTN003:
 
     def test_violation_basic(self):
         """Returns entry with empty description triggers RTN003."""
-        fixture = load_fixture("rtn003_violation_basic.py", CATEGORY)
+        fixture = load_fixture("rtn003/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [RTN003()])
 
         assert len(diagnostics) == 1
@@ -23,7 +23,7 @@ class TestRTN003:
 
     def test_no_violation(self):
         """Returns entry with description should not trigger."""
-        fixture = load_fixture("rtn003_no_violation.py", CATEGORY)
+        fixture = load_fixture("rtn003/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [RTN003()])
 
         assert len(diagnostics) == 0

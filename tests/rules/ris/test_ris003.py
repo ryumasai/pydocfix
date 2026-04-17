@@ -18,7 +18,7 @@ class TestRIS003:
 
     def test_violation_basic(self):
         """Raises entry with empty description triggers RIS003."""
-        fixture = load_fixture("ris003_violation_basic.py", CATEGORY)
+        fixture = load_fixture("ris003/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -27,7 +27,7 @@ class TestRIS003:
 
     def test_no_violation(self):
         """Raises entry with description should not trigger."""
-        fixture = load_fixture("ris003_no_violation.py", CATEGORY)
+        fixture = load_fixture("ris003/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0

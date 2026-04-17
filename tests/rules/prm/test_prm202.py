@@ -15,7 +15,7 @@ class TestPRM202:
 
     def test_violation_basic(self):
         """Default param without default value mention in description triggers PRM202."""
-        fixture = load_fixture("prm202_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm202/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM202()])
 
         assert len(diagnostics) == 1
@@ -25,14 +25,14 @@ class TestPRM202:
 
     def test_no_violation(self):
         """Default param with default mention or required param should not trigger."""
-        fixture = load_fixture("prm202_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm202/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM202()])
 
         assert len(diagnostics) == 0
 
     def test_fix_adds_default_note(self):
         """Auto-fix should append 'Defaults to X.' to the description."""
-        fixture = load_fixture("prm202_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm202/violation_basic.py", CATEGORY)
         _, fixed, original = check_fixture_file(fixture, [PRM202()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None
@@ -44,7 +44,7 @@ class TestPRM202Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix appends 'Defaults to X.' to the parameter description."""
-        fixture = load_fixture("prm202_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm202/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM202()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None

@@ -14,7 +14,7 @@ class TestSUM002:
 
     def test_violation_basic(self):
         """Single-line docstring without period triggers SUM002."""
-        fixture = load_fixture("sum002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("sum002/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [SUM002()])
 
         assert len(diagnostics) == 1
@@ -23,7 +23,7 @@ class TestSUM002:
 
     def test_violation_multiline(self):
         """Multiline docstring with summary missing period triggers SUM002."""
-        fixture = load_fixture("sum002_violation_multiline.py", CATEGORY)
+        fixture = load_fixture("sum002/violation_multiline.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [SUM002()])
 
         assert len(diagnostics) == 1
@@ -31,14 +31,14 @@ class TestSUM002:
 
     def test_no_violation(self):
         """Summaries ending with .!? should not trigger."""
-        fixture = load_fixture("sum002_no_violation.py", CATEGORY)
+        fixture = load_fixture("sum002/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [SUM002()])
 
         assert len(diagnostics) == 0
 
     def test_fix_available(self):
         """Auto-fix should append a period."""
-        fixture = load_fixture("sum002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("sum002/violation_basic.py", CATEGORY)
         diagnostics, fixed, original = check_fixture_file(fixture, [SUM002()], fix=True)
 
         assert len(diagnostics) == 1
@@ -48,7 +48,7 @@ class TestSUM002:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice should produce no further violations."""
-        fixture = load_fixture("sum002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("sum002/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [SUM002()], fix=True)
         assert fixed is not None
 
@@ -65,7 +65,7 @@ class TestSUM002Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Basic fix appends a period to the summary."""
-        fixture = load_fixture("sum002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("sum002/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [SUM002()], fix=True)
 
         assert fixed is not None
@@ -73,7 +73,7 @@ class TestSUM002Snapshot:
 
     def test_fix_multiline(self, snapshot):
         """Fix on multiline docstring preserves sections."""
-        fixture = load_fixture("sum002_violation_multiline.py", CATEGORY)
+        fixture = load_fixture("sum002/violation_multiline.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [SUM002()], fix=True)
 
         assert fixed is not None

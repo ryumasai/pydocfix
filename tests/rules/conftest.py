@@ -46,11 +46,11 @@ def make_google_context(
         parent_ast=func_ast,
         docstring_stmt=ast.Expr(value=ast.Constant(value=docstring)),
         docstring_location=DocstringLocation(
-            start=Offset(lineno=1, col_offset=4),
-            end_quote_offset=len(docstring),
-            indent_size=4,
-            start_quote='"""',
-            end_quote='"""',
+            content_start=Offset(lineno=2, col=5),
+            expr_byte_start=0,
+            expr_byte_end=len(docstring.encode()),
+            opening_quote='"""',
+            closing_quote='"""',
         ),
     )
 
@@ -81,11 +81,11 @@ def make_numpy_context(
         parent_ast=func_ast,
         docstring_stmt=ast.Expr(value=ast.Constant(value=docstring)),
         docstring_location=DocstringLocation(
-            start=Offset(lineno=1, col_offset=4),
-            end_quote_offset=len(docstring),
-            indent_size=4,
-            start_quote='"""',
-            end_quote='"""',
+            content_start=Offset(lineno=2, col=5),
+            expr_byte_start=0,
+            expr_byte_end=len(docstring.encode()),
+            opening_quote='"""',
+            closing_quote='"""',
         ),
     )
 
@@ -126,14 +126,15 @@ def load_fixture(fixture_name: str, category: str) -> Path:
     """Load a fixture file by name.
 
     Args:
-        fixture_name: Name of the fixture file (e.g., "prm001_violation_basic.py").
+        fixture_name: Relative path to the fixture file within the fixtures dir
+            (e.g., "prm001/violation_basic.py").
         category: Rule category (e.g., "prm", "rtn", "sum").
 
     Returns:
         Path to the fixture file.
 
     Example:
-        >>> path = load_fixture("prm001_violation_basic.py", "prm")
+        >>> path = load_fixture("prm001/violation_basic.py", "prm")
         >>> diagnostics, fixed, source = check_fixture_file(path, [PRM001()])
     """
     fixture_dir = Path(__file__).parent / category / "fixtures"

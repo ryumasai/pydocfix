@@ -19,7 +19,7 @@ class TestRIS005:
 
     def test_violation_basic(self):
         """Exception documented but not raised triggers RIS005."""
-        fixture = load_fixture("ris005_violation_basic.py", CATEGORY)
+        fixture = load_fixture("ris005/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -29,7 +29,7 @@ class TestRIS005:
 
     def test_no_violation(self):
         """All documented exceptions raised should not trigger."""
-        fixture = load_fixture("ris005_no_violation.py", CATEGORY)
+        fixture = load_fixture("ris005/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0

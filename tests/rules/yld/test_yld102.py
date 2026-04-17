@@ -18,7 +18,7 @@ class TestYLD102:
 
     def test_violation_basic(self):
         """Yields entry with no type in docstring or signature triggers YLD102."""
-        fixture = load_fixture("yld102_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld102/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -27,7 +27,7 @@ class TestYLD102:
 
     def test_no_violation(self):
         """Type in signature or docstring should not trigger."""
-        fixture = load_fixture("yld102_no_violation.py", CATEGORY)
+        fixture = load_fixture("yld102/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0

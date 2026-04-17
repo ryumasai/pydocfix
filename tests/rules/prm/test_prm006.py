@@ -15,7 +15,7 @@ class TestPRM006:
 
     def test_violation_basic(self):
         """Parameters in wrong order triggers PRM006."""
-        fixture = load_fixture("prm006_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm006/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM006()])
 
         # May produce one or more violations depending on how many params are out of order
@@ -26,14 +26,14 @@ class TestPRM006:
 
     def test_no_violation(self):
         """Parameters in correct order should not trigger."""
-        fixture = load_fixture("prm006_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm006/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM006()])
 
         assert len(diagnostics) == 0
 
     def test_fix_reorders_parameters(self):
         """Auto-fix should reorder parameters to match signature order."""
-        fixture = load_fixture("prm006_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm006/violation_basic.py", CATEGORY)
         diagnostics, fixed, original = check_fixture_file(fixture, [PRM006()], fix=True, unsafe_fixes=True)
 
         assert len(diagnostics) >= 1
@@ -42,7 +42,7 @@ class TestPRM006:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice produces no further violations."""
-        fixture = load_fixture("prm006_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm006/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM006()], fix=True, unsafe_fixes=True)
         assert fixed is not None
 
@@ -58,7 +58,7 @@ class TestPRM006Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix reorders parameters to match the function signature."""
-        fixture = load_fixture("prm006_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm006/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM006()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None

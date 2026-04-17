@@ -15,7 +15,7 @@ class TestPRM002:
 
     def test_violation_basic(self):
         """Function with no params but Args section triggers PRM002."""
-        fixture = load_fixture("prm002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm002/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM002()])
 
         assert len(diagnostics) == 1
@@ -25,14 +25,14 @@ class TestPRM002:
 
     def test_no_violation(self):
         """Function with params and Args section, or no params and no Args, should not trigger."""
-        fixture = load_fixture("prm002_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm002/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM002()])
 
         assert len(diagnostics) == 0
 
     def test_fix_removes_args_section(self):
         """Auto-fix should remove the Args section."""
-        fixture = load_fixture("prm002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm002/violation_basic.py", CATEGORY)
         diagnostics, fixed, original = check_fixture_file(fixture, [PRM002()], fix=True)
 
         assert len(diagnostics) == 1
@@ -41,7 +41,7 @@ class TestPRM002:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice produces no further violations."""
-        fixture = load_fixture("prm002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm002/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM002()], fix=True)
         assert fixed is not None
 
@@ -57,7 +57,7 @@ class TestPRM002Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix removes the extraneous Args section."""
-        fixture = load_fixture("prm002_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm002/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM002()], fix=True)
 
         assert fixed is not None

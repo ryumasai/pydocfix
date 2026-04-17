@@ -19,7 +19,7 @@ class TestRIS001:
 
     def test_violation_basic(self):
         """Function that raises without Raises section triggers RIS001."""
-        fixture = load_fixture("ris001_violation_basic.py", CATEGORY)
+        fixture = load_fixture("ris001/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -29,7 +29,7 @@ class TestRIS001:
 
     def test_no_violation(self):
         """Function with Raises section or no raises should not trigger."""
-        fixture = load_fixture("ris001_no_violation.py", CATEGORY)
+        fixture = load_fixture("ris001/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0

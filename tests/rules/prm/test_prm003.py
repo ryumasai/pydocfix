@@ -15,7 +15,7 @@ class TestPRM003:
 
     def test_violation_basic(self):
         """Method that documents self triggers PRM003."""
-        fixture = load_fixture("prm003_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm003/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM003()])
 
         assert len(diagnostics) == 1
@@ -25,14 +25,14 @@ class TestPRM003:
 
     def test_no_violation(self):
         """Method that does not document self/cls should not trigger."""
-        fixture = load_fixture("prm003_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm003/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM003()])
 
         assert len(diagnostics) == 0
 
     def test_fix_removes_self_entry(self):
         """Auto-fix should remove the self entry."""
-        fixture = load_fixture("prm003_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm003/violation_basic.py", CATEGORY)
         diagnostics, fixed, original = check_fixture_file(fixture, [PRM003()], fix=True)
 
         assert len(diagnostics) == 1
@@ -43,7 +43,7 @@ class TestPRM003:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice produces no further violations."""
-        fixture = load_fixture("prm003_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm003/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM003()], fix=True)
         assert fixed is not None
 
@@ -59,7 +59,7 @@ class TestPRM003Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix removes the self documentation entry."""
-        fixture = load_fixture("prm003_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm003/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM003()], fix=True)
 
         assert fixed is not None

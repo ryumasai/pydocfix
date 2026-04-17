@@ -19,7 +19,7 @@ class TestYLD104:
 
     def test_violation_basic(self):
         """Yields entry with redundant docstring type in signature style triggers YLD104."""
-        fixture = load_fixture("yld104_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld104/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 1
@@ -29,7 +29,7 @@ class TestYLD104:
 
     def test_no_violation(self):
         """Yields entry with no docstring type should not trigger."""
-        fixture = load_fixture("yld104_no_violation.py", CATEGORY)
+        fixture = load_fixture("yld104/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [self._rule()])
 
         assert len(diagnostics) == 0
@@ -38,7 +38,7 @@ class TestYLD104:
         """Rule should not fire when conflicting rule present and no config."""
         from pydocfix.checker import check_file
 
-        fixture = load_fixture("yld104_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld104/violation_basic.py", CATEGORY)
         source = fixture.read_text()
         registry = build_registry(select=["YLD103", "YLD104"], config=Config())
         type_to_rules = registry.type_to_rules
@@ -50,7 +50,7 @@ class TestYLD104:
 
     def test_fix_removes_yield_type(self):
         """Auto-fix should remove the type from the docstring yields entry."""
-        fixture = load_fixture("yld104_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld104/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [self._rule()], fix=True)
 
         assert fixed is not None
@@ -62,6 +62,6 @@ class TestYLD104Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Snapshot test for YLD104 fix."""
-        fixture = load_fixture("yld104_violation_basic.py", CATEGORY)
+        fixture = load_fixture("yld104/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [YLD104(Config(type_annotation_style="signature"))], fix=True)
         assert fixed == snapshot

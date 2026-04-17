@@ -15,7 +15,7 @@ class TestPRM101:
 
     def test_violation_basic(self):
         """Docstring type differs from signature annotation triggers PRM101."""
-        fixture = load_fixture("prm101_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm101/violation_basic.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM101()])
 
         assert len(diagnostics) == 1
@@ -27,14 +27,14 @@ class TestPRM101:
 
     def test_no_violation(self):
         """Matching types or no docstring type should not trigger."""
-        fixture = load_fixture("prm101_no_violation.py", CATEGORY)
+        fixture = load_fixture("prm101/no_violation.py", CATEGORY)
         diagnostics, _, _ = check_fixture_file(fixture, [PRM101()])
 
         assert len(diagnostics) == 0
 
     def test_fix_replaces_type(self):
         """Auto-fix should replace the wrong docstring type with the correct one."""
-        fixture = load_fixture("prm101_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm101/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM101()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None
@@ -43,7 +43,7 @@ class TestPRM101:
 
     def test_fix_idempotent(self, tmp_path):
         """Applying fix twice produces no further violations."""
-        fixture = load_fixture("prm101_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm101/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM101()], fix=True, unsafe_fixes=True)
         assert fixed is not None
 
@@ -59,7 +59,7 @@ class TestPRM101Snapshot:
 
     def test_fix_basic(self, snapshot):
         """Fix replaces the wrong docstring type with the signature type."""
-        fixture = load_fixture("prm101_violation_basic.py", CATEGORY)
+        fixture = load_fixture("prm101/violation_basic.py", CATEGORY)
         _, fixed, _ = check_fixture_file(fixture, [PRM101()], fix=True, unsafe_fixes=True)
 
         assert fixed is not None
