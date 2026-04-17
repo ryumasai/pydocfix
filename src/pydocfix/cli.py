@@ -8,7 +8,7 @@ import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Final, Literal, NamedTuple
+from typing import Final, NamedTuple
 
 import click
 
@@ -325,10 +325,12 @@ def check(
                 total_fixed += len(diagnostics) - len(remaining)
                 diagnostics = remaining
 
+        from pydocfix.render import render_diagnostic
+
         for d in diagnostics:
-            hint = _fixable_hint(d, unsafe_fixes, config)
             display_path = normalize_path(Path(d.filepath), project_root)
-            click.echo(f"{display_path}:{d.lineno}:{d.col}: {d.rule} {d.message}{hint}")
+            click.echo(render_diagnostic(d, source, display_path=display_path, config=config))
+            click.echo()
 
         remaining_diagnostics.extend(diagnostics)
 
@@ -358,9 +360,6 @@ def check(
 
     remaining = total_violations - total_fixed
 
-    if total_violations > 0:
-        click.echo("")
-
     if total_violations == 0:
         click.echo(click.style("All checks passed.", fg="green") + f" ({len(targets)} file(s) checked)")
     elif fix:
@@ -372,29 +371,6 @@ def check(
 
     if remaining > 0:
         sys.exit(1)
-
-
-def _fixable_hint(
-    d, unsafe_fixes: bool, config=None
-) -> Literal["", " (fixable)", " (unsafe fix)", " (display only fix)"]:
-    """Return a parenthetical hint about fixability."""
-    from pydocfix.rules import Applicability, effective_applicability
-
-    unfixable: Final = ""
-    fixable: Final = " (fixable)"
-    unsafe: Final = " (unsafe fix)"
-    display_only: Final = " (display only fix)"
-
-    if d.fix is None:
-        return unfixable
-    app = effective_applicability(d, config)
-    if app == Applicability.SAFE:
-        return fixable
-    if app == Applicability.UNSAFE:
-        return unsafe if not unsafe_fixes else fixable
-    if app == Applicability.DISPLAY_ONLY:
-        return display_only
-    return unfixable
 
 
 def _summarize_check(total: int, safe: int, unsafe: int) -> None:
