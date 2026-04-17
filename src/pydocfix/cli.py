@@ -327,7 +327,8 @@ def check(
 
         for d in diagnostics:
             hint = _fixable_hint(d, unsafe_fixes, config)
-            click.echo(f"{d.filepath}:{d.lineno}:{d.col}: {d.rule} {d.message}{hint}")
+            display_path = normalize_path(Path(d.filepath), project_root)
+            click.echo(f"{display_path}:{d.lineno}:{d.col}: {d.rule} {d.message}{hint}")
 
         remaining_diagnostics.extend(diagnostics)
 
