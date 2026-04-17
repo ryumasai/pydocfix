@@ -40,8 +40,8 @@ pydocfix performs linting **and** auto-fix generation in a single pass, yet is s
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.74 sec | 2.93 sec | **4.0x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 635 | 372K | 0.70 sec | 4.41 sec | **6.3x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.85 sec | 2.91 sec | **3.4x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.99 sec | 4.38 sec | **4.4x** |
 
 > Median of 5 runs (+ 1 warmup). pydocfix automatically parallelises across CPU cores (`-j` flag); pydoclint runs single-threaded.
 

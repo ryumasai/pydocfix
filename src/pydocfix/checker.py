@@ -356,6 +356,33 @@ def _build_parent_map(tree: ast.AST) -> dict[int, ast.AST]:
     return parent_map
 
 
+def _scan_ast(tree: ast.AST) -> tuple[dict[int, ast.AST], list[_DocstringInfo]]:
+    """Single-pass AST scan: build parent map and collect docstrings simultaneously.
+
+    Replaces the separate ``_build_parent_map`` + ``_extract_docstrings`` calls
+    in ``check_file``.  Using a manual BFS queue instead of ``ast.walk`` avoids
+    the redundant internal ``iter_child_nodes`` call that ``ast.walk`` makes per
+    node, reducing total ``iter_child_nodes`` calls from 3N to 1N.
+    """
+    from collections import deque
+
+    parent_map: dict[int, ast.AST] = {}
+    docstrings: list[_DocstringInfo] = []
+    queue: deque[ast.AST] = deque([tree])
+    while queue:
+        node = queue.popleft()
+        try:
+            ds: str | None = ast.get_docstring(node, clean=False)  # type: ignore
+            if ds is not None:
+                docstrings.append(_DocstringInfo(ds, node.body[0], node))  # type: ignore
+        except TypeError:
+            pass
+        for child in ast.iter_child_nodes(node):
+            parent_map[id(child)] = node
+            queue.append(child)
+    return parent_map, docstrings
+
+
 def _check_unused_inline_noqa(
     *,
     inline_noqa: NoqaDirective,
@@ -603,16 +630,18 @@ def check_file(
     if known_rule_codes is None:
         known_rule_codes = frozenset(rule.code for rules in type_to_rules.values() for rule in rules)
 
-    # Build parent map once for symbol computation
+    # Build parent map and collect docstrings in a single AST pass
     parent_map: dict[int, ast.AST]
+    _docstring_infos: list[_DocstringInfo]
     try:
         _tree: ast.AST | None = ast.parse(source, filename=str(filepath))
-        parent_map = _build_parent_map(_tree)
+        parent_map, _docstring_infos = _scan_ast(_tree)
     except SyntaxError:
         _tree = None
         parent_map = {}
+        _docstring_infos = []
 
-    for ds_content, ds_stmt, parent_ast in _extract_docstrings(source, filepath, _tree):
+    for ds_content, ds_stmt, parent_ast in _docstring_infos:
         ds_loc = _locate_docstring(ds_stmt, lines, line_offsets, source_bytes)
         if ds_loc is None:
             continue
