@@ -60,6 +60,3 @@ class PRM001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
         yield self._make_diagnostic(
             ctx, "Missing Args/Parameters section in docstring.", fix=fix, target=summary_token or root
         )
-        yield self._make_diagnostic(
-            ctx, "Missing Args/Parameters section in docstring.", fix=fix, target=summary_token or root
-        )

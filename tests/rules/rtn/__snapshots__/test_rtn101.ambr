@@ -1,20 +1,30 @@
 # serializer version: 1
-# name: TestRTN101Snapshot.test_fix_basic
+# name: TestRTN101.test_rule
   '''
-  """Test fixture for RTN101: Docstring return type doesn't match type hint.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (RTN101)
-  Fix: unsafe
-  """
+  RTN101 [unsafe] Docstring return type 'str' does not match type hint 'int'.
+    --> rtn101.py:9:9
+     |
+   7 | 
+   8 |     Returns:
+   9 |         str: Wrong type in docstring.
+     |         ^^^
+  10 |     """
+  11 |     return 42
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def return_type_mismatch() -> int:
-      """Do something.
-  
-      Returns:
-          int: Wrong type in docstring.
-      """
-      return 42
-  
+  --- rtn101.py
+  +++ rtn101.py (fixed)
+  @@ -6,7 +6,7 @@
+       """Do something.
+   
+       Returns:
+  -        str: Wrong type in docstring.
+  +        int: Wrong type in docstring.
+       """
+       return 42
   '''
 # ---

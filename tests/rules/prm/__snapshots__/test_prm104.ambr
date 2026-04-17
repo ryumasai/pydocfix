@@ -1,0 +1,30 @@
+# serializer version: 1
+# name: TestPRM104.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  PRM104 [*] Parameter 'x' has redundant type in docstring.
+    --> prm104.py:10:12
+     |
+   8 | 
+   9 |     Args:
+  10 |         x (int): Has both signature annotation and docstring type (redundant).
+     |            ^^^
+  11 |     """
+  12 |     pass
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  --- prm104.py
+  +++ prm104.py (fixed)
+  @@ -7,7 +7,7 @@
+       """Do something.
+   
+       Args:
+  -        x (int): Has both signature annotation and docstring type (redundant).
+  +        x: Has both signature annotation and docstring type (redundant).
+       """
+       pass
+  '''
+# ---

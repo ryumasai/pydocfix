@@ -1,17 +1,31 @@
 # serializer version: 1
-# name: TestPRM002Snapshot.test_fix_basic
+# name: TestPRM002.test_rule
   '''
-  """Test fixture for PRM002: Function has no parameters but docstring has Args section.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM002)
-  Fix: yes
-  """
+  PRM002 [*] Function has no parameters but docstring has Args/Parameters section.
+    --> prm002.py:8:5
+     |
+   6 |     """Do something.
+   7 | 
+   8 |     Args:
+     |     ^^^^
+   9 |         x: A parameter that does not exist.
+  10 |     """
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def no_params_has_args():
-      """Do something.
-      """
-      pass
-  
+  --- prm002.py
+  +++ prm002.py (fixed)
+  @@ -4,9 +4,6 @@
+   # violation
+   def no_params_has_args():
+       """Do something.
+  -
+  -    Args:
+  -        x: A parameter that does not exist.
+       """
+       pass
   '''
 # ---

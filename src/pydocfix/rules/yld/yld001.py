@@ -58,5 +58,3 @@ class YLD001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
         )
         summary_token = root.summary
         yield self._make_diagnostic(ctx, "Missing Yields section in docstring.", fix=fix, target=summary_token or root)
-        summary_token = root.summary
-        yield self._make_diagnostic(ctx, "Missing Yields section in docstring.", fix=fix, target=summary_token or root)

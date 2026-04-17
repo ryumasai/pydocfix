@@ -1,30 +1,29 @@
 # serializer version: 1
-# name: TestPRM004Snapshot.test_fix_basic
+# name: TestPRM004.test_rule
   '''
-  """Test fixture for PRM004: Missing parameter in docstring.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM004)
-  Fix: unsafe
-  """
+  PRM004 [unsafe] Missing parameter 'y' in docstring.
+    --> prm004.py:8:5
+     |
+   6 |     """Do something.
+   7 | 
+   8 |     Args:
+     |     ^^^^
+   9 |         x (int): The first argument.
+  10 |     """
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def missing_param(x: int, y: str) -> None:
-      """Do something.
-  
-      Args:
-          x (int): The first argument.
-      y (str):
-      y (str):
-      y (str):
-      y (str):
-      y (str):
-      y (str):
-      y (str):
-      y (str):
-      y (str):
-      y (str):
-      """
-      pass
-  
+  --- prm004.py
+  +++ prm004.py (fixed)
+  @@ -7,6 +7,7 @@
+   
+       Args:
+           x (int): The first argument.
+  +        y (str):
+       """
+       pass
   '''
 # ---

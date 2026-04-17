@@ -10,7 +10,15 @@ from pydocstring import (
     NumPySection,
 )
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
+from pydocfix.rules._base import (
+    Applicability,
+    BaseRule,
+    DiagnoseContext,
+    Diagnostic,
+    Fix,
+    detect_section_indent,
+    insert_at,
+)
 from pydocfix.rules.prm._helpers import (
     bare_name,
     get_documented_param_nodes,
@@ -52,7 +60,8 @@ class PRM004(BaseRule[GoogleSection | NumPySection]):
             return
 
         is_numpy = isinstance(section, NumPySection)
-        indent = "    "
+        section_indent = detect_section_indent(ctx.docstring_text, ctx.docstring_stmt.col_offset)
+        indent = section_indent + "    "
         insert_offset = section.range.end
 
         for display_name, ann in sig_params:

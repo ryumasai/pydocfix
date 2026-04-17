@@ -1,21 +1,43 @@
 # serializer version: 1
-# name: TestPRM009Snapshot.test_fix_basic
+# name: TestPRM009.test_rule
   '''
-  """Test fixture for PRM009: Parameter name missing * or ** prefix.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM009)
-  Fix: yes
-  """
+  PRM009 [*] Docstring parameter 'args' should be '*args'.
+    --> prm009.py:9:9
+     |
+   7 | 
+   8 |     Args:
+   9 |         args (int): Positional arguments without * prefix.
+     |         ^^^^
+  10 |         kwargs (str): Keyword arguments without ** prefix.
+  11 |     """
+     |
   
+  PRM009 [*] Docstring parameter 'kwargs' should be '**kwargs'.
+    --> prm009.py:10:9
+     |
+   8 |     Args:
+   9 |         args (int): Positional arguments without * prefix.
+  10 |         kwargs (str): Keyword arguments without ** prefix.
+     |         ^^^^^^
+  11 |     """
+  12 |     pass
+     |
   
-  def missing_star_prefix(*args: int, **kwargs: str) -> None:
-      """Do something.
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-      Args:
-          *args (int): Positional arguments without * prefix.
-          **kwargs (str): Keyword arguments without ** prefix.
-      """
-      pass
-  
+  --- prm009.py
+  +++ prm009.py (fixed)
+  @@ -6,8 +6,8 @@
+       """Do something.
+   
+       Args:
+  -        args (int): Positional arguments without * prefix.
+  -        kwargs (str): Keyword arguments without ** prefix.
+  +        *args (int): Positional arguments without * prefix.
+  +        **kwargs (str): Keyword arguments without ** prefix.
+       """
+       pass
   '''
 # ---

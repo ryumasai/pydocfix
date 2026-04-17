@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: TestPRM106.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  PRM106 Parameter 'x' has a type annotation in signature; types belong in the docstring.
+    --> prm106.py:10:9
+     |
+   8 | 
+   9 |     Args:
+  10 |         x (int): Has signature annotation when docstring style is required.
+     |         ^
+  11 |     """
+  12 |     pass
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  (no fix)
+  '''
+# ---

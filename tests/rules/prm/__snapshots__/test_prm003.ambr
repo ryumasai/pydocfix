@@ -1,21 +1,30 @@
 # serializer version: 1
-# name: TestPRM003Snapshot.test_fix_basic
+# name: TestPRM003.test_rule
   '''
-  """Test fixture for PRM003: Docstring documents self or cls.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM003)
-  Fix: yes
-  """
+  PRM003 [*] Docstring should not document 'self'.
+    --> prm003.py:10:13
+     |
+   8 | 
+   9 |         Args:
+  10 |             self: The instance (should not be documented).
+     |             ^^^^
+  11 |             x (int): The argument.
+  12 |         """
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  class MyClass:
-      def my_method(self, x: int) -> None:
-          """Do something.
-  
-          Args:
-              x (int): The argument.
-          """
-          pass
-  
+  --- prm003.py
+  +++ prm003.py (fixed)
+  @@ -7,7 +7,6 @@
+           """Do something.
+   
+           Args:
+  -            self: The instance (should not be documented).
+               x (int): The argument.
+           """
+           pass
   '''
 # ---

@@ -1,20 +1,29 @@
 # serializer version: 1
-# name: TestPRM005Snapshot.test_fix_basic
+# name: TestPRM005.test_rule
   '''
-  """Test fixture for PRM005: Docstring has parameter not in function signature.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM005)
-  Fix: unsafe
-  """
+  PRM005 [unsafe] Parameter 'z' not in function signature.
+    --> prm005.py:10:9
+     |
+   8 |     Args:
+   9 |         x (int): The argument.
+  10 |         z (str): This parameter does not exist.
+     |         ^
+  11 |     """
+  12 |     pass
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def extra_param(x: int) -> None:
-      """Do something.
-  
-      Args:
-          x (int): The argument.
-      """
-      pass
-  
+  --- prm005.py
+  +++ prm005.py (fixed)
+  @@ -7,7 +7,6 @@
+   
+       Args:
+           x (int): The argument.
+  -        z (str): This parameter does not exist.
+       """
+       pass
   '''
 # ---

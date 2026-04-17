@@ -1,25 +1,34 @@
 # serializer version: 1
-# name: TestPRM001Snapshot.test_fix_basic
+# name: TestPRM001.test_rule
   '''
-  """Test fixture for PRM001: Function has parameters but no Args section.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM001)
-  Fix: unsafe
-  """
+  PRM001 [unsafe] Missing Args/Parameters section in docstring.
+    --> prm001.py:6:8
+     |
+   4 | # violation
+   5 | def missing_args_section(x: int, y: str) -> None:
+   6 |     """Do something."""
+     |        ^^^^^^^^^^^^^
+   7 |     pass
+   8 | 
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def missing_args_section(x: int, y: str) -> None:
-      """Do something.
-  
-      Args:
-          x (int):
-          y (str):
-  
-      Args:
-          x (int):
-          y (str):
-      """
-      pass
-  
+  --- prm001.py
+  +++ prm001.py (fixed)
+  @@ -3,7 +3,12 @@
+   
+   # violation
+   def missing_args_section(x: int, y: str) -> None:
+  -    """Do something."""
+  +    """Do something.
+  +
+  +    Args:
+  +        x (int):
+  +        y (str):
+  +    """
+       pass
   '''
 # ---

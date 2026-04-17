@@ -1,17 +1,31 @@
 # serializer version: 1
-# name: TestRTN002Snapshot.test_fix_basic
+# name: TestRTN002.test_rule
   '''
-  """Test fixture for RTN002: Returns section present but function doesn't return a value.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (RTN002)
-  Fix: yes
-  """
+  RTN002 [*] Unnecessary Returns section in docstring.
+    --> rtn002.py:8:5
+     |
+   6 |     """Do something.
+   7 | 
+   8 |     Returns:
+     |     ^^^^^^^
+   9 |         None: This function doesn't actually return a value.
+  10 |     """
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def no_return_but_has_section() -> None:
-      """Do something.
-      """
-      pass
-  
+  --- rtn002.py
+  +++ rtn002.py (fixed)
+  @@ -4,9 +4,6 @@
+   # violation
+   def no_return_but_has_section() -> None:
+       """Do something.
+  -
+  -    Returns:
+  -        None: This function doesn't actually return a value.
+       """
+       pass
   '''
 # ---

@@ -1,0 +1,30 @@
+# serializer version: 1
+# name: TestRTN104.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  RTN104 [*] Redundant return type in docstring; type annotation exists in signature.
+    --> rtn104.py:10:9
+     |
+   8 | 
+   9 |     Returns:
+  10 |         int: Redundant type when signature style is required.
+     |         ^^^
+  11 |     """
+  12 |     return 42
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  --- rtn104.py
+  +++ rtn104.py (fixed)
+  @@ -7,7 +7,7 @@
+       """Do something.
+   
+       Returns:
+  -        int: Redundant type when signature style is required.
+  +        Redundant type when signature style is required.
+       """
+       return 42
+  '''
+# ---

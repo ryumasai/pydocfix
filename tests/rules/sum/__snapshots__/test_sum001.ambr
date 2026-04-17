@@ -1,0 +1,27 @@
+# serializer version: 1
+# name: TestSUM001.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  SUM001 Docstring has no summary line.
+    --> sum001.py:6:8
+     |
+   4 | # violation
+   5 | def no_summary():
+   6 |     """
+     |        ^
+   7 |     Args:
+     | ^^^^^^^^^
+   8 |         x: A parameter.
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+   9 |     """
+     | ^^^^
+  10 |     pass
+  11 | 
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  (no fix)
+  '''
+# ---

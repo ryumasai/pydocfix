@@ -1,20 +1,30 @@
 # serializer version: 1
-# name: TestPRM201Snapshot.test_fix_basic
+# name: TestPRM201.test_rule
   '''
-  """Test fixture for PRM201: Parameter with default value missing 'optional' in docstring.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM201)
-  Fix: unsafe
-  """
+  PRM201 [unsafe] Parameter 'x' has default value but docstring does not mention 'optional'.
+    --> prm201.py:9:9
+     |
+   7 | 
+   8 |     Args:
+   9 |         x (int): The argument with a default value but no 'optional' mention.
+     |         ^
+  10 |     """
+  11 |     pass
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def missing_optional(x: int = 0) -> None:
-      """Do something.
-  
-      Args:
-          x (int, optional): The argument with a default value but no 'optional' mention.
-      """
-      pass
-  
+  --- prm201.py
+  +++ prm201.py (fixed)
+  @@ -6,7 +6,7 @@
+       """Do something.
+   
+       Args:
+  -        x (int): The argument with a default value but no 'optional' mention.
+  +        x (int, optional): The argument with a default value but no 'optional' mention.
+       """
+       pass
   '''
 # ---

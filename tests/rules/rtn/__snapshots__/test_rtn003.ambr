@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: TestRTN003.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  RTN003 Returns section has no description.
+    --> rtn003.py:9:9
+     |
+   7 | 
+   8 |     Returns:
+   9 |         int:
+     |         ^^^
+  10 |     """
+  11 |     return 42
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  (no fix)
+  '''
+# ---

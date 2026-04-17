@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: TestYLD102.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  YLD102 Yield type not in docstring or signature.
+    --> yld102.py:11:9
+     |
+   9 | 
+  10 |     Yields:
+  11 |         The value with no type anywhere.
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  12 |     """
+  13 |     yield 42
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  (no fix)
+  '''
+# ---

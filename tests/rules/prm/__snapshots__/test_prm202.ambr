@@ -1,20 +1,30 @@
 # serializer version: 1
-# name: TestPRM202Snapshot.test_fix_basic
+# name: TestPRM202.test_rule
   '''
-  """Test fixture for PRM202: Parameter with default value missing 'default' in docstring.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM202)
-  Fix: unsafe
-  """
+  PRM202 [unsafe] Parameter 'x' has default value but docstring does not mention 'default'.
+    --> prm202.py:9:9
+     |
+   7 | 
+   8 |     Args:
+   9 |         x (int, optional): The argument value.
+     |         ^
+  10 |     """
+  11 |     pass
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def missing_default_mention(x: int = 42) -> None:
-      """Do something.
-  
-      Args:
-          x (int, optional): The argument value. Defaults to 42.
-      """
-      pass
-  
+  --- prm202.py
+  +++ prm202.py (fixed)
+  @@ -6,7 +6,7 @@
+       """Do something.
+   
+       Args:
+  -        x (int, optional): The argument value.
+  +        x (int, optional): The argument value. Defaults to 42.
+       """
+       pass
   '''
 # ---

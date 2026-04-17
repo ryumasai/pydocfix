@@ -1,4 +1,30 @@
 # serializer version: 1
-# name: TestYLD101Snapshot.test_fix_basic
-  None
+# name: TestYLD101.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  YLD101 [unsafe] Docstring yield type 'str' does not match type hint 'int'.
+    --> yld101.py:11:9
+     |
+   9 | 
+  10 |     Yields:
+  11 |         str: Wrong type in docstring.
+     |         ^^^
+  12 |     """
+  13 |     yield 42
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  --- yld101.py
+  +++ yld101.py (fixed)
+  @@ -8,7 +8,7 @@
+       """Do something.
+   
+       Yields:
+  -        str: Wrong type in docstring.
+  +        int: Wrong type in docstring.
+       """
+       yield 42
+  '''
 # ---

@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: TestRTN102.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  RTN102 Return type not in docstring or signature.
+    --> rtn102.py:9:9
+     |
+   7 | 
+   8 |     Returns:
+   9 |         The result with no type in docstring or signature.
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  10 |     """
+  11 |     return 42
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  (no fix)
+  '''
+# ---

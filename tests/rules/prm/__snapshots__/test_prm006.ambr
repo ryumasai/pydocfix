@@ -1,21 +1,42 @@
 # serializer version: 1
-# name: TestPRM006Snapshot.test_fix_basic
+# name: TestPRM006.test_rule
   '''
-  """Test fixture for PRM006: Docstring parameters in wrong order.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM006)
-  Fix: unsafe
-  """
+  PRM006 [unsafe] Parameter 'y' is in the wrong order (expected 'x' at this position).
+    --> prm006.py:9:9
+     |
+   7 | 
+   8 |     Args:
+   9 |         y (str): The second argument.
+     |         ^
+  10 |         x (int): The first argument.
+  11 |     """
+     |
   
+  PRM006 Parameter 'x' is in the wrong order (expected 'y' at this position).
+    --> prm006.py:10:9
+     |
+   8 |     Args:
+   9 |         y (str): The second argument.
+  10 |         x (int): The first argument.
+     |         ^
+  11 |     """
+  12 |     pass
+     |
   
-  def wrong_param_order(x: int, y: str) -> None:
-      """Do something.
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-      Args:
-          x (int): The first argument.
-          y (str): The second argument.
-      """
-      pass
-  
+  --- prm006.py
+  +++ prm006.py (fixed)
+  @@ -6,8 +6,8 @@
+       """Do something.
+   
+       Args:
+  +        x (int): The first argument.
+           y (str): The second argument.
+  -        x (int): The first argument.
+       """
+       pass
   '''
 # ---

@@ -1,20 +1,33 @@
 # serializer version: 1
-# name: TestRTN001Snapshot.test_fix_basic
+# name: TestRTN001.test_rule
   '''
-  """Test fixture for RTN001: Function has return annotation but no Returns section.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (RTN001)
-  Fix: unsafe
-  """
+  RTN001 [unsafe] Missing Returns section in docstring.
+    --> rtn001.py:7:8
+     |
+   5 | # violation
+   6 | def missing_returns_section(x: int) -> int:
+   7 |     """Do something."""
+     |        ^^^^^^^^^^^^^
+   8 |     return x
+   9 | 
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def missing_returns_section(x: int) -> int:
-      """Do something.
-  
-      Returns:
-          int:
-      """
-      return x
-  
+  --- rtn001.py
+  +++ rtn001.py (fixed)
+  @@ -4,7 +4,11 @@
+   
+   # violation
+   def missing_returns_section(x: int) -> int:
+  -    """Do something."""
+  +    """Do something.
+  +
+  +    Returns:
+  +        int:
+  +    """
+       return x
   '''
 # ---

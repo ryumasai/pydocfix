@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: TestRTN105.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  RTN105 Return has no type annotation in signature.
+    --> rtn105.py:10:9
+     |
+   8 | 
+   9 |     Returns:
+  10 |         The result with no signature annotation.
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  11 |     """
+  12 |     return 42
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  (no fix)
+  '''
+# ---

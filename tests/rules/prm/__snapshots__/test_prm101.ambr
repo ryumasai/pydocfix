@@ -1,20 +1,30 @@
 # serializer version: 1
-# name: TestPRM101Snapshot.test_fix_basic
+# name: TestPRM101.test_rule
   '''
-  """Test fixture for PRM101: Docstring parameter type doesn't match type hint.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM101)
-  Fix: unsafe
-  """
+  PRM101 [unsafe] Docstring type 'str' does not match type hint 'int' for parameter 'x'.
+    --> prm101.py:9:12
+     |
+   7 | 
+   8 |     Args:
+   9 |         x (str): The argument documented as str but annotated as int.
+     |            ^^^
+  10 |     """
+  11 |     pass
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def type_mismatch(x: int) -> None:
-      """Do something.
-  
-      Args:
-          x (int): The argument documented as str but annotated as int.
-      """
-      pass
-  
+  --- prm101.py
+  +++ prm101.py (fixed)
+  @@ -6,7 +6,7 @@
+       """Do something.
+   
+       Args:
+  -        x (str): The argument documented as str but annotated as int.
+  +        x (int): The argument documented as str but annotated as int.
+       """
+       pass
   '''
 # ---

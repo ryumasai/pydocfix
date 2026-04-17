@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleSection, NumPySection
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
+from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix, detect_section_indent
 from pydocfix.rules.ris._helpers import (
     _bare_exc_name,
     get_docstring_exception_names,
@@ -22,9 +22,10 @@ class RIS004(BaseRule[GoogleSection | NumPySection]):
     code = "RIS004"
 
     @staticmethod
-    def _detect_entry_indent(ds_text: str, section) -> str:
+    def _detect_entry_indent(ds_text: str, section, stmt_col_offset: int = 0) -> str:
         """Derive indentation of exception entries from existing entries."""
-        return "    "
+        section_indent = detect_section_indent(ds_text, stmt_col_offset)
+        return section_indent + "    "
 
     @staticmethod
     def _build_entry(exc_name: str, *, is_numpy: bool, indent: str) -> str:
@@ -44,7 +45,7 @@ class RIS004(BaseRule[GoogleSection | NumPySection]):
         raised = [_bare_exc_name(e) for e in get_raised_exceptions(ctx.parent_ast)]
 
         is_numpy = isinstance(section, NumPySection)
-        indent = self._detect_entry_indent(ctx.docstring_text, section)
+        indent = self._detect_entry_indent(ctx.docstring_text, section, ctx.docstring_stmt.col_offset)
         header_name = section.header_name
 
         for exc_name in raised:

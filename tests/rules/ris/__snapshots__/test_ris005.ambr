@@ -1,0 +1,29 @@
+# serializer version: 1
+# name: TestRIS005.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  RIS005 [unsafe] Raises entry 'TypeError' not raised in function body.
+    --> ris005.py:10:9
+     |
+   8 |     Raises:
+   9 |         ValueError: When value is wrong.
+  10 |         TypeError: This exception is never raised.
+     |         ^^^^^^^^^
+  11 |     """
+  12 |     raise ValueError("something went wrong")
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  --- ris005.py
+  +++ ris005.py (fixed)
+  @@ -7,7 +7,6 @@
+   
+       Raises:
+           ValueError: When value is wrong.
+  -        TypeError: This exception is never raised.
+       """
+       raise ValueError("something went wrong")
+  '''
+# ---

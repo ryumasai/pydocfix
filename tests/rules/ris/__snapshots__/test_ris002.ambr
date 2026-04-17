@@ -1,17 +1,31 @@
 # serializer version: 1
-# name: TestRIS002Snapshot.test_fix_basic
+# name: TestRIS002.test_rule
   '''
-  """Test fixture for RIS002: Function has Raises section but doesn't raise.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (RIS002)
-  Fix: yes
-  """
+  RIS002 [*] Unnecessary Raises section in docstring.
+    --> ris002.py:8:5
+     |
+   6 |     """Do something.
+   7 | 
+   8 |     Raises:
+     |     ^^^^^^
+   9 |         ValueError: This function never actually raises.
+  10 |     """
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def no_raise_has_raises_section():
-      """Do something.
-      """
-      return 42
-  
+  --- ris002.py
+  +++ ris002.py (fixed)
+  @@ -4,9 +4,6 @@
+   # violation
+   def no_raise_has_raises_section():
+       """Do something.
+  -
+  -    Raises:
+  -        ValueError: This function never actually raises.
+       """
+       return 42
   '''
 # ---

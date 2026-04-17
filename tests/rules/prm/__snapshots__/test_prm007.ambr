@@ -1,21 +1,29 @@
 # serializer version: 1
-# name: TestPRM007Snapshot.test_fix_basic
+# name: TestPRM007.test_rule
   '''
-  """Test fixture for PRM007: Duplicate parameter in docstring.
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  Expected: 1 violation(s) (PRM007)
-  Fix: unsafe
-  """
+  PRM007 [unsafe] Parameter 'x' is documented more than once.
+    --> prm007.py:11:9
+     |
+   9 |         x (int): The first argument.
+  10 |         y (str): The second argument.
+  11 |         x (int): Duplicate entry for x.
+     |         ^
+  12 |     """
+  13 |     pass
+     |
   
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  def duplicate_param(x: int, y: str) -> None:
-      """Do something.
-  
-      Args:
-          x (int): The first argument.
-          y (str): The second argument.
-      """
-      pass
-  
+  --- prm007.py
+  +++ prm007.py (fixed)
+  @@ -8,7 +8,6 @@
+       Args:
+           x (int): The first argument.
+           y (str): The second argument.
+  -        x (int): Duplicate entry for x.
+       """
+       pass
   '''
 # ---
