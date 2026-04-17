@@ -5,12 +5,10 @@
   
   yld001.py:9:8: YLD001 [unsafe] Missing Yields section in docstring.
      |
-   7 | # violation
    8 | def missing_yields_section() -> Iterator[int]:
    9 |     """Do something."""
-     |        ^^^^^^^^^^^^^ YLD001
+     |        ^^^^^^^^^^^^^
   10 |     yield 42
-  11 | 
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

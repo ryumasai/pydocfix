@@ -3,14 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  rtn003.py:9:9: RTN003 Returns section has no description.
+  rtn003.py:9:9: RTN003 [] Returns section has no description.
      |
-   7 | 
    8 |     Returns:
    9 |         int:
-     |         ^^^ RTN003
+     |         ^^^
   10 |     """
-  11 |     return 42
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

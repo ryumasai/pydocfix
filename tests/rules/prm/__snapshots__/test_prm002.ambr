@@ -3,14 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  prm002.py:8:5: PRM002 [*] Function has no parameters but docstring has Args/Parameters section.
+  prm002.py:8:5: PRM002 [safe] Function has no parameters but docstring has Args/Parameters section.
      |
-   6 |     """Do something.
    7 | 
    8 |     Args:
-     |     ^^^^ PRM002
+     |     ^^^^
    9 |         x: A parameter that does not exist.
-  10 |     """
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

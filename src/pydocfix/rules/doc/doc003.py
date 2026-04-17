@@ -13,6 +13,7 @@ class DOC003(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
     """One-line docstring should be written on a single line."""
 
     code = "DOC003"
+    enabled_by_default = True
 
     def diagnose(
         self,
@@ -38,6 +39,11 @@ class DOC003(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
 
         # Must have no sections (sections require multiline format)
         if getattr(root, "sections", []):
+            return
+
+        # Must have no extended summary (content beyond the summary line)
+        remaining = ctx.docstring_text.encode("utf-8")[root.summary.range.end :]
+        if remaining.strip():
             return
 
         content_bytes = ctx.docstring_text.encode("utf-8")

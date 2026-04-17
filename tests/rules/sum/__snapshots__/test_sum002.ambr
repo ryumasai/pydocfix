@@ -3,24 +3,20 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  sum002.py:6:8: SUM002 [*] Summary should end with a period.
+  sum002.py:6:8: SUM002 [safe] Summary should end with a period.
      |
-   4 | # violation
    5 | def missing_period():
    6 |     """Do something"""
-     |        ^^^^^^^^^^^^ SUM002
+     |        ^^^^^^^^^^^^
    7 |     pass
-   8 | 
      |
   
-  sum002.py:11:8: SUM002 [*] Summary should end with a period.
+  sum002.py:11:8: SUM002 [safe] Summary should end with a period.
      |
-   9 | 
   10 | def multiline_missing_period(x: int) -> int:
   11 |     """Do something with x
-     |        ^^^^^^^^^^^^^^^^^^^ SUM002
+     |        ^^^^^^^^^^^^^^^^^^^
   12 | 
-  13 |     Args:
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

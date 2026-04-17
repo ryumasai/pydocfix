@@ -3,9 +3,8 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  sum001.py:6:8: SUM001 Docstring has no summary line.
+  sum001.py:6:8: SUM001 [] Docstring has no summary line.
      |
-   4 | # violation
    5 | def no_summary():
    6 |     """
      |        ^
@@ -14,9 +13,8 @@
    8 |         x: A parameter.
      | ^^^^^^^^^^^^^^^^^^^^^^^
    9 |     """
-     | ^^^^ SUM001
+     | ^^^^
   10 |     pass
-  11 | 
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

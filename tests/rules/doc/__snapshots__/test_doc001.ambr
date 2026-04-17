@@ -5,14 +5,12 @@
   
   doc001.py:8:5: DOC001 [unsafe] Docstring sections are not in canonical order.
      |
-   6 |     """Do something.
    7 | 
    8 |     Returns:
      |     ^^^^^^^^
    9 |         int: The result.
-     | ^^^^^^^^^^^^^^^^^^^^^^^^ DOC001
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
   10 | 
-  11 |     Args:
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

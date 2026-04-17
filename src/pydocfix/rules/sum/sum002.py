@@ -18,7 +18,9 @@ class SUM002(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
 
     code = "SUM002"
 
-    def diagnose(self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+    def diagnose(
+        self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext
+    ) -> Iterator[Diagnostic]:
         root = node
         if root.summary is None:
             return

@@ -5,12 +5,10 @@
   
   prm005.py:10:9: PRM005 [unsafe] Parameter 'z' not in function signature.
      |
-   8 |     Args:
    9 |         x (int): The argument.
   10 |         z (str): This parameter does not exist.
-     |         ^ PRM005
+     |         ^
   11 |     """
-  12 |     pass
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

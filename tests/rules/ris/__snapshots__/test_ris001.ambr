@@ -5,12 +5,10 @@
   
   ris001.py:7:8: RIS001 [unsafe] Missing Raises section in docstring.
      |
-   5 | # violation
    6 | def missing_raises_section():
    7 |     """Do something."""
-     |        ^^^^^^^^^^^^^ RIS001
+     |        ^^^^^^^^^^^^^
    8 |     raise ValueError("something went wrong")
-   9 | 
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

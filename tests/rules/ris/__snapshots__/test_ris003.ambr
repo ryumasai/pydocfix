@@ -3,14 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  ris003.py:9:9: RIS003 Raises entry has no description.
+  ris003.py:9:9: RIS003 [] Raises entry has no description.
      |
-   7 | 
    8 |     Raises:
    9 |         ValueError:
-     |         ^^^^^^^^^^ RIS003
+     |         ^^^^^^^^^^
   10 |     """
-  11 |     raise ValueError("something went wrong")
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

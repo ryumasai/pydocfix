@@ -5,12 +5,10 @@
   
   prm001.py:6:8: PRM001 [unsafe] Missing Args/Parameters section in docstring.
      |
-   4 | # violation
    5 | def missing_args_section(x: int, y: str) -> None:
    6 |     """Do something."""
-     |        ^^^^^^^^^^^^^ PRM001
+     |        ^^^^^^^^^^^^^
    7 |     pass
-   8 | 
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

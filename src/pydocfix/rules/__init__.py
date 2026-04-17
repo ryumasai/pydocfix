@@ -189,6 +189,7 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     SUM002,
     DOC001,
     DOC002,
+    DOC003,
     PRM001,
     PRM002,
     PRM003,

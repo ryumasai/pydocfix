@@ -8,18 +8,38 @@ def summary_only_multiline():
     """
     pass
 
+# violation: closing quotes on next line (no blank line)
+def summary_closing_on_next_line():
+    """Do something.
+    """
+    pass
 
 # violation: extra blank line before closing quotes
 def summary_only_blank_line():
-    """Do something."""
-    pass
+    """Do something.
 
+    """
+    pass
 
 # no violation: already single-line
 def already_single_line():
     """Do something."""
     pass
 
+# no violation: multiline summary
+def multiline_summary():
+    """Line one.
+    Line two.
+    """
+    pass
+
+# no violation: has extended summary (multiline is required)
+def extended_summary():
+    """Do something.
+
+    Extended summary.
+    """
+    pass
 
 # no violation: has sections (multiline is required)
 def has_sections(x: int) -> None:
@@ -27,13 +47,5 @@ def has_sections(x: int) -> None:
 
     Args:
         x: A parameter.
-    """
-    pass
-
-
-# no violation: multiline summary
-def multiline_summary():
-    """Line one.
-    Line two.
     """
     pass

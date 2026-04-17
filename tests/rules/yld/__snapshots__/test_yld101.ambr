@@ -5,12 +5,10 @@
   
   yld101.py:11:9: YLD101 [unsafe] Docstring yield type 'str' does not match type hint 'int'.
      |
-   9 | 
   10 |     Yields:
   11 |         str: Wrong type in docstring.
-     |         ^^^ YLD101
+     |         ^^^
   12 |     """
-  13 |     yield 42
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

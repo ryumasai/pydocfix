@@ -5,12 +5,10 @@
   
   prm101.py:9:12: PRM101 [unsafe] Docstring type 'str' does not match type hint 'int' for parameter 'x'.
      |
-   7 | 
    8 |     Args:
    9 |         x (str): The argument documented as str but annotated as int.
-     |            ^^^ PRM101
+     |            ^^^
   10 |     """
-  11 |     pass
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

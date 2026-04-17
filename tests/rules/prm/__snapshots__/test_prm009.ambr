@@ -3,24 +3,20 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  prm009.py:9:9: PRM009 [*] Docstring parameter 'args' should be '*args'.
+  prm009.py:9:9: PRM009 [safe] Docstring parameter 'args' should be '*args'.
      |
-   7 | 
    8 |     Args:
    9 |         args (int): Positional arguments without * prefix.
-     |         ^^^^ PRM009
+     |         ^^^^
   10 |         kwargs (str): Keyword arguments without ** prefix.
-  11 |     """
      |
   
-  prm009.py:10:9: PRM009 [*] Docstring parameter 'kwargs' should be '**kwargs'.
+  prm009.py:10:9: PRM009 [safe] Docstring parameter 'kwargs' should be '**kwargs'.
      |
-   8 |     Args:
    9 |         args (int): Positional arguments without * prefix.
   10 |         kwargs (str): Keyword arguments without ** prefix.
-     |         ^^^^^^ PRM009
+     |         ^^^^^^
   11 |     """
-  12 |     pass
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

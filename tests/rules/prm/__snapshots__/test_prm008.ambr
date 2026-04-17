@@ -3,14 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  prm008.py:9:9: PRM008 Parameter 'x' has no description.
+  prm008.py:9:9: PRM008 [] Parameter 'x' has no description.
      |
-   7 | 
    8 |     Args:
    9 |         x (int):
-     |         ^ PRM008
+     |         ^
   10 |     """
-  11 |     pass
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

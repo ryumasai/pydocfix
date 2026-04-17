@@ -38,7 +38,7 @@ def discover_rules_in_module(module_name: str) -> list[type[BaseRule]]:
         raise
 
     rules: list[type[BaseRule]] = []
-    for name, obj in inspect.getmembers(module, inspect.isclass):
+    for _name, obj in inspect.getmembers(module, inspect.isclass):
         # Check if it's a BaseRule subclass (but not BaseRule itself)
         if issubclass(obj, BaseRule) and obj is not BaseRule:
             # Skip abstract classes
@@ -64,8 +64,6 @@ def discover_rules_in_package(package_name: str) -> list[type[BaseRule]]:
         List of BaseRule subclass types found in the package and its subpackages.
 
     """
-    from pydocfix.rules._base import BaseRule
-
     try:
         package = importlib.import_module(package_name)
     except ImportError as e:
@@ -82,7 +80,7 @@ def discover_rules_in_package(package_name: str) -> list[type[BaseRule]]:
         return discover_rules_in_module(package_name)
 
     # Walk through all modules in the package
-    for importer, modname, ispkg in pkgutil.walk_packages(
+    for _importer, modname, _ispkg in pkgutil.walk_packages(
         path=package_path,
         prefix=f"{package_name}.",
     ):
@@ -109,8 +107,6 @@ def discover_rules_in_path(path: Path) -> list[type[BaseRule]]:
         This modifies sys.path temporarily. Use with caution.
 
     """
-    from pydocfix.rules._base import BaseRule
-
     if not path.exists():
         logger.error(f"Plugin path does not exist: {path}")
         return []

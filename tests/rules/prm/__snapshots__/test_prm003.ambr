@@ -3,14 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  prm003.py:10:13: PRM003 [*] Docstring should not document 'self'.
+  prm003.py:10:13: PRM003 [safe] Docstring should not document 'self'.
      |
-   8 | 
    9 |         Args:
   10 |             self: The instance (should not be documented).
-     |             ^^^^ PRM003
+     |             ^^^^
   11 |             x (int): The argument.
-  12 |         """
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

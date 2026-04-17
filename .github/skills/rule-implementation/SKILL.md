@@ -208,5 +208,6 @@ See the [rule-testing skill](./../rule-testing/SKILL.md) for creating tests.
 - `Edit` offsets are **byte** positions, not character positions. Use `.encode("utf-8")` when computing offsets manually.
 - `_make_diagnostic`'s `target` must expose `.range.start` / `.range.end` as integer byte offsets (all CST nodes from pydocstring-rs do).
 - When the rule only applies to one docstring style, narrow the generic type: `BaseRule[GoogleDocstring]`.
+- **Do not forget to add the rule to `_BUILTIN_RULES`** (built-in rules only; plugin rules are registered automatically). Adding the class to `__all__` and importing it in `src/pydocfix/rules/__init__.py` is not enough — the rule must also appear in the `_BUILTIN_RULES` list, otherwise it is never registered and will never detect anything.
 - Rules that conflict with each other declare `conflicts_with = frozenset({"OTHER000"})`.
 - Rules gated on config use `activation_condition = ActivationCondition(attr="type_annotation_style", values=frozenset({"docstring"}))`.

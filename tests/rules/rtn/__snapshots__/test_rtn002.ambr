@@ -3,14 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  rtn002.py:8:5: RTN002 [*] Unnecessary Returns section in docstring.
+  rtn002.py:8:5: RTN002 [safe] Unnecessary Returns section in docstring.
      |
-   6 |     """Do something.
    7 | 
    8 |     Returns:
-     |     ^^^^^^^ RTN002
+     |     ^^^^^^^
    9 |         None: This function doesn't actually return a value.
-  10 |     """
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

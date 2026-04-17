@@ -12,6 +12,7 @@ pydoclint is configured to match pydocfix's rule scope:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import shutil
 import subprocess
 import sys
@@ -82,10 +83,8 @@ def count_python_files(target: Path) -> tuple[int, int]:
         if any(part in skip for part in p.parts):
             continue
         files += 1
-        try:
+        with contextlib.suppress(OSError):
             lines += len(p.read_text(errors="replace").splitlines())
-        except OSError:
-            pass
     return files, lines
 
 

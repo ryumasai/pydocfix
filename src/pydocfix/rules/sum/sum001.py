@@ -22,7 +22,9 @@ class SUM001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
         text = root.summary.text
         return bool(text and text.strip())
 
-    def diagnose(self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
+    def diagnose(
+        self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext
+    ) -> Iterator[Diagnostic]:
         root = node
         if self._has_summary(root):
             return

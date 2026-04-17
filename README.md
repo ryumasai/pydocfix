@@ -98,6 +98,9 @@ pydocfix check src/ --jobs 4
 
 # Concise (single-line) output
 pydocfix check src/ --output-format concise
+
+# Disable color output
+pydocfix check src/ --no-color
 ```
 
 ## Configuration
@@ -308,6 +311,27 @@ pydocfix check src/                        # only new violations reported
 
 The baseline file is a JSON file that records violations by **symbol name** (e.g. `MyClass.my_method`) rather than line number, so it stays stable when unrelated code is added or removed.
 Fixed violations are automatically removed from the baseline on the next run.
+
+## Color output
+
+pydocfix automatically enables ANSI color output when writing to a terminal (TTY).
+Color is disabled automatically when output is redirected to a file or pipe.
+
+You can override this behavior:
+
+| Method | Effect |
+|--------|--------|
+| `--no-color` flag | Disable color for that run |
+| `NO_COLOR=1` env var | Disable color (follows the [NO_COLOR](https://no-color.org/) convention) |
+| `FORCE_COLOR=1` env var | Force color even when not a TTY (e.g. in CI) |
+
+```bash
+# Disable color
+pydocfix check src/ --no-color
+
+# Force color in CI
+FORCE_COLOR=1 pydocfix check src/
+```
 
 ## pre-commit
 

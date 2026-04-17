@@ -66,7 +66,7 @@ def render_fixture(
     path_str = display_path or fixture_path.name
     if not unique_diags:
         return "(none)"
-    return "\n\n".join(render_diagnostic(d, source, display_path=path_str, context_lines=2) for d in unique_diags)
+    return "\n\n".join(render_diagnostic(d, source, display_path=path_str) for d in unique_diags)
 
 
 def fix_fixture(

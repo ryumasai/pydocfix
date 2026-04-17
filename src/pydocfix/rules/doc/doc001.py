@@ -178,10 +178,7 @@ class DOC001(BaseRule[GoogleDocstring | NumPyDocstring]):
             for i in range(n)
         ]
         # Gaps between sections: from clean_end[i] to sections[i+1].range.start
-        gaps = [
-            ds_bytes[clean_ends[i] : sections[i + 1].range.start].decode("utf-8")
-            for i in range(n - 1)
-        ]
+        gaps = [ds_bytes[clean_ends[i] : sections[i + 1].range.start].decode("utf-8") for i in range(n - 1)]
 
         # Reconstruct the full section block in sorted order, preserving gaps.
         parts: list[str] = []
@@ -201,6 +198,8 @@ class DOC001(BaseRule[GoogleDocstring | NumPyDocstring]):
         # Report at the first section whose position differs from the sorted
         # order, so the user can see exactly where the disorder begins.
         first_wrong = next(
-            sections[i] for i, (actual, expected) in enumerate(zip(sections, sorted_sections)) if actual is not expected
+            sections[i]
+            for i, (actual, expected) in enumerate(zip(sections, sorted_sections, strict=False))
+            if actual is not expected
         )
         yield self._make_diagnostic(ctx, "Docstring sections are not in canonical order.", fix=fix, target=first_wrong)

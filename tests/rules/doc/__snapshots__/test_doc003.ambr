@@ -3,31 +3,35 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  doc003.py:7:5: DOC003 [*] One-line docstring should be written on a single line.
+  doc003.py:7:5: DOC003 [safe] One-line docstring should be written on a single line.
      |
-   5 | def summary_only_multiline():
    6 |     """
    7 |     Do something.
-     |     ^^^^^^^^^^^^^ DOC003
+     |     ^^^^^^^^^^^^^
    8 |     """
-   9 |     pass
      |
   
-  doc003.py:14:8: DOC003 [*] One-line docstring should be written on a single line.
+  doc003.py:13:8: DOC003 [safe] One-line docstring should be written on a single line.
      |
-  12 | # violation: extra blank line before closing quotes
-  13 | def summary_only_blank_line():
-  14 |     """Do something.
-     |        ^^^^^^^^^^^^^ DOC003
-  15 | 
-  16 |     """
+  12 | def summary_closing_on_next_line():
+  13 |     """Do something.
+     |        ^^^^^^^^^^^^^
+  14 |     """
+     |
+  
+  doc003.py:19:8: DOC003 [safe] One-line docstring should be written on a single line.
+     |
+  18 | def summary_only_blank_line():
+  19 |     """Do something.
+     |        ^^^^^^^^^^^^^
+  20 | 
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
   --- doc003.py
   +++ doc003.py (fixed)
-  @@ -3,17 +3,13 @@
+  @@ -3,22 +3,17 @@
    
    # violation
    def summary_only_multiline():
@@ -37,6 +41,12 @@
   +    """Do something."""
        pass
    
+   # violation: closing quotes on next line (no blank line)
+   def summary_closing_on_next_line():
+  -    """Do something.
+  -    """
+  +    """Do something."""
+       pass
    
    # violation: extra blank line before closing quotes
    def summary_only_blank_line():
@@ -45,5 +55,7 @@
   -    """
   +    """Do something."""
        pass
+   
+   # no violation: already single-line
   '''
 # ---

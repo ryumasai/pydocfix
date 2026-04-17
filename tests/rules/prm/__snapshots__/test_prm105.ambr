@@ -3,14 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  prm105.py:10:9: PRM105 Parameter 'x' has no type annotation in signature.
+  prm105.py:10:9: PRM105 [] Parameter 'x' has no type annotation in signature.
      |
-   8 | 
    9 |     Args:
   10 |         x: Has no signature annotation when signature style is required.
-     |         ^ PRM105
+     |         ^
   11 |     """
-  12 |     pass
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -3,14 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  rtn105.py:10:9: RTN105 Return has no type annotation in signature.
+  rtn105.py:10:9: RTN105 [] Return has no type annotation in signature.
      |
-   8 | 
    9 |     Returns:
   10 |         The result with no signature annotation.
-     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ RTN105
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   11 |     """
-  12 |     return 42
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

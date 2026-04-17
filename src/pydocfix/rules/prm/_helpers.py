@@ -90,7 +90,9 @@ def get_annotation_map(
     return result
 
 
-def get_documented_param_nodes(parsed, section: GoogleSection | NumPySection) -> list[tuple[str, GoogleArg | NumPyParameter]]:
+def get_documented_param_nodes(
+    parsed, section: GoogleSection | NumPySection
+) -> list[tuple[str, GoogleArg | NumPyParameter]]:
     """Return ``(raw_name, node)`` pairs for params documented in *section*, in order."""
     result: list[tuple[str, GoogleArg | NumPyParameter]] = []
 

@@ -5,22 +5,18 @@
   
   prm006.py:9:9: PRM006 [unsafe] Parameter 'y' is in the wrong order (expected 'x' at this position).
      |
-   7 | 
    8 |     Args:
    9 |         y (str): The second argument.
-     |         ^ PRM006
+     |         ^
   10 |         x (int): The first argument.
-  11 |     """
      |
   
-  prm006.py:10:9: PRM006 Parameter 'x' is in the wrong order (expected 'y' at this position).
+  prm006.py:10:9: PRM006 [] Parameter 'x' is in the wrong order (expected 'y' at this position).
      |
-   8 |     Args:
    9 |         y (str): The second argument.
   10 |         x (int): The first argument.
-     |         ^ PRM006
+     |         ^
   11 |     """
-  12 |     pass
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

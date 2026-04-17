@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+from pydocfix.colorize import _BOLD, _DIM, _RED
+from pydocfix.colorize import ansi as _ansi
+
 if TYPE_CHECKING:
     from pydocfix.config import Config
     from pydocfix.rules._base import Diagnostic
@@ -11,57 +14,38 @@ if TYPE_CHECKING:
 OutputFormat = Literal["full", "concise"]
 
 
-def _fix_tag(diag: Diagnostic, config: Config | None) -> str:
-    """Return the fix tag string for a diagnostic (e.g. ' [*]', ' [unsafe]', '')."""
+def _fix_tag(diag: Diagnostic, config: Config | None, color: bool = True) -> str:
+    """Return the fix tag string for a diagnostic (e.g. '[]', '[safe]', '[unsafe]')."""
     from pydocfix.rules._base import Applicability, effective_applicability
 
     if diag.fix is None:
-        return ""
+        return "[]"
     app = effective_applicability(diag, config)
     if app == Applicability.SAFE:
-        return " [*]"
+        return "[safe]"
     if app == Applicability.UNSAFE:
-        return " [unsafe]"
-    return ""
-
-
-def render_diagnostic_concise(
-    diag: Diagnostic,
-    *,
-    display_path: str | None = None,
-    config: Config | None = None,
-) -> str:
-    """Render a diagnostic in concise (single-line) format.
-
-    Example output::
-
-        example.py:9:8: PRM001 [*] Missing Args/Parameters section in docstring.
-
-    Args:
-        diag: The diagnostic to render.
-        display_path: Path to display in the output. Defaults to diag.filepath.
-        config: Configuration for computing effective fix applicability.
-
-    Returns:
-        A single-line formatted string.
-    """
-    path = display_path or diag.filepath
-    start = diag.range.start
-    tag = _fix_tag(diag, config)
-    return f"{path}:{start.lineno}:{start.col}: {diag.rule}{tag} {diag.message}"
+        return "[unsafe]"
+    if app == Applicability.DISPLAY_ONLY:
+        return "[]"
+    return "[]"
 
 
 def render_diagnostic(
     diag: Diagnostic,
-    source: str,
+    source: str | None = None,
     *,
     display_path: str | None = None,
     context_lines: int = 1,
     config: Config | None = None,
+    color: bool = False,
+    concise: bool = False,
 ) -> str:
-    """Render a diagnostic in ruff-style format.
+    """Render a diagnostic.
 
-    Example output::
+    When *concise* is True (or *source* is not provided), returns a single-line
+    header.  Otherwise renders in ruff-style format with source context.
+
+    Example output (full)::
 
         example.py:9:8: PRM001 [*] Missing Args/Parameters section in docstring.
            |
@@ -73,23 +57,29 @@ def render_diagnostic(
 
     Args:
         diag: The diagnostic to render.
-        source: The full source code of the file.
+        source: The full source code of the file. Required for full format.
         display_path: Path to display in the output. Defaults to diag.filepath.
         context_lines: Number of context lines to show around the violation.
         config: Configuration for computing effective fix applicability.
+        color: Whether to apply ANSI color codes.
+        concise: If True, render as a single-line header only.
 
     Returns:
-        A formatted string ready to print.
+        A formatted string.
     """
     path = display_path or diag.filepath
     start = diag.range.start
-    end = diag.range.end
+    tag = _fix_tag(diag, config, color=color)
+    sep = _ansi(":", _DIM, color=color)
+    rule_s = _ansi(diag.rule, _RED, _BOLD, color=color)
+    header = f"{path}{sep}{start.lineno}{sep}{start.col}{sep} {rule_s} {tag} {diag.message}"
 
-    # --- Header ---
-    fix_tag = _fix_tag(diag, config)
-    header = f"{path}:{start.lineno}:{start.col}: {diag.rule}{fix_tag} {diag.message}"
+    if concise or source is None:
+        return header
 
     # --- Source context ---
+    start = diag.range.start
+    end = diag.range.end
     source_lines = source.splitlines()
     n_lines = len(source_lines)
 
@@ -103,13 +93,13 @@ def render_diagnostic(
     gutter_width = max(len(str(last_ctx)), 2)
 
     def _gutter(lineno: int | None = None) -> str:
-        if lineno is None:
-            return " " * gutter_width + " |"
-        return f"{lineno:>{gutter_width}} |"
+        raw = f"{lineno or '':>{gutter_width}} |"
+        return _ansi(raw, _DIM, color=color)
 
     parts: list[str] = [header, _gutter()]
 
-    last_underline_idx: int | None = None
+    # Track underline rows as (parts_index, raw_underline) to apply color and rule code after the loop
+    underline_rows: list[tuple[int, str]] = []
 
     for lineno in range(first_ctx, last_ctx + 1):
         line_content = source_lines[lineno - 1].rstrip("\n\r")
@@ -136,11 +126,13 @@ def render_diagnostic(
 
             underline = " " * caret_start + "^" * caret_len
             parts.append(f"{_gutter()} {underline}")
-            last_underline_idx = len(parts) - 1
+            underline_rows.append((len(parts) - 1, underline))
 
-    # Append rule code to the last underline row (Ruff style)
-    if last_underline_idx is not None:
-        parts[last_underline_idx] = parts[last_underline_idx] + f" {diag.rule}"
+    if underline_rows:
+        gutter_str = _gutter()
+        for idx, raw_underline in underline_rows:
+            underline_s = _ansi(raw_underline, _RED, _BOLD, color=color)
+            parts[idx] = f"{gutter_str} {underline_s}"
 
     parts.append(_gutter())
     return "\n".join(parts)

@@ -3,14 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  ris002.py:8:5: RIS002 [*] Unnecessary Raises section in docstring.
+  ris002.py:8:5: RIS002 [safe] Unnecessary Raises section in docstring.
      |
-   6 |     """Do something.
    7 | 
    8 |     Raises:
-     |     ^^^^^^ RIS002
+     |     ^^^^^^
    9 |         ValueError: This function never actually raises.
-  10 |     """
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

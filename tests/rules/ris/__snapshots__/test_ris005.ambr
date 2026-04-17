@@ -5,12 +5,10 @@
   
   ris005.py:10:9: RIS005 [unsafe] Raises entry 'TypeError' not raised in function body.
      |
-   8 |     Raises:
    9 |         ValueError: When value is wrong.
   10 |         TypeError: This exception is never raised.
-     |         ^^^^^^^^^ RIS005
+     |         ^^^^^^^^^
   11 |     """
-  12 |     raise ValueError("something went wrong")
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

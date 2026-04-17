@@ -173,6 +173,12 @@ def cli() -> None:
     type=click.Choice(["full", "concise"], case_sensitive=False),
     help="Diagnostic output format: 'full' (default, with source context) or 'concise' (single-line).",
 )
+@click.option(
+    "--no-color",
+    "no_color",
+    is_flag=True,
+    help="Disable color output.",
+)
 def check(
     paths: tuple[str, ...],
     fix: bool,
@@ -185,9 +191,12 @@ def check(
     generate_baseline: bool,
     jobs: int | None,
     output_format: str | None,
+    no_color: bool,
 ) -> None:
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
+
+    use_color = _should_use_color(no_color)
 
     from pydocfix.baseline import (
         compute_updated_baseline,
@@ -328,40 +337,50 @@ def check(
 
         if new_source is not None:
             if diff:
-                _print_diff(filepath, source, new_source)
+                _print_diff(filepath, source, new_source, color=use_color)
                 total_would_fix += len(diagnostics) - len(remaining)
             if fix:
                 filepath.write_text(new_source, encoding="utf-8")
                 total_fixed += len(diagnostics) - len(remaining)
                 diagnostics = remaining
 
-        from pydocfix.render import render_diagnostic, render_diagnostic_concise
+        if not diff:
+            from pydocfix.render import render_diagnostic
 
-        effective_format = output_format or config.output_format
-        for d in diagnostics:
-            display_path = normalize_path(Path(d.filepath), project_root)
-            if effective_format == "concise":
-                click.echo(render_diagnostic_concise(d, display_path=display_path, config=config))
-            else:
-                click.echo(render_diagnostic(d, source, display_path=display_path, config=config))
-                click.echo()
+            effective_format = output_format or config.output_format
+            is_concise = effective_format == "concise"
+            for d in diagnostics:
+                display_path = normalize_path(Path(d.filepath), project_root)
+                click.echo(
+                    render_diagnostic(
+                        d, source, display_path=display_path, config=config, color=use_color, concise=is_concise
+                    ),
+                    color=True if use_color else None,
+                )
+                if not is_concise:
+                    click.echo()
 
         remaining_diagnostics.extend(diagnostics)
 
     # --- Baseline generation ---
+    from pydocfix.colorize import _BOLD, _GREEN, _RED
+    from pydocfix.colorize import ansi as _ansi
+
     if generate_baseline:
         if effective_baseline_path is None:
             click.echo(
-                click.style("Error: ", fg="red")
+                _ansi("Error: ", _RED, _BOLD, color=use_color)
                 + "specify a baseline path with --baseline or [tool.pydocfix] baseline in pyproject.toml.",
                 err=True,
+                color=True if use_color else None,
             )
             sys.exit(2)
         _generate_baseline(raw_violations_by_file, effective_baseline_path)
         total_raw = sum(len(v) for v in raw_violations_by_file.values())
         click.echo(
-            click.style("Baseline generated: ", fg="green")
-            + f"{effective_baseline_path} ({total_raw} violation(s) across {len(raw_violations_by_file)} file(s))"
+            _ansi("Baseline generated: ", _GREEN, _BOLD, color=use_color)
+            + f"{effective_baseline_path} ({total_raw} violation(s) across {len(raw_violations_by_file)} file(s))",
+            color=True if use_color else None,
         )
         sys.exit(0)
 
@@ -375,92 +394,121 @@ def check(
     remaining = total_violations - total_fixed
 
     if total_violations == 0:
-        click.echo(click.style("All checks passed.", fg="green") + f" ({len(targets)} file(s) checked)")
+        click.echo(
+            _ansi("All checks passed.", _GREEN, _BOLD, color=use_color) + f" ({len(targets)} file(s) checked)",
+            color=True if use_color else None,
+        )
     elif fix:
-        _summarize_fix(total_fixed, remaining, remaining_diagnostics, unsafe_fixes, config)
+        _summarize_fix(total_fixed, remaining, remaining_diagnostics, unsafe_fixes, config, color=use_color)
     elif diff:
-        _summarize_diff(total_violations, total_would_fix, total_unsafe_fixable, unsafe_fixes)
+        _summarize_check(total_violations, total_safe_fixable, total_unsafe_fixable, color=use_color)
     else:
-        _summarize_check(total_violations, total_safe_fixable, total_unsafe_fixable)
+        _summarize_check(total_violations, total_safe_fixable, total_unsafe_fixable, color=use_color)
 
     if remaining > 0:
         sys.exit(1)
 
 
-def _summarize_check(total: int, safe: int, unsafe: int) -> None:
-    """Print summary for check mode (no --fix)."""
+def _should_use_color(no_color_flag: bool) -> bool:
+    """Return True if ANSI color output should be used."""
+    if no_color_flag:
+        return False
+    if "NO_COLOR" in os.environ:
+        return False
+    if "FORCE_COLOR" in os.environ:
+        return True
+    return sys.stdout.isatty()
+
+
+def _summarize_check(total: int, safe: int, unsafe: int, *, color: bool = False) -> None:
+    """Print summary for check and diff modes."""
+    from pydocfix.colorize import _BOLD, _RED
+    from pydocfix.colorize import ansi as _ansi
+
+    found_s = _ansi(f"Found {total} violation(s).", _RED, _BOLD, color=color)
+    safe_s = _ansi(str(safe), _BOLD, color=color)
+    unsafe_s = _ansi(str(unsafe), _BOLD, color=color)
+    _echo = lambda msg: click.echo(msg, color=True if color else None)  # noqa: E731
     if safe and unsafe:
-        click.echo(
-            f"Found {total} violation(s). "
-            f"Run --fix to auto-fix {safe} of them "
-            f"({unsafe} more with --fix --unsafe-fixes)."
-        )
+        _echo(f"{found_s} Run --fix to auto-fix {safe_s} of them ({unsafe_s} more with --fix --unsafe-fixes).")
     elif safe:
-        click.echo(f"Found {total} violation(s). Run --fix to auto-fix {safe} of them.")
+        _echo(f"{found_s} Run --fix to auto-fix {safe_s} of them.")
     elif unsafe:
-        click.echo(f"Found {total} violation(s). Run --fix --unsafe-fixes to fix {unsafe} of them.")
+        _echo(f"{found_s} Run --fix --unsafe-fixes to fix {unsafe_s} of them.")
     else:
-        click.echo(f"Found {total} violation(s). No auto-fixes available.")
+        _echo(f"{found_s} No auto-fixes available.")
 
 
 def _summarize_fix(
-    total_fixed: int, remaining: int, remaining_diagnostics: list, unsafe_fixes: bool, config=None
+    total_fixed: int,
+    remaining: int,
+    remaining_diagnostics: list,
+    unsafe_fixes: bool,
+    config=None,
+    *,
+    color: bool = False,
 ) -> None:
     """Print summary for --fix mode."""
+    from pydocfix.colorize import _BOLD, _GREEN, _RED
+    from pydocfix.colorize import ansi as _ansi
     from pydocfix.rules import Applicability, effective_applicability
 
+    _echo = lambda msg: click.echo(msg, color=True if color else None)  # noqa: E731
     if total_fixed and not remaining:
-        click.echo(click.style(f"Fixed {total_fixed} violation(s). No issues remaining.", fg="green"))
+        _echo(_ansi(f"Fixed {total_fixed} violation(s). No issues remaining.", _GREEN, color=color))
     elif total_fixed and remaining:
         remaining_unsafe = sum(
             1
             for d in remaining_diagnostics
             if d.fix is not None and effective_applicability(d, config) == Applicability.UNSAFE
         )
-        msg = f"Fixed {total_fixed} violation(s). {remaining} remaining"
+        remaining_s = _ansi(str(remaining), _BOLD, color=color)
+        remaining_unsafe_s = _ansi(str(remaining_unsafe), _BOLD, color=color)
+        msg = f"Fixed {total_fixed} violation(s). {remaining_s} remaining"
         if remaining_unsafe and not unsafe_fixes:
-            msg += f" ({remaining_unsafe} fixable with --unsafe-fixes)"
+            msg += f" ({remaining_unsafe_s} fixable with --unsafe-fixes)"
         msg += "."
-        click.echo(msg)
+        _echo(msg)
     else:
         remaining_unsafe = sum(
             1
             for d in remaining_diagnostics
             if d.fix is not None and effective_applicability(d, config) == Applicability.UNSAFE
         )
+        found_s = _ansi(f"Found {remaining} violation(s).", _RED, _BOLD, color=color)
+        remaining_unsafe_s = _ansi(str(remaining_unsafe), _BOLD, color=color)
         if remaining_unsafe and not unsafe_fixes:
-            click.echo(f"Found {remaining} violation(s). Run --fix --unsafe-fixes to fix {remaining_unsafe} of them.")
+            _echo(f"{found_s} Run --fix --unsafe-fixes to fix {remaining_unsafe_s} of them.")
         else:
-            click.echo(f"Found {remaining} violation(s). No auto-fixes available.")
+            _echo(f"{found_s} No auto-fixes available.")
 
 
-def _summarize_diff(total: int, would_fix: int, unsafe_fixable: int, unsafe_fixes: bool) -> None:
-    """Print summary for --diff mode."""
-    remaining = total - would_fix
-    if would_fix:
-        msg = f"Would fix {would_fix} violation(s)."
-        if remaining > 0:
-            if unsafe_fixable and not unsafe_fixes:
-                msg += f" {remaining} remaining ({unsafe_fixable} fixable with --diff --unsafe-fixes)."
-            else:
-                msg += f" {remaining} remaining."
-        click.echo(msg)
-    else:
-        if unsafe_fixable and not unsafe_fixes:
-            click.echo(f"Found {total} violation(s). Run --diff --unsafe-fixes to fix {unsafe_fixable} of them.")
-        else:
-            click.echo(f"Found {total} violation(s). No auto-fixes available.")
-
-
-def _print_diff(filepath: Path, original: str, new_source: str) -> None:
+def _print_diff(filepath: Path, original: str, new_source: str, *, color: bool = False) -> None:
     """Print unified diff between original and fixed source."""
+    from pydocfix.colorize import _BOLD, _DIM, _GREEN, _RED
+    from pydocfix.colorize import ansi as _ansi
+
     diff_lines = difflib.unified_diff(
         original.splitlines(keepends=True),
         new_source.splitlines(keepends=True),
         fromfile=str(filepath),
         tofile=str(filepath),
     )
-    sys.stdout.writelines(diff_lines)
+
+    _prefix_codes = [
+        ("+++", (_GREEN, _BOLD)),
+        ("---", (_RED, _BOLD)),
+        ("+", (_GREEN,)),
+        ("-", (_RED,)),
+        ("@@", (_DIM,)),
+    ]
+    for line in diff_lines:
+        code = next((c for p, c in _prefix_codes if line.startswith(p)), None)
+        if code is not None:
+            click.echo(_ansi(line, *code, color=color), nl=False, color=True if color else None)
+        else:
+            sys.stdout.write(line)
+    click.echo()
 
 
 def _glob_to_regex(pattern: str) -> re.Pattern[str]:
