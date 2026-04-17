@@ -1,0 +1,50 @@
+# serializer version: 1
+# name: TestDOC003.test_rule
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  DOC003 [*] One-line docstring should be written on a single line.
+    --> doc003.py:6:8
+     |
+   4 | # violation
+   5 | def summary_only_multiline():
+   6 |     """Do something.
+     |        ^^^^^^^^^^^^^
+   7 |     """
+   8 |     pass
+     |
+  
+  DOC003 [*] One-line docstring should be written on a single line.
+    --> doc003.py:13:8
+     |
+  11 | # violation: extra blank line before closing quotes
+  12 | def summary_only_blank_line():
+  13 |     """Do something.
+     |        ^^^^^^^^^^^^^
+  14 | 
+  15 |     """
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  --- doc003.py
+  +++ doc003.py (fixed)
+  @@ -3,16 +3,13 @@
+   
+   # violation
+   def summary_only_multiline():
+  -    """Do something.
+  -    """
+  +    """Do something."""
+       pass
+   
+   
+   # violation: extra blank line before closing quotes
+   def summary_only_blank_line():
+  -    """Do something.
+  -
+  -    """
+  +    """Do something."""
+       pass
+  '''
+# ---

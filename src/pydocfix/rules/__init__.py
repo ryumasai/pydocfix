@@ -38,6 +38,7 @@ from pydocfix.rules._helpers import (
 # --- Docstring-level rules ---
 from pydocfix.rules.doc.doc001 import DOC001
 from pydocfix.rules.doc.doc002 import DOC002
+from pydocfix.rules.doc.doc003 import DOC003
 from pydocfix.rules.plugin_loader import (
     discover_rules_in_module,
     discover_rules_in_package,
@@ -107,6 +108,7 @@ __all__ = [
     # doc
     "DOC001",
     "DOC002",
+    "DOC003",
     # prm
     "PRM001",
     "PRM002",

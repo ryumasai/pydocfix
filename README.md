@@ -214,6 +214,8 @@ Each rule is classified as **safe** fix, **unsafe** fix, or report-only.
 | Code | Default | Fix | Description |
 |------|:-------:|:---:|-------------|
 | DOC001 | ✅ | unsafe | Section order doesn't match convention |
+| DOC002 | ✅ | safe | Incorrect indentation of a docstring section entry |
+| DOC003 | ✅ | safe | One-line docstring should be written on a single line |
 
 ## Rule selectors
 
