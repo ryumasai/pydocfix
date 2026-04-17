@@ -95,6 +95,9 @@ pydocfix check src/ --select PRM --ignore RTN,YLD
 
 # Parallel execution (auto-detected for ≥8 files; override with --jobs)
 pydocfix check src/ --jobs 4
+
+# Concise (single-line) output
+pydocfix check src/ --output-format concise
 ```
 
 ## Configuration
@@ -142,6 +145,9 @@ allow_optional_shorthand = false
 
 # Path to the baseline file (relative to pyproject.toml)
 baseline = ".pydocfix-baseline.json"
+
+# Output format: "full" (default, with source context) | "concise" (single-line)
+output-format = "full"
 ```
 
 ## Rules

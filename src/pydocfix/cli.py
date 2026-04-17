@@ -166,6 +166,13 @@ def cli() -> None:
     metavar="N",
     help="Number of parallel workers.  Defaults to CPU count for >=8 files, else 1.",
 )
+@click.option(
+    "--output-format",
+    "output_format",
+    default=None,
+    type=click.Choice(["full", "concise"], case_sensitive=False),
+    help="Diagnostic output format: 'full' (default, with source context) or 'concise' (single-line).",
+)
 def check(
     paths: tuple[str, ...],
     fix: bool,
@@ -177,6 +184,7 @@ def check(
     baseline_path: str | None,
     generate_baseline: bool,
     jobs: int | None,
+    output_format: str | None,
 ) -> None:
     """Run linter on docstrings."""
     logging.basicConfig(format="pydocfix: %(levelname)s: %(message)s", level=logging.WARNING, stream=sys.stderr)
@@ -327,12 +335,16 @@ def check(
                 total_fixed += len(diagnostics) - len(remaining)
                 diagnostics = remaining
 
-        from pydocfix.render import render_diagnostic
+        from pydocfix.render import render_diagnostic, render_diagnostic_concise
 
+        effective_format = output_format or config.output_format
         for d in diagnostics:
             display_path = normalize_path(Path(d.filepath), project_root)
-            click.echo(render_diagnostic(d, source, display_path=display_path, config=config))
-            click.echo()
+            if effective_format == "concise":
+                click.echo(render_diagnostic_concise(d, display_path=display_path, config=config))
+            else:
+                click.echo(render_diagnostic(d, source, display_path=display_path, config=config))
+                click.echo()
 
         remaining_diagnostics.extend(diagnostics)
 

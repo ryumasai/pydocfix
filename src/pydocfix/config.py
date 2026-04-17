@@ -45,6 +45,7 @@ class Config:
     extend_safe_fixes: list[str] = field(default_factory=list)
     extend_unsafe_fixes: list[str] = field(default_factory=list)
     baseline: str | None = None
+    output_format: str = "full"
     plugin_modules: list[str] = field(default_factory=list)
     plugin_paths: list[str] = field(default_factory=list)
 
@@ -103,6 +104,13 @@ def load_config(start: Path | None = None) -> Config:
     extend_unsafe_fixes: list[str] = [str(c).upper() for c in section.get("extend-unsafe-fixes", [])]
     plugin_modules: list[str] = [str(m) for m in section.get("plugin-modules", [])]
     plugin_paths: list[str] = [str(p) for p in section.get("plugin-paths", [])]
+    output_format: str = section.get("output-format", "full").lower()
+    if output_format not in {"full", "concise"}:
+        logger.warning(
+            "invalid output-format %r (expected 'full' or 'concise'); defaulting to 'full'",
+            output_format,
+        )
+        output_format = "full"
     return Config(
         ignore=ignore,
         select=select,
@@ -114,6 +122,7 @@ def load_config(start: Path | None = None) -> Config:
         baseline=baseline,
         extend_safe_fixes=extend_safe_fixes,
         extend_unsafe_fixes=extend_unsafe_fixes,
+        output_format=output_format,
         plugin_modules=plugin_modules,
         plugin_paths=plugin_paths,
     )

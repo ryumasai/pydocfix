@@ -2,11 +2,53 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from pydocfix.config import Config
     from pydocfix.rules._base import Diagnostic
+
+OutputFormat = Literal["full", "concise"]
+
+
+def _fix_tag(diag: Diagnostic, config: Config | None) -> str:
+    """Return the fix tag string for a diagnostic (e.g. ' [*]', ' [unsafe]', '')."""
+    from pydocfix.rules._base import Applicability, effective_applicability
+
+    if diag.fix is None:
+        return ""
+    app = effective_applicability(diag, config)
+    if app == Applicability.SAFE:
+        return " [*]"
+    if app == Applicability.UNSAFE:
+        return " [unsafe]"
+    return ""
+
+
+def render_diagnostic_concise(
+    diag: Diagnostic,
+    *,
+    display_path: str | None = None,
+    config: Config | None = None,
+) -> str:
+    """Render a diagnostic in concise (single-line) format.
+
+    Example output::
+
+        example.py:9:8: PRM001 [*] Missing Args/Parameters section in docstring.
+
+    Args:
+        diag: The diagnostic to render.
+        display_path: Path to display in the output. Defaults to diag.filepath.
+        config: Configuration for computing effective fix applicability.
+
+    Returns:
+        A single-line formatted string.
+    """
+    path = display_path or diag.filepath
+    start = diag.range.start
+    tag = _fix_tag(diag, config)
+    return f"{path}:{start.lineno}:{start.col}: {diag.rule}{tag} {diag.message}"
 
 
 def render_diagnostic(
@@ -21,12 +63,11 @@ def render_diagnostic(
 
     Example output::
 
-        PRM001 [unsafe] Missing Args/Parameters section in docstring.
-          --> example.py:9:8
+        example.py:9:8: PRM001 [*] Missing Args/Parameters section in docstring.
            |
          8 | def missing_args_section(x: int, y: str) -> None:
          9 |     \"\"\"Do something.\"\"\"
-           |        ^^^^^^^^^^^^^^^
+           |        ^^^^^^^^^^^^^^^ PRM001
         10 |     pass
            |
 
@@ -40,24 +81,12 @@ def render_diagnostic(
     Returns:
         A formatted string ready to print.
     """
-    from pydocfix.rules._base import Applicability, effective_applicability
-
     path = display_path or diag.filepath
     start = diag.range.start
     end = diag.range.end
 
     # --- Header ---
-    if diag.fix is not None:
-        app = effective_applicability(diag, config)
-        if app == Applicability.SAFE:
-            fix_tag = " [*]"
-        elif app == Applicability.UNSAFE:
-            fix_tag = " [unsafe]"
-        else:
-            fix_tag = ""
-    else:
-        fix_tag = ""
-
+    fix_tag = _fix_tag(diag, config)
     header = f"{path}:{start.lineno}:{start.col}: {diag.rule}{fix_tag} {diag.message}"
 
     # --- Source context ---

@@ -683,15 +683,3 @@ def check_file(
         fixed_source = buf.decode("utf-8")
 
     return all_diagnostics, fixed_source, remaining_after_fix
-
-
-def foo():
-    """Example function.
-
-    This is a sample docstring to demonstrate the checker.
-
-    Args:
-        x: An integer input.
-
-    """
-    pass
