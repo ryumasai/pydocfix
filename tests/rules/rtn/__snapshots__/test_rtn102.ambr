@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  RTN102 Return type not in docstring or signature.
-    --> rtn102.py:9:9
+  rtn102.py:9:9: RTN102 Return type not in docstring or signature.
      |
    7 | 
    8 |     Returns:
    9 |         The result with no type in docstring or signature.
-     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ RTN102
   10 |     """
   11 |     return 42
      |

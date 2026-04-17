@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  PRM104 [*] Parameter 'x' has redundant type in docstring.
-    --> prm104.py:10:12
+  prm104.py:10:12: PRM104 [*] Parameter 'x' has redundant type in docstring.
      |
    8 | 
    9 |     Args:
   10 |         x (int): Has both signature annotation and docstring type (redundant).
-     |            ^^^
+     |            ^^^ PRM104
   11 |     """
   12 |     pass
      |

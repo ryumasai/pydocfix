@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  YLD002 [*] Unnecessary Yields section in docstring.
-    --> yld002.py:10:5
+  yld002.py:10:5: YLD002 [*] Unnecessary Yields section in docstring.
      |
    8 |     """Do something.
    9 | 
   10 |     Yields:
-     |     ^^^^^^
+     |     ^^^^^^ YLD002
   11 |         int: This function doesn't actually yield anything.
   12 |     """
      |

@@ -3,7 +3,9 @@
 
 # violation
 def summary_only_multiline():
-    """Do something."""
+    """
+    Do something.
+    """
     pass
 
 

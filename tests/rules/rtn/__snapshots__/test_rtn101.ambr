@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  RTN101 [unsafe] Docstring return type 'str' does not match type hint 'int'.
-    --> rtn101.py:9:9
+  rtn101.py:9:9: RTN101 [unsafe] Docstring return type 'str' does not match type hint 'int'.
      |
    7 | 
    8 |     Returns:
    9 |         str: Wrong type in docstring.
-     |         ^^^
+     |         ^^^ RTN101
   10 |     """
   11 |     return 42
      |

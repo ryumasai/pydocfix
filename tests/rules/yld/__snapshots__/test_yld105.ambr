@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  YLD105 Yield has no type annotation in signature.
-    --> yld105.py:12:9
+  yld105.py:12:9: YLD105 Yield has no type annotation in signature.
      |
   10 | 
   11 |     Yields:
   12 |         The value with no signature annotation.
-     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ YLD105
   13 |     """
   14 |     yield 42
      |

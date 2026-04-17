@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  PRM202 [unsafe] Parameter 'x' has default value but docstring does not mention 'default'.
-    --> prm202.py:9:9
+  prm202.py:9:9: PRM202 [unsafe] Parameter 'x' has default value but docstring does not mention 'default'.
      |
    7 | 
    8 |     Args:
    9 |         x (int, optional): The argument value.
-     |         ^
+     |         ^ PRM202
   10 |     """
   11 |     pass
      |

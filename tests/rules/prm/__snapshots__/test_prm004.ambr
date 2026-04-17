@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  PRM004 [unsafe] Missing parameter 'y' in docstring.
-    --> prm004.py:8:5
+  prm004.py:8:5: PRM004 [unsafe] Missing parameter 'y' in docstring.
      |
    6 |     """Do something.
    7 | 
    8 |     Args:
-     |     ^^^^
+     |     ^^^^ PRM004
    9 |         x (int): The first argument.
   10 |     """
      |

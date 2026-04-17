@@ -58,15 +58,14 @@ def render_diagnostic(
     else:
         fix_tag = ""
 
-    header = f"{diag.rule}{fix_tag} {diag.message}"
-    location = f"  --> {path}:{start.lineno}:{start.col}"
+    header = f"{path}:{start.lineno}:{start.col}: {diag.rule}{fix_tag} {diag.message}"
 
     # --- Source context ---
     source_lines = source.splitlines()
     n_lines = len(source_lines)
 
     if start.lineno < 1 or start.lineno > n_lines:
-        return "\n".join([header, location])
+        return header
 
     first_ctx = max(1, start.lineno - context_lines)
     last_ctx = min(n_lines, end.lineno + context_lines)
@@ -79,7 +78,9 @@ def render_diagnostic(
             return " " * gutter_width + " |"
         return f"{lineno:>{gutter_width}} |"
 
-    parts: list[str] = [header, location, _gutter()]
+    parts: list[str] = [header, _gutter()]
+
+    last_underline_idx: int | None = None
 
     for lineno in range(first_ctx, last_ctx + 1):
         line_content = source_lines[lineno - 1].rstrip("\n\r")
@@ -106,6 +107,11 @@ def render_diagnostic(
 
             underline = " " * caret_start + "^" * caret_len
             parts.append(f"{_gutter()} {underline}")
+            last_underline_idx = len(parts) - 1
+
+    # Append rule code to the last underline row (Ruff style)
+    if last_underline_idx is not None:
+        parts[last_underline_idx] = parts[last_underline_idx] + f" {diag.rule}"
 
     parts.append(_gutter())
     return "\n".join(parts)

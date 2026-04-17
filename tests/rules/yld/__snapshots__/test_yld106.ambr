@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  YLD106 Yield has a type annotation in signature; types belong in the docstring.
-    --> yld106.py:12:9
+  yld106.py:12:9: YLD106 Yield has a type annotation in signature; types belong in the docstring.
      |
   10 | 
   11 |     Yields:
   12 |         int: The value.
-     |         ^^^^^^^^^^^^^^^
+     |         ^^^^^^^^^^^^^^^ YLD106
   13 |     """
   14 |     yield 42
      |

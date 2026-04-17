@@ -3,37 +3,36 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  DOC003 [*] One-line docstring should be written on a single line.
-    --> doc003.py:6:8
+  doc003.py:7:5: DOC003 [*] One-line docstring should be written on a single line.
      |
-   4 | # violation
    5 | def summary_only_multiline():
-   6 |     """Do something.
-     |        ^^^^^^^^^^^^^
-   7 |     """
-   8 |     pass
+   6 |     """
+   7 |     Do something.
+     |     ^^^^^^^^^^^^^ DOC003
+   8 |     """
+   9 |     pass
      |
   
-  DOC003 [*] One-line docstring should be written on a single line.
-    --> doc003.py:13:8
+  doc003.py:14:8: DOC003 [*] One-line docstring should be written on a single line.
      |
-  11 | # violation: extra blank line before closing quotes
-  12 | def summary_only_blank_line():
-  13 |     """Do something.
-     |        ^^^^^^^^^^^^^
-  14 | 
-  15 |     """
+  12 | # violation: extra blank line before closing quotes
+  13 | def summary_only_blank_line():
+  14 |     """Do something.
+     |        ^^^^^^^^^^^^^ DOC003
+  15 | 
+  16 |     """
      |
   
   ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
   --- doc003.py
   +++ doc003.py (fixed)
-  @@ -3,16 +3,13 @@
+  @@ -3,17 +3,13 @@
    
    # violation
    def summary_only_multiline():
-  -    """Do something.
+  -    """
+  -    Do something.
   -    """
   +    """Do something."""
        pass

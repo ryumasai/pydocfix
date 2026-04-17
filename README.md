@@ -121,7 +121,16 @@ type_annotation_style = "signature"
 # Existing Google/NumPy-style docstrings are always fixed in their detected style.
 preferred_style = "google"
 
-# Paths/patterns to exclude (in addition to built-in defaults)
+# Paths/patterns to exclude (in addition to built-in defaults).
+# Supports:
+#   - Simple names: matched against each directory's name (e.g. "build", ".venv")
+#   - Glob patterns: matched against paths relative to the project root
+#     - "*"  matches any sequence of characters except "/"
+#     - "**" matches zero or more path components
+# Examples:
+#   "tests/"                — exclude the top-level tests directory
+#   "tests/**/fixtures/"    — exclude every fixtures/ directory under tests/
+#   "src/generated_*.py"    — exclude files matching the glob
 exclude = ["tests/", "docs/"]
 
 # Skip section-level rules (PRM001, RTN001, YLD001, RIS001) for one-line docstrings (default: true)

@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  PRM103 [unsafe] Parameter 'x' has no type in docstring.
-    --> prm103.py:10:9
+  prm103.py:10:9: PRM103 [unsafe] Parameter 'x' has no type in docstring.
      |
    8 | 
    9 |     Args:
   10 |         x: Has signature annotation but no docstring type.
-     |         ^
+     |         ^ PRM103
   11 |     """
   12 |     pass
      |

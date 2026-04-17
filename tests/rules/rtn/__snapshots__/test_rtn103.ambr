@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  RTN103 [unsafe] Return has no type in docstring.
-    --> rtn103.py:10:9
+  rtn103.py:10:9: RTN103 [unsafe] Return has no type in docstring.
      |
    8 | 
    9 |     Returns:
   10 |         The result with no type in docstring.
-     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ RTN103
   11 |     """
   12 |     return 42
      |

@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  RIS004 [unsafe] Raised exception 'ValueError' not documented in Raises section.
-    --> ris004.py:8:5
+  ris004.py:8:5: RIS004 [unsafe] Raised exception 'ValueError' not documented in Raises section.
      |
    6 |     """Do something.
    7 | 
    8 |     Raises:
-     |     ^^^^^^
+     |     ^^^^^^ RIS004
    9 |         TypeError: When type is wrong.
   10 |     """
      |

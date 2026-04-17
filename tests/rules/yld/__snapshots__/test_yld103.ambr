@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  YLD103 [unsafe] Yield has no type in docstring.
-    --> yld103.py:12:9
+  yld103.py:12:9: YLD103 [unsafe] Yield has no type in docstring.
      |
   10 | 
   11 |     Yields:
   12 |         The value with no type in docstring.
-     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ YLD103
   13 |     """
   14 |     yield 42
      |

@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  YLD102 Yield type not in docstring or signature.
-    --> yld102.py:11:9
+  yld102.py:11:9: YLD102 Yield type not in docstring or signature.
      |
    9 | 
   10 |     Yields:
   11 |         The value with no type anywhere.
-     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ YLD102
   12 |     """
   13 |     yield 42
      |

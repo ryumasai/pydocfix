@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  YLD003 Yields section has no description.
-    --> yld003.py:11:9
+  yld003.py:11:9: YLD003 Yields section has no description.
      |
    9 | 
   10 |     Yields:
   11 |         int:
-     |         ^^^
+     |         ^^^ YLD003
   12 |     """
   13 |     yield 42
      |

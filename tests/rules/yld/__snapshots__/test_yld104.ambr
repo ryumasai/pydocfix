@@ -3,13 +3,12 @@
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
-  YLD104 [*] Redundant yield type in docstring; type annotation exists in signature.
-    --> yld104.py:12:9
+  yld104.py:12:9: YLD104 [*] Redundant yield type in docstring; type annotation exists in signature.
      |
   10 | 
   11 |     Yields:
   12 |         int: Redundant type when signature style is required.
-     |         ^^^
+     |         ^^^ YLD104
   13 |     """
   14 |     yield 42
      |
