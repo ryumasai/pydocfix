@@ -36,14 +36,23 @@ pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a
 
 ### pydocfix vs pydoclint
 
-pydocfix performs linting **and** auto-fix generation in a single pass, yet is significantly faster than pydoclint (lint-only) thanks to parallel file processing and a Rust-based CST parser:
+pydocfix performs linting **and** auto-fix generation in a single pass, yet is significantly faster than pydoclint (lint-only) thanks to parallel file processing:
+
+#### Parallel (default, auto-detected cores)
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.86 sec | 2.94 sec | **3.4x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.96 sec | 4.35 sec | **4.5x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.76 sec | 2.90 sec | **3.8x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.88 sec | 4.34 sec | **4.9x** |
 
-> Median of 5 runs (+ 1 warmup). pydocfix automatically parallelises across CPU cores (`-j` flag); pydoclint runs single-threaded.
+#### Single-threaded (`--jobs 1`)
+
+| Project | Files | Lines | pydocfix | pydoclint | Speedup |
+|---------|------:|------:|---------:|----------:|--------:|
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 1.53 sec | 2.95 sec | **1.9x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 2.00 sec | 4.34 sec | **2.2x** |
+
+> Median of 5 runs (+ 1 warmup). Parallel benchmark run on a 10-core machine; pydoclint runs single-threaded only.
 
 ### Feature comparison
 

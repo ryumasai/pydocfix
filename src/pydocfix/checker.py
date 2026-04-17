@@ -356,6 +356,9 @@ def _build_parent_map(tree: ast.AST) -> dict[int, ast.AST]:
     return parent_map
 
 
+_DOCSTRING_NODE_TYPES = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+
+
 def _scan_ast(tree: ast.AST) -> tuple[dict[int, ast.AST], list[_DocstringInfo]]:
     """Single-pass AST scan: build parent map and collect docstrings simultaneously.
 
@@ -363,6 +366,10 @@ def _scan_ast(tree: ast.AST) -> tuple[dict[int, ast.AST], list[_DocstringInfo]]:
     in ``check_file``.  Using a manual BFS queue instead of ``ast.walk`` avoids
     the redundant internal ``iter_child_nodes`` call that ``ast.walk`` makes per
     node, reducing total ``iter_child_nodes`` calls from 3N to 1N.
+
+    ``get_docstring`` is only called on the four node types that can actually
+    carry a docstring (Module, ClassDef, FunctionDef, AsyncFunctionDef),
+    skipping the remaining ~99 % of nodes.
     """
     from collections import deque
 
@@ -371,12 +378,10 @@ def _scan_ast(tree: ast.AST) -> tuple[dict[int, ast.AST], list[_DocstringInfo]]:
     queue: deque[ast.AST] = deque([tree])
     while queue:
         node = queue.popleft()
-        try:
+        if isinstance(node, _DOCSTRING_NODE_TYPES):
             ds: str | None = ast.get_docstring(node, clean=False)  # type: ignore
             if ds is not None:
                 docstrings.append(_DocstringInfo(ds, node.body[0], node))  # type: ignore
-        except TypeError:
-            pass
         for child in ast.iter_child_nodes(node):
             parent_map[id(child)] = node
             queue.append(child)
