@@ -119,29 +119,30 @@ def discover_rules_in_path(path: Path) -> list[type[BaseRule]]:
     path_str = str(path.resolve())
 
     # Temporarily add to sys.path
-    if path_str not in sys.path:
+    already_present = path_str in sys.path
+    if not already_present:
         sys.path.insert(0, path_str)
-        try:
-            # Discover all Python files in the directory
-            for py_file in path.rglob("*.py"):
-                if py_file.name.startswith("_"):
-                    continue
+    try:
+        # Discover all Python files in the directory
+        for py_file in path.rglob("*.py"):
+            if py_file.name.startswith("_"):
+                continue
 
-                # Convert file path to module name
-                rel_path = py_file.relative_to(path)
-                module_parts = list(rel_path.parts[:-1]) + [rel_path.stem]
-                module_name = ".".join(module_parts)
+            # Convert file path to module name
+            rel_path = py_file.relative_to(path)
+            module_parts = list(rel_path.parts[:-1]) + [rel_path.stem]
+            module_name = ".".join(module_parts)
 
-                try:
-                    discovered = discover_rules_in_module(module_name)
-                    rules.extend(discovered)
-                except (ImportError, TypeError) as e:
-                    logger.debug("Could not import %s from %s: %s", module_name, path, e)
-                    continue
-        finally:
-            # Remove from sys.path
-            if path_str in sys.path:
-                sys.path.remove(path_str)
+            try:
+                discovered = discover_rules_in_module(module_name)
+                rules.extend(discovered)
+            except (ImportError, TypeError) as e:
+                logger.debug("Could not import %s from %s: %s", module_name, path, e)
+                continue
+    finally:
+        # Remove from sys.path only if we added it
+        if not already_present and path_str in sys.path:
+            sys.path.remove(path_str)
 
     return rules
 

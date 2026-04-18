@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 from pydocstring import PlainDocstring
 
@@ -21,7 +23,7 @@ class TestDiscoverRulesInModule:
         """Discovers rules from a known built-in module."""
         rules = discover_rules_in_module("pydocfix.rules.sum.sum001")
 
-        assert len(rules) >= 1
+        assert len(rules) == 1
         assert all(issubclass(r, BaseRule) for r in rules)
 
     def test_raises_on_missing_module(self):
@@ -70,7 +72,7 @@ class TestLoadPluginRules:
         """Loads rules from a known module."""
         rules = load_plugin_rules(plugin_modules=["pydocfix.rules.sum.sum001"])
 
-        assert len(rules) >= 1
+        assert len(rules) == 1
 
     def test_loads_from_path(self, tmp_path):
         """Loads rules from a path directory."""
@@ -124,8 +126,47 @@ class DUPSECOND(BaseRule):
         assert dup_rules[0].__module__ == "plugin_second"
         assert dup_rules[0].__name__ == "DUPSECOND"
 
+    def test_plugin_modules_take_precedence_over_plugin_paths(self, tmp_path, monkeypatch):
+        """Rules from plugin_modules should win over plugin_paths when codes collide."""
+        module_dir = tmp_path / "modules"
+        module_dir.mkdir()
+        path_dir = tmp_path / "paths"
+        path_dir.mkdir()
 
-class DUPSUM002(BaseRule[PlainDocstring]):
+        (module_dir / "mod_rule.py").write_text("""\
+from pydocfix.rules._base import BaseRule
+
+class MODRULE(BaseRule):
+    code = "CROSS001"
+    enabled_by_default = True
+
+    def diagnose(self, node, ctx):
+        return iter([])
+""")
+        (path_dir / "path_rule.py").write_text("""\
+from pydocfix.rules._base import BaseRule
+
+class PATHRULE(BaseRule):
+    code = "CROSS001"
+    enabled_by_default = True
+
+    def diagnose(self, node, ctx):
+        return iter([])
+""")
+
+        monkeypatch.syspath_prepend(str(module_dir))
+
+        rules = load_plugin_rules(
+            plugin_modules=["mod_rule"],
+            plugin_paths=[path_dir],
+        )
+        cross_rules = [r for r in rules if r.code == "CROSS001"]
+
+        assert len(cross_rules) == 1
+        assert cross_rules[0].__name__ == "MODRULE"
+
+
+class _DUPSUM002(BaseRule[PlainDocstring]):
     """Plugin rule intentionally colliding with a built-in code."""
 
     code = "SUM002"
@@ -138,12 +179,17 @@ class DUPSUM002(BaseRule[PlainDocstring]):
 class TestBuildRegistryWithPluginCollisions:
     """Tests for build_registry() with duplicate codes."""
 
-    def test_builtin_rule_wins_when_plugin_code_collides(self):
+    def test_builtin_rule_wins_when_plugin_code_collides(self, caplog):
         """Built-in rule should be kept when a plugin reuses the same code."""
-        registry = build_registry(select=["SUM002"], plugin_rules=[DUPSUM002])
+        with caplog.at_level(logging.WARNING):
+            registry = build_registry(select=["SUM002"], plugin_rules=[_DUPSUM002])
 
         rule = registry.get("SUM002")
         assert rule is not None
         assert rule.__class__.__module__ == "pydocfix.rules.sum.sum002"
         assert rule.__class__.__name__ == "SUM002"
         assert len([r for r in registry.all_rules() if r.code == "SUM002"]) == 1
+
+        assert any(
+            "duplicate rule code 'SUM002'" in rec.message and rec.levelno == logging.WARNING for rec in caplog.records
+        )
