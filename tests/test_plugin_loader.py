@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import pytest
+from pydocstring import PlainDocstring
 
+from pydocfix.rules import build_registry
 from pydocfix.rules._base import BaseRule
 from pydocfix.rules.plugin_loader import (
     discover_rules_in_module,
@@ -121,3 +123,27 @@ class DUPSECOND(BaseRule):
         assert len(dup_rules) == 1
         assert dup_rules[0].__module__ == "plugin_second"
         assert dup_rules[0].__name__ == "DUPSECOND"
+
+
+class DUPSUM002(BaseRule[PlainDocstring]):
+    """Plugin rule intentionally colliding with a built-in code."""
+
+    code = "SUM002"
+    enabled_by_default = True
+
+    def diagnose(self, node, ctx):
+        return iter(())
+
+
+class TestBuildRegistryWithPluginCollisions:
+    """Tests for build_registry() with duplicate codes."""
+
+    def test_builtin_rule_wins_when_plugin_code_collides(self):
+        """Built-in rule should be kept when a plugin reuses the same code."""
+        registry = build_registry(select=["SUM002"], plugin_rules=[DUPSUM002])
+
+        rule = registry.get("SUM002")
+        assert rule is not None
+        assert rule.__class__.__module__ == "pydocfix.rules.sum.sum002"
+        assert rule.__class__.__name__ == "SUM002"
+        assert len([r for r in registry.all_rules() if r.code == "SUM002"]) == 1

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from click.testing import CliRunner
 
-from pydocfix.cli import cli
+from pydocfix.cli import _collect_files, cli
 
 
 @pytest.fixture
@@ -97,3 +97,14 @@ def greet():
 
         assert result.exit_code == 0
         assert "0." in result.output
+
+    def test_collect_files_deduplicates_overlapping_paths(self, tmp_path):
+        """Overlapping CLI paths should not produce duplicate file targets."""
+        src_dir = tmp_path / "src"
+        src_dir.mkdir()
+        py_file = src_dir / "example.py"
+        py_file.write_text("def foo():\n    pass\n", encoding="utf-8")
+
+        files = _collect_files([str(tmp_path), str(src_dir)])
+
+        assert files.count(py_file) == 1

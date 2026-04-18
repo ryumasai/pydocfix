@@ -312,7 +312,9 @@ def build_registry(
         all_rule_classes.extend(plugin_rules)
 
     # Step 1: collect candidates according to select/ignore/default logic.
-    candidates: list[BaseRule] = []
+    # Keep the first selected rule per code to avoid mixed duplicate behavior
+    # between the code map and kind-dispatch lists.
+    candidates_by_code: dict[str, BaseRule] = {}
     for cls in all_rule_classes:
         instance = cls(config)
         if _matches(instance.code, ignored):
@@ -322,7 +324,20 @@ def build_registry(
             or (has_select and _matches(instance.code, selected))
             or (not has_select and instance.enabled_by_default)
         ):
-            candidates.append(instance)
+            if instance.code in candidates_by_code:
+                kept = candidates_by_code[instance.code]
+                logging.getLogger(__name__).warning(
+                    "duplicate rule code '%s': keeping %s.%s, ignoring %s.%s",
+                    instance.code,
+                    kept.__class__.__module__,
+                    kept.__class__.__name__,
+                    instance.__class__.__module__,
+                    instance.__class__.__name__,
+                )
+                continue
+            candidates_by_code[instance.code] = instance
+
+    candidates: list[BaseRule] = list(candidates_by_code.values())
 
     # Step 2: resolve any mutual-exclusion conflicts among candidates.
     resolved = _resolve_conflicts(candidates, config)

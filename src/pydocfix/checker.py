@@ -602,6 +602,8 @@ def check_file(
             lines,
         )
         all_diagnostics.extend(ds_diagnostics)
+        noqa_used_codes = set(noqa_state.used_codes)
+        noqa_suppressed_any = noqa_state.suppressed_any
 
         # Fix phase (per-docstring) — iterate until stable
         if fix and ds_diagnostics:
@@ -618,6 +620,18 @@ def check_file(
                 symbol,
             )
             remaining_after_fix.extend(ds_remaining)
+
+            # Recompute inline-noqa usage from post-fix diagnostics so NOQ001
+            # reflects the final state, not only the pre-fix suppression state.
+            if noqa_state.directive is not None:
+                noqa_used_codes = set()
+                noqa_suppressed_any = False
+                for diag in ds_remaining:
+                    if noqa_state.directive.suppresses(diag.rule):
+                        noqa_suppressed_any = True
+                        if noqa_state.directive.codes is not None:
+                            noqa_used_codes.add(diag.rule)
+
             if new_content is not None:
                 file_edits.append(
                     (
@@ -632,8 +646,8 @@ def check_file(
             noq_diagnostics, noq_source_edit = _check_unused_inline_noqa(
                 inline_noqa=noqa_state.directive,
                 noqa_span=noqa_state.span,
-                used_codes=noqa_state.used_codes,
-                any_suppressed=noqa_state.suppressed_any,
+                used_codes=noqa_used_codes,
+                any_suppressed=noqa_suppressed_any,
                 end_lineno=ds_stmt.end_lineno or 0,
                 lines=lines,
                 line_offsets=line_offsets,

@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydocstring import PlainDocstring
+
 from pydocfix.checker import check_file
 from pydocfix.config import Config
+from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Fix, replace_token
 from pydocfix.rules.sum.sum002 import SUM002
 from tests.helpers import make_type_to_rules
 
@@ -14,6 +17,32 @@ DUMMY_PATH = Path("test_dummy.py")
 
 def _type_to_rules(*rules):
     return make_type_to_rules(*rules)
+
+
+class SUP001(BaseRule[PlainDocstring]):
+    """Synthetic rule used to test noqa usage tracking."""
+
+    code = "SUP001"
+
+    def diagnose(self, node: PlainDocstring, ctx: DiagnoseContext):
+        if node.summary is not None and "x" in node.summary.text:
+            yield self._make_diagnostic(ctx, "Contains x", target=node.summary)
+
+
+class FIX001(BaseRule[PlainDocstring]):
+    """Synthetic fix rule that removes 'x' from summary text."""
+
+    code = "FIX001"
+
+    def diagnose(self, node: PlainDocstring, ctx: DiagnoseContext):
+        if node.summary is None or "x" not in node.summary.text:
+            return
+        fixed = node.summary.text.replace("x", "y")
+        fix = Fix(
+            edits=[replace_token(node.summary, fixed)],
+            applicability=Applicability.SAFE,
+        )
+        yield self._make_diagnostic(ctx, "Replace x with y", fix=fix, target=node.summary)
 
 
 class TestCheckFile:
@@ -116,3 +145,25 @@ def greet():
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, config=config)
 
         assert fixed is None
+
+    def test_noq001_uses_post_fix_state_for_inline_noqa(self):
+        """Inline noqa becomes unused after fixes and should emit NOQ001."""
+        source = '''\
+def greet():
+    """x"""  # noqa: SUP001
+    pass
+'''
+        config = Config(skip_short_docstrings=False)
+        rules = _type_to_rules(SUP001(config), FIX001(config))
+        diagnostics, fixed, _ = check_file(
+            source,
+            DUMMY_PATH,
+            rules,
+            fix=True,
+            config=config,
+            known_rule_codes=frozenset({"SUP001", "FIX001"}),
+        )
+
+        assert any(d.rule == "NOQ001" and "SUP001" in d.message for d in diagnostics)
+        assert fixed is not None
+        assert "# noqa" not in fixed

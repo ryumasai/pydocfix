@@ -658,7 +658,17 @@ def _collect_files(
             result.extend(_walk(path))
         else:
             logger.warning("path not found or not a Python file: %s", p)
-    return result
+
+    # Avoid duplicate work when users pass overlapping paths (e.g. '.' and 'src').
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for path in result:
+        key = str(path.resolve())
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
+    return unique
 
 
 def main() -> None:
