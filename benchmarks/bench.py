@@ -6,8 +6,9 @@ Usage:
     python benchmarks/bench.py --target /path/to/local/project --docstyle google
 
 pydoclint is configured to match pydocfix's rule scope:
-  --style <google|numpy>         docstring style to parse
-  --check-class-attributes False pydocfix has no class-attribute rules"""
+  --style <google|numpy>                 docstring style to parse
+  --arg-type-hints-in-signature False    pydocfix PRM103-106 disabled by default
+  --arg-type-hints-in-docstring False    (type_annotation_style not set → omitted)"""
 
 from __future__ import annotations
 
@@ -41,9 +42,15 @@ STYLE_DEFAULT_TARGET: dict[str, str] = {
 }
 
 # pydoclint options that align its checks to pydocfix's rule scope:
-#   --check-class-attributes False  pydocfix has no class-attribute rules
-#   --style <style>                 explicit style; pydocfix auto-detects
-PYDOCLINT_ALIGN_OPTS: list[str] = ["--check-class-attributes", "False"]
+#   --arg-type-hints-in-signature False   pydocfix disables PRM103-106 by default
+#   --arg-type-hints-in-docstring False   (type_annotation_style not set → omitted)
+#   --style <style>                       explicit style; pydocfix auto-detects
+PYDOCLINT_ALIGN_OPTS: list[str] = [
+    "--arg-type-hints-in-signature",
+    "False",
+    "--arg-type-hints-in-docstring",
+    "False",
+]
 
 WARMUP_RUNS = 1
 DEFAULT_BENCH_RUNS = 5
@@ -337,13 +344,16 @@ def print_readme_section(
     def spdup(fix: float, ref: float) -> str:
         return f"**{ref / fix:.1f}x**"
 
-    def row(t: TargetBenchResult, secs: float) -> str:
+    def speed_row(t: TargetBenchResult, secs: float, pdl: float) -> str:
         lines_k = f"{round(t.py_lines / 1000)}K"
-        pdl = median_secs(t.pydoclint.elapsed_secs)
         url = OSS_REPOS.get(t.target_name, "#").removesuffix(".git")
         return (
             f"| [{t.target_name}]({url}) | {t.py_files} | {lines_k} | {fmt(secs)} | {fmt(pdl)} | {spdup(secs, pdl)} |"
         )
+
+    def violation_row(t: TargetBenchResult) -> str:
+        url = OSS_REPOS.get(t.target_name, "#").removesuffix(".git")
+        return f"| [{t.target_name}]({url}) | {t.parallel.violation_count:,} | {t.pydoclint.violation_count:,} |"
 
     print()
     print("=" * 80)
@@ -355,18 +365,25 @@ def print_readme_section(
     print("| Project | Files | Lines | pydocfix | pydoclint | Speedup |")
     print("|---------|------:|------:|---------:|----------:|--------:|")
     for t in targets:
-        print(row(t, median_secs(t.parallel.elapsed_secs)))
+        print(speed_row(t, median_secs(t.parallel.elapsed_secs), median_secs(t.pydoclint.elapsed_secs)))
     print()
     print("#### Single-threaded (`--jobs 1`)")
     print()
     print("| Project | Files | Lines | pydocfix | pydoclint | Speedup |")
     print("|---------|------:|------:|---------:|----------:|--------:|")
     for t in targets:
-        print(row(t, median_secs(t.single.elapsed_secs)))
+        print(speed_row(t, median_secs(t.single.elapsed_secs), median_secs(t.pydoclint.elapsed_secs)))
     print()
     print(f"> Median of {bench_runs} runs (+ {WARMUP_RUNS} warmup). pydoclint runs single-threaded only.")
     print()
-    print("## Violations")
+    print("#### Violations detected")
+    print()
+    print("| Project | pydocfix | pydoclint |")
+    print("|---------|------:|------:|")
+    for t in targets:
+        print(violation_row(t))
+    print()
+    print("## Violations (detail)")
     for t in targets:
         print(
             f"  [{t.target_name}] pydocfix:  {t.parallel.violation_count:,} ({len(t.parallel.rule_codes)} unique rules)"

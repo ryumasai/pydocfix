@@ -42,17 +42,27 @@ pydocfix performs linting **and** auto-fix generation in a single pass, yet is s
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.74 sec | 2.92 sec | **3.9x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.84 sec | 4.36 sec | **5.2x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.72 sec | 2.87 sec | **4.0x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.84 sec | 4.21 sec | **5.0x** |
 
 #### Single-threaded (`--jobs 1`)
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 2.18 sec | 2.92 sec | **1.3x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 2.41 sec | 4.36 sec | **1.8x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 2.16 sec | 2.87 sec | **1.3x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 2.39 sec | 4.21 sec | **1.8x** |
 
 > Median of 5 runs (+ 1 warmup) via [hyperfine](https://github.com/sharkdp/hyperfine). pydoclint runs single-threaded only.
+> pydoclint configured with `--arg-type-hints-in-signature False --arg-type-hints-in-docstring False` to match pydocfix's default (no `type_annotation_style` set).
+
+#### Violations detected
+
+| Project | pydocfix | pydoclint |
+|---------|------:|------:|
+| [numpy](https://github.com/numpy/numpy) | 2,556 | 2,787 |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 4,542 | 5,230 |
+
+> Violation counts differ because pydoclint additionally checks class/`__init__` docstring structure (DOC3xx) and class attributes (DOC6xx), which pydocfix does not implement.
 
 ### Feature comparison
 
