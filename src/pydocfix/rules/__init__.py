@@ -17,7 +17,6 @@ from pydocfix.edits import (
 from pydocfix.models import (
     Applicability,
     Diagnostic,
-    DocstringLocation,
     Edit,
     Fix,
     Offset,
@@ -36,7 +35,7 @@ from pydocfix.registry import (
     effective_applicability,
     is_applicable,
 )
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext, DocstringLocation
 from pydocfix.rules._helpers import (
     build_section_stub,
     delete_entry_fix,
@@ -159,6 +158,7 @@ __all__ = [
     "YLD105",
     "YLD106",
     # **** FRAMEWORK ****
+    "ActivationCondition",
     "DiagnoseContext",
     "Diagnostic",
     "DocstringLocation",

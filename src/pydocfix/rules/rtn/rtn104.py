@@ -8,8 +8,8 @@ from collections.abc import Iterator
 from pydocstring import GoogleReturn, NumPyReturns
 
 from pydocfix.edits import delete_range
-from pydocfix.models import ActivationCondition, Applicability, Diagnostic, Fix
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.models import Applicability, Diagnostic, Fix
+from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
 
 
 class RTN104(BaseRule[GoogleReturn | NumPyReturns]):

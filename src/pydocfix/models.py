@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass
-from typing import NamedTuple
 
 
 class Severity(enum.Enum):
@@ -83,26 +82,3 @@ class Diagnostic:
     @property
     def col(self) -> int:
         return self.range.start.col
-
-
-class DocstringLocation(NamedTuple):
-    """Pre-computed positional info for a docstring expression."""
-
-    content_start: Offset  # line:col where content begins (after opening quote)
-    expr_byte_start: int  # byte offset of expression start in source file
-    expr_byte_end: int  # byte offset of expression end in source file
-    opening_quote: str  # opening quote string (including prefix like r, u)
-    closing_quote: str  # closing quote string
-
-
-class ActivationCondition(NamedTuple):
-    """Config-based activation condition for a rule.
-
-    Specifies which ``Config`` attribute must equal one of the allowed values
-    for the rule to be active.
-    """
-
-    attr: str
-    """Name of the ``Config`` attribute to inspect (e.g. ``"type_annotation_style"``)."""
-    values: frozenset[str]
-    """Allowed values of the attribute (e.g. ``frozenset({"signature"})``)."""

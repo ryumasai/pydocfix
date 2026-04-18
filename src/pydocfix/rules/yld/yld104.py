@@ -8,8 +8,8 @@ from collections.abc import Iterator
 from pydocstring import GoogleYield, NumPyYields
 
 from pydocfix.edits import delete_range
-from pydocfix.models import ActivationCondition, Applicability, Diagnostic, Fix
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.models import Applicability, Diagnostic, Fix
+from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
 from pydocfix.rules.yld._helpers import get_yield_type
 
 
