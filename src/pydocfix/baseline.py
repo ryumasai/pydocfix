@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pydocfix.rules._base import Diagnostic
+    from pydocfix.rules._types import Diagnostic
 
 logger = logging.getLogger(__name__)
 

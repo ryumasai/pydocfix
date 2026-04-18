@@ -74,9 +74,7 @@ def _worker_check(args: tuple) -> FileResult:
     filepath, fix, unsafe_fixes, config_obj = args
 
     if _worker_type_to_rules is None or _worker_known_rule_codes is None:
-        raise RuntimeError(
-            "Worker process not initialized: _worker_init() must be called before _worker_check()"
-        )
+        raise RuntimeError("Worker process not initialized: _worker_init() must be called before _worker_check()")
     return check_one_file(filepath, _worker_type_to_rules, fix, unsafe_fixes, config_obj, _worker_known_rule_codes)
 
 

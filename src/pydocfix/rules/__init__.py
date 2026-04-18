@@ -9,23 +9,13 @@ if TYPE_CHECKING:
     from pydocfix.config import Config
 
 from pydocfix.rules._base import (
-    Applicability,
     BaseRule,
     DiagnoseContext,
-    Diagnostic,
-    DocstringLocation,
-    Edit,
-    Fix,
-    Offset,
-    Range,
-    RuleRegistry,
-    Severity,
-    _matches_any,
+)
+from pydocfix.rules._edits import (
     apply_edits,
     delete_range,
-    effective_applicability,
     insert_at,
-    is_applicable,
     replace_token,
 )
 from pydocfix.rules._helpers import (
@@ -35,6 +25,22 @@ from pydocfix.rules._helpers import (
     detect_docstring_style,
     find_section,
     has_section,
+)
+from pydocfix.rules._registry import (
+    RuleRegistry,
+    _matches_any,
+    effective_applicability,
+    is_applicable,
+)
+from pydocfix.rules._types import (
+    Applicability,
+    Diagnostic,
+    DocstringLocation,
+    Edit,
+    Fix,
+    Offset,
+    Range,
+    Severity,
 )
 
 # --- Docstring-level rules ---
@@ -233,7 +239,6 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     YLD105,
     YLD106,
 ]
-
 
 
 def _check_activation(rule: BaseRule, config: Config | None) -> bool:
