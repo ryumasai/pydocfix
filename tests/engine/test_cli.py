@@ -2,16 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-from click.testing import CliRunner
-
 from pydocfix._filewalker import collect_files
 from pydocfix.cli import cli
-
-
-@pytest.fixture
-def runner():
-    return CliRunner()
 
 
 class TestCLI:
@@ -30,64 +22,39 @@ class TestCLI:
 
         assert result.exit_code == 0
 
-    def test_detects_violation(self, runner, tmp_path):
+    def test_detects_violation(self, runner, tmp_path, install_fixture):
         """Check command detects violation and exits with code 1."""
-        py_file = tmp_path / "example.py"
-        py_file.write_text('''\
-def greet():
-    """Say hello"""
-    pass
-''')
+        install_fixture("greet_no_period.py", tmp_path, filename="example.py")
         result = runner.invoke(cli, ["check", str(tmp_path), "--select", "SUM002"])
 
         assert result.exit_code == 1
         assert "SUM002" in result.output
 
-    def test_no_violation_exits_zero(self, runner, tmp_path):
+    def test_no_violation_exits_zero(self, runner, tmp_path, install_fixture):
         """Check command with no violations exits with code 0."""
-        py_file = tmp_path / "example.py"
-        py_file.write_text('''\
-def greet():
-    """Say hello."""
-    pass
-''')
+        install_fixture("greet_with_period.py", tmp_path, filename="example.py")
         result = runner.invoke(cli, ["check", str(tmp_path), "--select", "SUM002"])
 
         assert result.exit_code == 0
 
-    def test_fix_applies_fix(self, runner, tmp_path):
+    def test_fix_applies_fix(self, runner, tmp_path, install_fixture):
         """Fix flag applies fix and exits with code 0."""
-        py_file = tmp_path / "example.py"
-        py_file.write_text('''\
-def greet():
-    """Say hello"""
-    pass
-''')
+        py_file = install_fixture("greet_no_period.py", tmp_path, filename="example.py")
         result = runner.invoke(cli, ["check", "--fix", str(tmp_path), "--select", "SUM002"])
 
         assert result.exit_code == 0
         assert "hello." in py_file.read_text()
 
-    def test_diff_shows_diff(self, runner, tmp_path):
+    def test_diff_shows_diff(self, runner, tmp_path, install_fixture):
         """Diff flag shows diff output."""
-        py_file = tmp_path / "example.py"
-        py_file.write_text('''\
-def greet():
-    """Say hello"""
-    pass
-''')
+        install_fixture("greet_no_period.py", tmp_path, filename="example.py")
         result = runner.invoke(cli, ["check", "--diff", str(tmp_path), "--select", "SUM002"])
 
         assert "---" in result.output or "hello." in result.output
 
-    def test_ignore_flag(self, runner, tmp_path):
+    def test_ignore_flag(self, runner, tmp_path, install_fixture):
         """Ignore flag suppresses specific rules."""
-        py_file = tmp_path / "example.py"
-        py_file.write_text('''\
-def greet():
-    """Say hello"""
-    pass
-''')
+        install_fixture("greet_no_period.py", tmp_path, filename="example.py")
         result = runner.invoke(cli, ["check", "--ignore", "SUM002", str(tmp_path), "--select", "SUM002"])
 
         assert result.exit_code == 0
@@ -99,12 +66,11 @@ def greet():
         assert result.exit_code == 0
         assert "0." in result.output
 
-    def test_collect_files_deduplicates_overlapping_paths(self, tmp_path):
+    def test_collect_files_deduplicates_overlapping_paths(self, tmp_path, install_fixture):
         """Overlapping CLI paths should not produce duplicate file targets."""
         src_dir = tmp_path / "src"
         src_dir.mkdir()
-        py_file = src_dir / "example.py"
-        py_file.write_text("def foo():\n    pass\n", encoding="utf-8")
+        py_file = install_fixture("greet_with_period.py", src_dir, filename="example.py")
 
         files = collect_files([str(tmp_path), str(src_dir)])
 

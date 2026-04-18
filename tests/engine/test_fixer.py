@@ -15,13 +15,9 @@ DUMMY_PATH = Path("test.py")
 class TestFixer:
     """Tests for fix integration in check_file."""
 
-    def test_fixes_missing_period(self):
+    def test_fixes_missing_period(self, load_test_fixture):
         """Fixes missing period violation."""
-        source = '''\
-def greet():
-    """Say hello"""
-    pass
-'''
+        source = load_test_fixture("greet_no_period.py").read_text(encoding="utf-8")
         config = Config(skip_short_docstrings=False)
         rules = make_type_to_rules(SUM002(config))
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, fix=True, config=config)
@@ -29,30 +25,18 @@ def greet():
         assert fixed is not None
         assert '"""Say hello."""' in fixed
 
-    def test_no_fix_needed(self):
+    def test_no_fix_needed(self, load_test_fixture):
         """Returns None for fixed_source when nothing to fix."""
-        source = '''\
-def greet():
-    """Say hello."""
-    pass
-'''
+        source = load_test_fixture("greet_with_period.py").read_text(encoding="utf-8")
         config = Config(skip_short_docstrings=False)
         rules = make_type_to_rules(SUM002(config))
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, fix=True, config=config)
 
         assert fixed is None
 
-    def test_preserves_surrounding_code(self):
+    def test_preserves_surrounding_code(self, load_test_fixture):
         """Fix preserves code around fixed docstring."""
-        source = '''\
-import os
-
-def greet():
-    """Say hello"""
-    return "hello"
-
-x = 42
-'''
+        source = load_test_fixture("preserve_surrounding.py").read_text(encoding="utf-8")
         config = Config(skip_short_docstrings=False)
         rules = make_type_to_rules(SUM002(config))
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, fix=True, config=config)
@@ -62,26 +46,18 @@ x = 42
         assert 'return "hello"' in fixed
         assert "x = 42" in fixed
 
-    def test_no_fix_without_flag(self):
+    def test_no_fix_without_flag(self, load_test_fixture):
         """Does not fix when fix=False."""
-        source = '''\
-def greet():
-    """Say hello"""
-    pass
-'''
+        source = load_test_fixture("greet_no_period.py").read_text(encoding="utf-8")
         config = Config(skip_short_docstrings=False)
         rules = make_type_to_rules(SUM002(config))
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, fix=False, config=config)
 
         assert fixed is None
 
-    def test_fix_idempotent(self, tmp_path):
+    def test_fix_idempotent(self, load_test_fixture, tmp_path):
         """Applying fix twice produces same result."""
-        source = '''\
-def greet():
-    """Say hello"""
-    pass
-'''
+        source = load_test_fixture("greet_no_period.py").read_text(encoding="utf-8")
         config = Config(skip_short_docstrings=False)
         rules = make_type_to_rules(SUM002(config))
 

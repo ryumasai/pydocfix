@@ -6,38 +6,16 @@ from pathlib import Path
 
 from pydocfix.checker import check_file
 from pydocfix.config import Config
-from pydocfix.models import Diagnostic
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from tests.engine.synthetic_rules.plugnoqa001 import PLUGNOQA001
 from tests.helpers import make_type_to_rules
-
-
-class PLUGNOQA001(BaseRule):
-    """Test plugin rule for noqa suppression testing."""
-
-    code = "PLUGNOQA001"
-    enabled_by_default = True
-
-    def diagnose(self, node, ctx: DiagnoseContext):
-        yield Diagnostic(
-            rule=self.code,
-            message="Plugin violation",
-            line=ctx.location.line,
-            col=ctx.location.col,
-            fix=None,
-            symbol=ctx.symbol,
-        )
 
 
 class TestPluginNoqa:
     """Tests for noqa suppression with plugin rules."""
 
-    def test_inline_noqa_suppresses_plugin(self):
+    def test_inline_noqa_suppresses_plugin(self, load_test_fixture):
         """Inline noqa suppresses plugin rule violation."""
-        source = '''\
-def foo():
-    """Docstring."""  # noqa: PLUGNOQA001
-    pass
-'''
+        source = load_test_fixture("foo_docstring_noqa_plugnoqa001.py").read_text(encoding="utf-8")
         config = Config(skip_short_docstrings=False)
         rules = make_type_to_rules(PLUGNOQA001(config))
         diagnostics, _, _ = check_file(
@@ -50,13 +28,9 @@ def foo():
 
         assert not any(d.rule == "PLUGNOQA001" for d in diagnostics)
 
-    def test_blanket_noqa_suppresses_plugin(self):
+    def test_blanket_noqa_suppresses_plugin(self, load_test_fixture):
         """Blanket noqa suppresses all violations including plugin."""
-        source = '''\
-def foo():
-    """Docstring."""  # noqa
-    pass
-'''
+        source = load_test_fixture("foo_docstring_blanket_noqa.py").read_text(encoding="utf-8")
         config = Config(skip_short_docstrings=False)
         rules = make_type_to_rules(PLUGNOQA001(config))
         diagnostics, _, _ = check_file(
@@ -68,15 +42,11 @@ def foo():
 
         assert not any(d.rule == "PLUGNOQA001" for d in diagnostics)
 
-    def test_specific_noqa_does_not_suppress_other_rule(self):
+    def test_specific_noqa_does_not_suppress_other_rule(self, load_test_fixture):
         """Specific noqa code only suppresses that code."""
         from pydocfix.rules.sum.sum002 import SUM002
 
-        source = '''\
-def foo():
-    """No period"""  # noqa: PLUGNOQA001
-    pass
-'''
+        source = load_test_fixture("foo_no_period_noqa_plugnoqa001.py").read_text(encoding="utf-8")
         config = Config(skip_short_docstrings=False)
         rules = make_type_to_rules(PLUGNOQA001(config), SUM002(config))
         diagnostics, _, _ = check_file(

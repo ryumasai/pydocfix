@@ -35,19 +35,9 @@ class TestDiscoverRulesInModule:
 class TestDiscoverRulesInPath:
     """Tests for discover_rules_in_path()."""
 
-    def test_discovers_rules_from_file(self, tmp_path):
+    def test_discovers_rules_from_file(self, install_fixture, tmp_path):
         """Discovers rules from a Python file in a path."""
-        rule_file = tmp_path / "custom_rules.py"
-        rule_file.write_text("""\
-from pydocfix.rules._base import BaseRule
-
-class MY001(BaseRule):
-    code = "MY001"
-    enabled_by_default = True
-
-    def diagnose(self, node, ctx):
-        return iter([])
-""")
+        install_fixture("plugins/my001.py", tmp_path)
         rules = discover_rules_in_path(tmp_path)
 
         assert any(r.code == "MY001" for r in rules)
@@ -74,48 +64,17 @@ class TestLoadPluginRules:
 
         assert len(rules) == 1
 
-    def test_loads_from_path(self, tmp_path):
+    def test_loads_from_path(self, install_fixture, tmp_path):
         """Loads rules from a path directory."""
-        rule_file = tmp_path / "my_rules.py"
-        rule_file.write_text("""\
-from pydocfix.rules._base import BaseRule
-
-class MYRULE001(BaseRule):
-    code = "MYRULE001"
-    enabled_by_default = True
-
-    def diagnose(self, node, ctx):
-        return iter([])
-""")
+        install_fixture("plugins/myrule001.py", tmp_path)
         rules = load_plugin_rules(plugin_paths=[tmp_path])
 
         assert any(r.code == "MYRULE001" for r in rules)
 
-    def test_duplicate_code_uses_plugin_modules_order(self, tmp_path, monkeypatch):
+    def test_duplicate_code_uses_plugin_modules_order(self, install_fixture, tmp_path, monkeypatch):
         """Duplicate rule codes are resolved deterministically by module list order."""
-        first = tmp_path / "plugin_first.py"
-        second = tmp_path / "plugin_second.py"
-
-        first.write_text("""\
-from pydocfix.rules._base import BaseRule
-
-class DUPFIRST(BaseRule):
-    code = "DUP001"
-    enabled_by_default = True
-
-    def diagnose(self, node, ctx):
-        return iter([])
-""")
-        second.write_text("""\
-from pydocfix.rules._base import BaseRule
-
-class DUPSECOND(BaseRule):
-    code = "DUP001"
-    enabled_by_default = True
-
-    def diagnose(self, node, ctx):
-        return iter([])
-""")
+        install_fixture("plugins/dup001_first.py", tmp_path, filename="plugin_first.py")
+        install_fixture("plugins/dup001_second.py", tmp_path, filename="plugin_second.py")
 
         monkeypatch.syspath_prepend(str(tmp_path))
 
@@ -126,33 +85,15 @@ class DUPSECOND(BaseRule):
         assert dup_rules[0].__module__ == "plugin_second"
         assert dup_rules[0].__name__ == "DUPSECOND"
 
-    def test_plugin_modules_take_precedence_over_plugin_paths(self, tmp_path, monkeypatch):
+    def test_plugin_modules_take_precedence_over_plugin_paths(self, install_fixture, tmp_path, monkeypatch):
         """Rules from plugin_modules should win over plugin_paths when codes collide."""
         module_dir = tmp_path / "modules"
         module_dir.mkdir()
         path_dir = tmp_path / "paths"
         path_dir.mkdir()
 
-        (module_dir / "mod_rule.py").write_text("""\
-from pydocfix.rules._base import BaseRule
-
-class MODRULE(BaseRule):
-    code = "CROSS001"
-    enabled_by_default = True
-
-    def diagnose(self, node, ctx):
-        return iter([])
-""")
-        (path_dir / "path_rule.py").write_text("""\
-from pydocfix.rules._base import BaseRule
-
-class PATHRULE(BaseRule):
-    code = "CROSS001"
-    enabled_by_default = True
-
-    def diagnose(self, node, ctx):
-        return iter([])
-""")
+        install_fixture("plugins/cross001_mod.py", module_dir, filename="mod_rule.py")
+        install_fixture("plugins/cross001_path.py", path_dir, filename="path_rule.py")
 
         monkeypatch.syspath_prepend(str(module_dir))
 
