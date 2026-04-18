@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -267,10 +268,9 @@ def _resolve_conflicts(candidates: list[BaseRule], config: Config | None) -> lis
             # In conflict and activation condition met — keep.
             result.append(rule)
         else:
-            import logging
-
             cond = rule.activation_condition
-            assert cond is not None
+            if cond is None:  # pragma: no cover  # guaranteed by _check_activation logic
+                continue
             allowed = ", ".join(f"'{v}'" for v in sorted(cond.values))
             logging.getLogger(__name__).warning(
                 "%s conflicts with [%s] and '%s' is not in {%s}; %s excluded.",

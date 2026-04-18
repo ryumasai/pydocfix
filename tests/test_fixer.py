@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydocfix.checker import build_rules_map, check_file
+from pydocfix.checker import check_file
 from pydocfix.config import Config
 from pydocfix.rules.sum.sum002 import SUM002
+from tests.helpers import make_type_to_rules
 
 DUMMY_PATH = Path("test.py")
 
@@ -22,7 +23,7 @@ def greet():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([SUM002(config)])
+        rules = make_type_to_rules(SUM002(config))
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, fix=True, config=config)
 
         assert fixed is not None
@@ -36,7 +37,7 @@ def greet():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([SUM002(config)])
+        rules = make_type_to_rules(SUM002(config))
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, fix=True, config=config)
 
         assert fixed is None
@@ -53,7 +54,7 @@ def greet():
 x = 42
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([SUM002(config)])
+        rules = make_type_to_rules(SUM002(config))
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, fix=True, config=config)
 
         assert fixed is not None
@@ -69,7 +70,7 @@ def greet():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([SUM002(config)])
+        rules = make_type_to_rules(SUM002(config))
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, fix=False, config=config)
 
         assert fixed is None
@@ -82,7 +83,7 @@ def greet():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([SUM002(config)])
+        rules = make_type_to_rules(SUM002(config))
 
         _, fixed1, _ = check_file(source, DUMMY_PATH, rules, fix=True, config=config)
         assert fixed1 is not None

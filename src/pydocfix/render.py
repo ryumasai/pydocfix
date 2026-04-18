@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 OutputFormat = Literal["full", "concise"]
 
 
-def _fix_tag(diag: Diagnostic, config: Config | None, color: bool = True) -> str:
+def _fix_tag(diag: Diagnostic, config: Config | None) -> str:
     """Return the fix tag string for a diagnostic (e.g. '[]', '[safe]', '[unsafe]')."""
     from pydocfix.rules._base import Applicability, effective_applicability
 
@@ -69,7 +69,7 @@ def render_diagnostic(
     """
     path = display_path or diag.filepath
     start = diag.range.start
-    tag = _fix_tag(diag, config, color=color)
+    tag = _fix_tag(diag, config)
     sep = _ansi(":", _DIM, color=color)
     rule_s = _ansi(diag.rule, _RED, _BOLD, color=color)
     header = f"{path}{sep}{start.lineno}{sep}{start.col}{sep} {rule_s} {tag} {diag.message}"

@@ -245,7 +245,8 @@ def _matches_any(code: str, patterns: frozenset[str]) -> bool:
 
 def effective_applicability(diag: Diagnostic, config: Config | None = None) -> Applicability:
     """Return the effective applicability of a diagnostic's fix, after config overrides."""
-    assert diag.fix is not None
+    if diag.fix is None:
+        raise ValueError("effective_applicability() requires a diagnostic with a fix; got fix=None")
     applicability = diag.fix.applicability
     if config is not None:
         code = diag.rule.upper()
@@ -369,18 +370,6 @@ class RuleRegistry:
         """Get the CST node type to rules mapping."""
         return dict(self._by_kind)
 
-    def build_type_to_rules_map(self) -> dict[type, list[BaseRule]]:
-        """Build CST node type to rules dispatch map.
-
-        This is equivalent to the type_to_rules property but provided
-        as a method for clarity when used in check_file().
-
-        Returns:
-            Dictionary mapping CST node types to lists of applicable rules.
-
-        """
-        return self.type_to_rules
-
     def filter_by_codes(
         self,
         ignore: frozenset[str] | None = None,
@@ -399,14 +388,11 @@ class RuleRegistry:
         ignored = ignore or frozenset()
         selected = select or frozenset()
 
-        def _matches(code: str, patterns: frozenset[str]) -> bool:
-            return any(code == p or code.startswith(p) for p in patterns)
-
         filtered = RuleRegistry()
         for rule in self.all_rules():
-            if _matches(rule.code, ignored):
+            if _matches_any(rule.code, ignored):
                 continue
-            if selected and not _matches(rule.code, selected):
+            if selected and not _matches_any(rule.code, selected):
                 continue
             filtered.register(rule)
 

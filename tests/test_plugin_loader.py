@@ -86,3 +86,38 @@ class MYRULE001(BaseRule):
         rules = load_plugin_rules(plugin_paths=[tmp_path])
 
         assert any(r.code == "MYRULE001" for r in rules)
+
+    def test_duplicate_code_uses_plugin_modules_order(self, tmp_path, monkeypatch):
+        """Duplicate rule codes are resolved deterministically by module list order."""
+        first = tmp_path / "plugin_first.py"
+        second = tmp_path / "plugin_second.py"
+
+        first.write_text("""\
+from pydocfix.rules._base import BaseRule
+
+class DUPFIRST(BaseRule):
+    code = "DUP001"
+    enabled_by_default = True
+
+    def diagnose(self, node, ctx):
+        return iter([])
+""")
+        second.write_text("""\
+from pydocfix.rules._base import BaseRule
+
+class DUPSECOND(BaseRule):
+    code = "DUP001"
+    enabled_by_default = True
+
+    def diagnose(self, node, ctx):
+        return iter([])
+""")
+
+        monkeypatch.syspath_prepend(str(tmp_path))
+
+        rules = load_plugin_rules(plugin_modules=["plugin_second", "plugin_first"])
+        dup_rules = [r for r in rules if r.code == "DUP001"]
+
+        assert len(dup_rules) == 1
+        assert dup_rules[0].__module__ == "plugin_second"
+        assert dup_rules[0].__name__ == "DUPSECOND"

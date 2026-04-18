@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydocfix.checker import build_rules_map, check_file
+from pydocfix.checker import check_file
 from pydocfix.config import Config
 from pydocfix.rules.sum.sum002 import SUM002
+from tests.helpers import make_type_to_rules
 
 DUMMY_PATH = Path("test_dummy.py")
 
 
 def _type_to_rules(*rules):
-    return build_rules_map(rules)
+    return make_type_to_rules(*rules)
 
 
 class TestCheckFile:
@@ -115,20 +116,3 @@ def greet():
         _, fixed, _ = check_file(source, DUMMY_PATH, rules, config=config)
 
         assert fixed is None
-
-
-class TestBuildRulesMap:
-    """Tests for build_rules_map()."""
-
-    def test_single_rule(self):
-        """build_rules_map creates correct dispatch map."""
-        rule = SUM002(Config())
-        rules_map = build_rules_map([rule])
-
-        assert len(rules_map) > 0
-
-    def test_empty_rules(self):
-        """build_rules_map handles empty input."""
-        rules_map = build_rules_map([])
-
-        assert rules_map == {}

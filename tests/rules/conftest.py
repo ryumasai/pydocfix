@@ -8,6 +8,7 @@ from pathlib import Path
 
 from pydocfix.checker import check_file
 from pydocfix.rules import BaseRule
+from tests.helpers import make_type_to_rules
 
 
 def load_fixture(fixture_name: str, category: str) -> Path:
@@ -48,11 +49,10 @@ def render_fixture(
     Returns:
         Rendered diagnostic string (ruff-style), deduplicated by (rule, lineno, col).
     """
-    from pydocfix.checker import build_rules_map
     from pydocfix.render import render_diagnostic
 
     source = fixture_path.read_text(encoding="utf-8")
-    type_to_rules = build_rules_map(rules)
+    type_to_rules = make_type_to_rules(*rules)
     diagnostics, _, _ = check_file(source, fixture_path, type_to_rules)
 
     seen: set[tuple[str, int, int]] = set()
@@ -85,10 +85,8 @@ def fix_fixture(
     Returns:
         Fixed source string, or None if no fix was applied.
     """
-    from pydocfix.checker import build_rules_map
-
     source = fixture_path.read_text(encoding="utf-8")
-    type_to_rules = build_rules_map(rules)
+    type_to_rules = make_type_to_rules(*rules)
     _, fixed_source, _ = check_file(
         source,
         fixture_path,

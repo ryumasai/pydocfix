@@ -6,9 +6,10 @@ from pathlib import Path
 
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.checker import build_rules_map, check_file
+from pydocfix.checker import check_file
 from pydocfix.config import Config
 from pydocfix.rules._base import BaseRule, DiagnoseContext
+from tests.helpers import make_type_to_rules
 
 
 class TESTPLUGIN001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
@@ -34,7 +35,7 @@ def foo():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([TESTPLUGIN001(config)])
+        rules = make_type_to_rules(TESTPLUGIN001(config))
         diagnostics, _, _ = check_file(source, Path("test.py"), rules, config=config)
 
         assert any(d.rule == "TESTPLUGIN001" for d in diagnostics)
@@ -47,7 +48,7 @@ def foo():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([TESTPLUGIN001(config)])
+        rules = make_type_to_rules(TESTPLUGIN001(config))
         diagnostics, _, _ = check_file(source, Path("test.py"), rules, config=config)
 
         assert not any(d.rule == "TESTPLUGIN001" for d in diagnostics)
@@ -62,7 +63,7 @@ def foo():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([TESTPLUGIN001(config), SUM002(config)])
+        rules = make_type_to_rules(TESTPLUGIN001(config), SUM002(config))
         diagnostics, _, _ = check_file(source, Path("test.py"), rules, config=config)
 
         codes = {d.rule for d in diagnostics}

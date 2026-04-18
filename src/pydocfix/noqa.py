@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-# Matches an inline `# noqa` directive anywhere in a line.
+# Matches an inline noqa directive anywhere in a line.
 # Optional `: CODE1, CODE2` part captures specific codes to suppress.
 _RE_INLINE_NOQA: re.Pattern[str] = re.compile(
     r"#\s*noqa\b(?:\s*:\s*(?P<codes>[^#\n]+))?",
@@ -44,30 +44,8 @@ class NoqaDirective:
         return self.codes is None or code.upper() in self.codes
 
 
-def parse_inline_noqa(line: str) -> NoqaDirective | None:
-    """Parse an inline ``# noqa`` directive from a single source line.
-
-    For docstrings, *line* should be the line containing the closing
-    triple-quote (``\"\"\"  # noqa: PRM001``).
-
-    Returns ``None`` when no ``noqa`` directive is present.
-    """
-    m = _RE_INLINE_NOQA.search(line)
-    if m is None:
-        return None
-    raw_codes = m.group("codes")
-    if not raw_codes or not raw_codes.strip():
-        # Blanket suppression: `# noqa` with nothing after
-        return NoqaDirective(codes=None)
-    codes = _parse_codes(raw_codes)
-    if not codes:
-        # Codes section present but no valid codes found — treat as blanket
-        return NoqaDirective(codes=None)
-    return NoqaDirective(codes=codes)
-
-
 def find_inline_noqa(line: str) -> tuple[NoqaDirective, tuple[int, int]] | None:
-    """Like ``parse_inline_noqa`` but also returns the ``(start, end)`` character span.
+    """Parse an inline ``# noqa`` directive and return its span.
 
     The span is the start and end character positions of the ``# noqa`` match
     within *line*, suitable for computing byte offsets into the source file.
@@ -84,6 +62,18 @@ def find_inline_noqa(line: str) -> tuple[NoqaDirective, tuple[int, int]] | None:
     if not codes:
         return NoqaDirective(codes=None), (m.start(), m.end())
     return NoqaDirective(codes=codes), (m.start(), m.end())
+
+
+def parse_inline_noqa(line: str) -> NoqaDirective | None:
+    """Parse an inline ``# noqa`` directive from a single source line.
+
+    For docstrings, *line* should be the line containing the closing
+    triple-quote (``\"\"\"  # noqa: PRM001``).
+
+    Returns ``None`` when no ``noqa`` directive is present.
+    """
+    result = find_inline_noqa(line)
+    return result[0] if result is not None else None
 
 
 def parse_file_noqa(lines: list[str]) -> NoqaDirective | None:

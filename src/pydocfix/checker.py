@@ -95,26 +95,6 @@ def _locate_docstring(
     )
 
 
-def build_rules_map(rules: Iterable[BaseRule]) -> dict[type, list[BaseRule]]:
-    """Build cst->rules dispatch map.
-
-    Deprecated: Use RuleRegistry instead.
-    This function is kept for backward compatibility with existing tests.
-
-    Args:
-        rules: Iterable of rule instances.
-
-    Returns:
-        Dictionary mapping CST node types to lists of applicable rules.
-
-    """
-    type_to_rules: dict[type, list[BaseRule]] = {}
-    for rule in rules:
-        for kind in rule._targets:
-            type_to_rules.setdefault(kind, []).append(rule)
-    return type_to_rules
-
-
 def _has_overlap(accepted: Iterable[Edit], candidate: Fix) -> bool:
     """Return True if any edit in *candidate* overlaps with *accepted* edits."""
     for new in candidate.edits:
@@ -272,14 +252,16 @@ def _apply_nonoverlapping_fixes(
     for d in ds_diagnostics:
         if not is_applicable(d, unsafe_fixes, config):
             continue
-        assert d.fix is not None
-        if _has_overlap(accepted_edits, d.fix):
+        fix = d.fix
+        if fix is None:
+            continue
+        if _has_overlap(accepted_edits, fix):
             logger.warning(
                 "skipping fix from rule %s (overlapping edits)",
                 d.rule,
             )
             continue
-        accepted_edits.extend(d.fix.edits)
+        accepted_edits.extend(fix.edits)
         applied += 1
 
     if not accepted_edits:

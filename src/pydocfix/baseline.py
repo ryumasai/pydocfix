@@ -132,16 +132,22 @@ def filter_baseline_violations(
     diagnostics: list[Diagnostic],
     baseline: BaselineData,
     filepath: str,
+    *,
+    prebuilt_lookup: dict[str, frozenset[tuple[str, str]]] | None = None,
 ) -> list[Diagnostic]:
     """Return only diagnostics that are *not* present in the baseline.
 
     A diagnostic is considered "in the baseline" when the (symbol, code) pair
     for its file appears in the loaded baseline data.
+
+    *prebuilt_lookup* may be supplied to avoid rebuilding the lookup structure
+    on each call when filtering multiple files against the same baseline.
+    Use ``_build_lookup(baseline)`` to pre-compute it.
     """
     if not baseline:
         return diagnostics
 
-    lookup = _build_lookup(baseline)
+    lookup = prebuilt_lookup if prebuilt_lookup is not None else _build_lookup(baseline)
     baseline_pairs = lookup.get(filepath, frozenset())
     if not baseline_pairs:
         return diagnostics

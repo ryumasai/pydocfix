@@ -34,7 +34,7 @@ def discover_rules_in_module(module_name: str) -> list[type[BaseRule]]:
     try:
         module = importlib.import_module(module_name)
     except ImportError as e:
-        logger.error(f"Failed to import plugin module '{module_name}': {e}")
+        logger.error("Failed to import plugin module '%s': %s", module_name, e)
         raise
 
     rules: list[type[BaseRule]] = []
@@ -46,10 +46,10 @@ def discover_rules_in_module(module_name: str) -> list[type[BaseRule]]:
                 continue
             # Verify it has a non-empty code
             if not obj.code:
-                logger.warning(f"Skipping rule class {obj.__name__} in {module_name}: missing 'code' attribute")
+                logger.warning("Skipping rule class %s in %s: missing 'code' attribute", obj.__name__, module_name)
                 continue
             rules.append(obj)
-            logger.debug(f"Discovered rule {obj.code} from {module_name}")
+            logger.debug("Discovered rule %s from %s", obj.code, module_name)
 
     return rules
 
@@ -67,7 +67,7 @@ def discover_rules_in_package(package_name: str) -> list[type[BaseRule]]:
     try:
         package = importlib.import_module(package_name)
     except ImportError as e:
-        logger.error(f"Failed to import plugin package '{package_name}': {e}")
+        logger.error("Failed to import plugin package '%s': %s", package_name, e)
         return []
 
     rules: list[type[BaseRule]] = []
@@ -76,7 +76,7 @@ def discover_rules_in_package(package_name: str) -> list[type[BaseRule]]:
     if hasattr(package, "__path__"):
         package_path = package.__path__
     else:
-        logger.warning(f"{package_name} is not a package, treating as module")
+        logger.warning("%s is not a package, treating as module", package_name)
         return discover_rules_in_module(package_name)
 
     # Walk through all modules in the package
@@ -88,7 +88,7 @@ def discover_rules_in_package(package_name: str) -> list[type[BaseRule]]:
             discovered = discover_rules_in_module(modname)
             rules.extend(discovered)
         except ImportError:
-            logger.warning(f"Failed to import {modname}, skipping")
+            logger.warning("Failed to import %s, skipping", modname)
             continue
 
     return rules
@@ -108,11 +108,11 @@ def discover_rules_in_path(path: Path) -> list[type[BaseRule]]:
 
     """
     if not path.exists():
-        logger.error(f"Plugin path does not exist: {path}")
+        logger.error("Plugin path does not exist: %s", path)
         return []
 
     if not path.is_dir():
-        logger.error(f"Plugin path is not a directory: {path}")
+        logger.error("Plugin path is not a directory: %s", path)
         return []
 
     rules: list[type[BaseRule]] = []
@@ -136,7 +136,7 @@ def discover_rules_in_path(path: Path) -> list[type[BaseRule]]:
                     discovered = discover_rules_in_module(module_name)
                     rules.extend(discovered)
                 except (ImportError, TypeError) as e:
-                    logger.debug(f"Could not import {module_name} from {path}: {e}")
+                    logger.debug("Could not import %s from %s: %s", module_name, path, e)
                     continue
         finally:
             # Remove from sys.path
@@ -159,43 +159,56 @@ def load_plugin_rules(
     Returns:
         List of all discovered BaseRule subclass types.
 
+    Duplicate-code precedence is deterministic:
+    1) ``plugin_modules`` entries (in the given order)
+    2) ``plugin_paths`` entries (in the given order)
+    3) within the same source, lexicographically by fully-qualified class name
+
     """
-    rules: list[type[BaseRule]] = []
+    discovered_rules: list[tuple[tuple[int, int], type[BaseRule]]] = []
 
     # Load from modules/packages
     if plugin_modules:
-        for module_name in plugin_modules:
+        for module_index, module_name in enumerate(plugin_modules):
             try:
                 # Try as package first, fall back to module
                 discovered = discover_rules_in_package(module_name)
                 if not discovered:
                     discovered = discover_rules_in_module(module_name)
-                rules.extend(discovered)
-                logger.info(f"Loaded {len(discovered)} rule(s) from plugin '{module_name}'")
+                discovered_rules.extend(((0, module_index), rule_cls) for rule_cls in discovered)
+                logger.info("Loaded %d rule(s) from plugin '%s'", len(discovered), module_name)
             except Exception as e:
-                logger.error(f"Failed to load plugin '{module_name}': {e}")
+                logger.error("Failed to load plugin '%s': %s", module_name, e)
 
     # Load from paths
     if plugin_paths:
-        for path in plugin_paths:
+        for path_index, path in enumerate(plugin_paths):
             try:
                 discovered = discover_rules_in_path(path)
-                rules.extend(discovered)
-                logger.info(f"Loaded {len(discovered)} rule(s) from path '{path}'")
+                discovered_rules.extend(((1, path_index), rule_cls) for rule_cls in discovered)
+                logger.info("Loaded %d rule(s) from path '%s'", len(discovered), path)
             except Exception as e:
-                logger.error(f"Failed to load plugins from '{path}': {e}")
+                logger.error("Failed to load plugins from '%s': %s", path, e)
 
-    # Check for duplicate codes
-    seen_codes: dict[str, type[BaseRule]] = {}
-    for rule_cls in rules:
-        if rule_cls.code in seen_codes:
-            existing = seen_codes[rule_cls.code]
+    # Deduplicate by rule code using deterministic precedence.
+    grouped_by_code: dict[str, list[tuple[tuple[int, int], type[BaseRule]]]] = {}
+    for priority, rule_cls in discovered_rules:
+        grouped_by_code.setdefault(rule_cls.code, []).append((priority, rule_cls))
+
+    selected: list[tuple[tuple[int, int], type[BaseRule]]] = []
+    for code, candidates in grouped_by_code.items():
+        ordered = sorted(candidates, key=lambda x: (x[0][0], x[0][1], x[1].__module__, x[1].__name__))
+        winner_priority, winner = ordered[0]
+        for _priority, contender in ordered[1:]:
             logger.warning(
-                f"Duplicate rule code '{rule_cls.code}': "
-                f"{existing.__module__}.{existing.__name__} and "
-                f"{rule_cls.__module__}.{rule_cls.__name__}"
+                "Duplicate rule code '%s': keeping %s.%s, ignoring %s.%s",
+                code,
+                winner.__module__,
+                winner.__name__,
+                contender.__module__,
+                contender.__name__,
             )
-        else:
-            seen_codes[rule_cls.code] = rule_cls
+        selected.append((winner_priority, winner))
 
-    return rules
+    selected.sort(key=lambda x: (x[0][0], x[0][1], x[1].__module__, x[1].__name__))
+    return [rule_cls for _priority, rule_cls in selected]

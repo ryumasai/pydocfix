@@ -89,8 +89,10 @@ def _worker_check(args: tuple) -> _FileResult:
     """Worker function — runs in a child process."""
     filepath, fix, unsafe_fixes, config_obj = args
 
-    assert _worker_type_to_rules is not None
-    assert _worker_known_rule_codes is not None
+    if _worker_type_to_rules is None or _worker_known_rule_codes is None:
+        raise RuntimeError(
+            "Worker process not initialized: _worker_init() must be called before _worker_check()"
+        )
     return _check_one_file(filepath, _worker_type_to_rules, fix, unsafe_fixes, config_obj, _worker_known_rule_codes)
 
 
@@ -225,9 +227,9 @@ def check(
                 plugin_paths=plugin_paths_objs or None,
             )
             if plugin_rule_classes:
-                logger.info(f"Loaded {len(plugin_rule_classes)} plugin rule(s)")
+                logger.info("Loaded %d plugin rule(s)", len(plugin_rule_classes))
         except Exception as e:
-            logger.error(f"Failed to load plugins: {e}")
+            logger.error("Failed to load plugins: %s", e)
 
     # Determine project root for stable relative-path keys in baseline files
     _toml = find_pyproject_toml()
@@ -282,6 +284,10 @@ def check(
     remaining_diagnostics: list = []
     # Collect raw (pre-baseline-filter) violations for baseline generation / auto-regen
     raw_violations_by_file: dict[str, list] = {}
+    # Pre-build baseline lookup once so it is not rebuilt per-file in the loop
+    from pydocfix.baseline import _build_lookup as _build_baseline_lookup
+
+    baseline_lookup = _build_baseline_lookup(baseline_data) if baseline_data else {}
 
     # --- Check files (parallel or sequential) ---
     do_fix = fix or diff
@@ -319,8 +325,18 @@ def check(
 
         # Apply baseline filtering to both first-pass and remaining diagnostics
         if baseline_data:
-            diagnostics = filter_baseline_violations(diagnostics, baseline_data, fp_str)
-            remaining = filter_baseline_violations(remaining, baseline_data, fp_str)
+            diagnostics = filter_baseline_violations(
+                diagnostics,
+                baseline_data,
+                fp_str,
+                prebuilt_lookup=baseline_lookup,
+            )
+            remaining = filter_baseline_violations(
+                remaining,
+                baseline_data,
+                fp_str,
+                prebuilt_lookup=baseline_lookup,
+            )
 
         if not diagnostics:
             continue
@@ -355,7 +371,7 @@ def check(
                     render_diagnostic(
                         d, source, display_path=display_path, config=config, color=use_color, concise=is_concise
                     ),
-                    color=True if use_color else None,
+                    color=use_color or None,
                 )
                 if not is_concise:
                     click.echo()
@@ -372,7 +388,7 @@ def check(
                 _ansi("Error: ", _RED, _BOLD, color=use_color)
                 + "specify a baseline path with --baseline or [tool.pydocfix] baseline in pyproject.toml.",
                 err=True,
-                color=True if use_color else None,
+                color=use_color or None,
             )
             sys.exit(2)
         _generate_baseline(raw_violations_by_file, effective_baseline_path)
@@ -380,7 +396,7 @@ def check(
         click.echo(
             _ansi("Baseline generated: ", _GREEN, _BOLD, color=use_color)
             + f"{effective_baseline_path} ({total_raw} violation(s) across {len(raw_violations_by_file)} file(s))",
-            color=True if use_color else None,
+            color=use_color or None,
         )
         sys.exit(0)
 
@@ -401,7 +417,14 @@ def check(
     elif fix:
         _summarize_fix(total_fixed, remaining, remaining_diagnostics, unsafe_fixes, config, color=use_color)
     elif diff:
-        _summarize_check(total_violations, total_safe_fixable, total_unsafe_fixable, diff=True, unsafe_fixes=unsafe_fixes, color=use_color)
+        _summarize_check(
+            total_violations,
+            total_safe_fixable,
+            total_unsafe_fixable,
+            diff=True,
+            unsafe_fixes=unsafe_fixes,
+            color=use_color,
+        )
     else:
         _summarize_check(total_violations, total_safe_fixable, total_unsafe_fixable, color=use_color)
 
@@ -420,7 +443,15 @@ def _should_use_color(no_color_flag: bool) -> bool:
     return sys.stdout.isatty()
 
 
-def _summarize_check(total: int, safe: int, unsafe: int, *, diff: bool = False, unsafe_fixes: bool = False, color: bool = False) -> None:
+def _summarize_check(
+    total: int,
+    safe: int,
+    unsafe: int,
+    *,
+    diff: bool = False,
+    unsafe_fixes: bool = False,
+    color: bool = False,
+) -> None:
     """Print summary for check and diff modes."""
     from pydocfix.colorize import _BOLD, _RED
     from pydocfix.colorize import ansi as _ansi
@@ -428,7 +459,9 @@ def _summarize_check(total: int, safe: int, unsafe: int, *, diff: bool = False, 
     found_s = _ansi(f"Found {total} violation(s).", _RED, _BOLD, color=color)
     safe_s = _ansi(str(safe), _BOLD, color=color)
     unsafe_s = _ansi(str(unsafe), _BOLD, color=color)
-    _echo = lambda msg: click.echo(msg, color=True if color else None)  # noqa: E731
+
+    def _echo(msg: str) -> None:
+        click.echo(msg, color=color or None)
     if diff:
         if safe and unsafe:
             if not unsafe_fixes:
@@ -472,7 +505,9 @@ def _summarize_fix(
     from pydocfix.colorize import ansi as _ansi
     from pydocfix.rules import Applicability, effective_applicability
 
-    _echo = lambda msg: click.echo(msg, color=True if color else None)  # noqa: E731
+    def _echo(msg: str) -> None:
+        click.echo(msg, color=color or None)
+
     if total_fixed and not remaining:
         _echo(_ansi(f"Fixed {total_fixed} violation(s). No issues remaining.", _GREEN, color=color))
     elif total_fixed and remaining:

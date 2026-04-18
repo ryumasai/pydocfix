@@ -389,7 +389,8 @@ def print_readme_section(
             f"  [{t.target_name}] pydocfix:  {t.parallel.violation_count:,} ({len(t.parallel.rule_codes)} unique rules)"
         )
         print(
-            f"  [{t.target_name}] pydoclint: {t.pydoclint.violation_count:,} ({len(t.pydoclint.rule_codes)} unique rules)"
+            f"  [{t.target_name}] pydoclint: {t.pydoclint.violation_count:,} "
+            f"({len(t.pydoclint.rule_codes)} unique rules)"
         )
     print()
 

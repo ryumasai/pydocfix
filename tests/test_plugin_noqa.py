@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydocfix.checker import build_rules_map, check_file
+from pydocfix.checker import check_file
 from pydocfix.config import Config
 from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from tests.helpers import make_type_to_rules
 
 
 class PLUGNOQA001(BaseRule):
@@ -37,7 +38,7 @@ def foo():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([PLUGNOQA001(config)])
+        rules = make_type_to_rules(PLUGNOQA001(config))
         diagnostics, _, _ = check_file(
             source,
             Path("test.py"),
@@ -56,7 +57,7 @@ def foo():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([PLUGNOQA001(config)])
+        rules = make_type_to_rules(PLUGNOQA001(config))
         diagnostics, _, _ = check_file(
             source,
             Path("test.py"),
@@ -76,7 +77,7 @@ def foo():
     pass
 '''
         config = Config(skip_short_docstrings=False)
-        rules = build_rules_map([PLUGNOQA001(config), SUM002(config)])
+        rules = make_type_to_rules(PLUGNOQA001(config), SUM002(config))
         diagnostics, _, _ = check_file(
             source,
             Path("test.py"),
