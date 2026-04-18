@@ -7,7 +7,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext, Diagnostic
+from pydocfix._types import ActivationCondition, Diagnostic
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 
 class RTN105(BaseRule[GoogleReturn | NumPyReturns]):

@@ -7,7 +7,9 @@ from typing import Final
 
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
+from pydocfix._edits import insert_at
+from pydocfix._types import Applicability, Diagnostic, Fix
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 _DEFAULT_PERIOD: Final[str] = "."
 _PERIOD_SET: Final[frozenset[str]] = frozenset([_DEFAULT_PERIOD, "!", "?"])

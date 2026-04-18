@@ -38,7 +38,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
+from pydocfix._types import Applicability, Diagnostic, Edit, Fix
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 class XYZ000(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
     """One-line description."""
@@ -73,10 +74,11 @@ self._make_diagnostic(ctx, message, *, fix=None, target)
 
 ---
 
-## Edit Helpers (from `_base.py`)
+## Edit Helpers (from `_edits.py`)
 
 ```python
-from pydocfix.rules._base import replace_token, insert_at, delete_range, Edit
+from pydocfix._edits import replace_token, insert_at, delete_range
+from pydocfix._types import Edit
 
 replace_token(token, new_text)      # replace a CST token entirely
 insert_at(offset, text)             # insert text at a byte offset (no deletion)
@@ -97,7 +99,7 @@ from pydocfix.rules._helpers import (
     delete_entry_fix,    # Fix that deletes a single entry within a section
     detect_docstring_style,  # "google" | "numpy" | "plain"
 )
-from pydocfix.rules._base import detect_section_indent, section_append_edit
+from pydocfix._edits import detect_section_indent, section_append_edit
 ```
 
 ---
@@ -105,7 +107,7 @@ from pydocfix.rules._base import detect_section_indent, section_append_edit
 ## Applicability
 
 ```python
-from pydocfix.rules._base import Applicability
+from pydocfix._types import Applicability
 
 Applicability.SAFE         # always applied with --fix
 Applicability.UNSAFE       # requires --unsafe-fixes

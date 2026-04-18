@@ -6,7 +6,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from pydocfix._types import Diagnostic
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 
 class SUM001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):

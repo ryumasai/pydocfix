@@ -7,7 +7,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext, Diagnostic
+from pydocfix._types import ActivationCondition, Diagnostic
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token, get_signature_params
 
 

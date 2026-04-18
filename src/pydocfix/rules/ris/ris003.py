@@ -7,7 +7,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleException, NumPyException
 
-from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from pydocfix._types import Diagnostic
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 
 class RIS003(BaseRule[GoogleException | NumPyException]):

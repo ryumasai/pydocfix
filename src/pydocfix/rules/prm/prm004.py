@@ -10,15 +10,9 @@ from pydocstring import (
     NumPySection,
 )
 
-from pydocfix.rules._base import (
-    Applicability,
-    BaseRule,
-    DiagnoseContext,
-    Diagnostic,
-    Fix,
-    detect_section_indent,
-    insert_at,
-)
+from pydocfix._edits import detect_section_indent, insert_at
+from pydocfix._types import Applicability, Diagnostic, Fix
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules.prm._helpers import (
     bare_name,
     get_documented_param_nodes,

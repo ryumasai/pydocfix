@@ -39,7 +39,7 @@ class TestDiscoverRulesInPath:
         """Discovers rules from a Python file in a path."""
         rule_file = tmp_path / "custom_rules.py"
         rule_file.write_text("""\
-from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.rules._base import BaseRule
 
 class MY001(BaseRule):
     code = "MY001"
@@ -78,7 +78,7 @@ class TestLoadPluginRules:
         """Loads rules from a path directory."""
         rule_file = tmp_path / "my_rules.py"
         rule_file.write_text("""\
-from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.rules._base import BaseRule
 
 class MYRULE001(BaseRule):
     code = "MYRULE001"

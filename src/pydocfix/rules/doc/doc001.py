@@ -12,14 +12,8 @@ from pydocstring import (
     NumPySectionKind,
 )
 
-from pydocfix.rules._base import (
-    Applicability,
-    BaseRule,
-    DiagnoseContext,
-    Diagnostic,
-    Edit,
-    Fix,
-)
+from pydocfix._types import Applicability, Diagnostic, Edit, Fix
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 # Canonical section order for Google-style docstrings.
 # Sections not in this list (UNKNOWN) sort to the end.

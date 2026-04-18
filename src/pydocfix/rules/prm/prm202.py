@@ -8,7 +8,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
+from pydocfix._types import Applicability, Diagnostic, Edit, Fix
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules.prm._helpers import bare_name, get_param_name_token
 
 _DEFAULT_RE = re.compile(r"\bdefault[s]?\b", re.IGNORECASE)

@@ -1,8 +1,7 @@
-"""Shared infrastructure for linting rules.
+"""Core abstractions for linting rules.
 
-This module provides the core abstractions (``BaseRule``, ``DiagnoseContext``)
-and re-exports the public symbols from the split sub-modules so that existing
-``from pydocfix.rules._base import X`` imports continue to work.
+This module provides ``BaseRule`` (the ABC all rules subclass) and
+``DiagnoseContext`` (the data passed to each rule's ``diagnose`` method).
 """
 
 from __future__ import annotations
@@ -21,63 +20,12 @@ from pydocstring import (
 )
 
 from pydocfix._types import (
-    ActivationCondition as ActivationCondition,
-)
-from pydocfix._types import (
-    Applicability as Applicability,
-)
-from pydocfix._types import (
-    Diagnostic as Diagnostic,
-)
-from pydocfix._types import (
-    DocstringLocation as DocstringLocation,
-)
-from pydocfix._types import (
-    Edit as Edit,
-)
-from pydocfix._types import (
-    Fix as Fix,
-)
-from pydocfix._types import (
-    Offset as Offset,
-)
-from pydocfix._types import (
-    Range as Range,
-)
-from pydocfix._types import (
-    Severity as Severity,
-)
-
-# Re-export data types so existing imports keep working.
-from pydocfix.rules._edits import (
-    apply_edits as apply_edits,
-)
-from pydocfix.rules._edits import (
-    delete_range as delete_range,
-)
-from pydocfix.rules._edits import (
-    detect_section_indent as detect_section_indent,
-)
-from pydocfix.rules._edits import (
-    insert_at as insert_at,
-)
-from pydocfix.rules._edits import (
-    replace_token as replace_token,
-)
-from pydocfix.rules._edits import (
-    section_append_edit as section_append_edit,
-)
-from pydocfix.rules._registry import (
-    RuleRegistry as RuleRegistry,
-)
-from pydocfix.rules._registry import (
-    _matches_any as _matches_any,
-)
-from pydocfix.rules._registry import (
-    effective_applicability as effective_applicability,
-)
-from pydocfix.rules._registry import (
-    is_applicable as is_applicable,
+    ActivationCondition,
+    Diagnostic,
+    DocstringLocation,
+    Fix,
+    Offset,
+    Range,
 )
 
 if TYPE_CHECKING:

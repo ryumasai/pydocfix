@@ -7,7 +7,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
-from pydocfix.rules._base import ActivationCondition, Applicability, BaseRule, DiagnoseContext, Diagnostic, Edit, Fix
+from pydocfix._types import ActivationCondition, Applicability, Diagnostic, Edit, Fix
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules.yld._helpers import get_yield_type
 
 

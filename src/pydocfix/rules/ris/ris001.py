@@ -13,15 +13,9 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix.rules._base import (
-    Applicability,
-    BaseRule,
-    DiagnoseContext,
-    Diagnostic,
-    Fix,
-    detect_section_indent,
-    section_append_edit,
-)
+from pydocfix._edits import detect_section_indent, section_append_edit
+from pydocfix._types import Applicability, Diagnostic, Fix
+from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules._helpers import build_section_stub, detect_docstring_style, has_section
 from pydocfix.rules.ris._helpers import get_raised_exceptions
 
