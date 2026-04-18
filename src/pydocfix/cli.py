@@ -401,7 +401,7 @@ def check(
     elif fix:
         _summarize_fix(total_fixed, remaining, remaining_diagnostics, unsafe_fixes, config, color=use_color)
     elif diff:
-        _summarize_check(total_violations, total_safe_fixable, total_unsafe_fixable, color=use_color)
+        _summarize_check(total_violations, total_safe_fixable, total_unsafe_fixable, diff=True, unsafe_fixes=unsafe_fixes, color=use_color)
     else:
         _summarize_check(total_violations, total_safe_fixable, total_unsafe_fixable, color=use_color)
 
@@ -420,7 +420,7 @@ def _should_use_color(no_color_flag: bool) -> bool:
     return sys.stdout.isatty()
 
 
-def _summarize_check(total: int, safe: int, unsafe: int, *, color: bool = False) -> None:
+def _summarize_check(total: int, safe: int, unsafe: int, *, diff: bool = False, unsafe_fixes: bool = False, color: bool = False) -> None:
     """Print summary for check and diff modes."""
     from pydocfix.colorize import _BOLD, _RED
     from pydocfix.colorize import ansi as _ansi
@@ -429,14 +429,33 @@ def _summarize_check(total: int, safe: int, unsafe: int, *, color: bool = False)
     safe_s = _ansi(str(safe), _BOLD, color=color)
     unsafe_s = _ansi(str(unsafe), _BOLD, color=color)
     _echo = lambda msg: click.echo(msg, color=True if color else None)  # noqa: E731
-    if safe and unsafe:
-        _echo(f"{found_s} Run --fix to auto-fix {safe_s} of them ({unsafe_s} more with --fix --unsafe-fixes).")
-    elif safe:
-        _echo(f"{found_s} Run --fix to auto-fix {safe_s} of them.")
-    elif unsafe:
-        _echo(f"{found_s} Run --fix --unsafe-fixes to fix {unsafe_s} of them.")
+    if diff:
+        if safe and unsafe:
+            if not unsafe_fixes:
+                _echo(f"{found_s} Run --diff --unsafe-fixes to also show {unsafe_s} unsafe fix(es).")
+            else:
+                _echo(f"{found_s} Run --fix --unsafe-fixes to apply all fixes.")
+        elif safe:
+            if not unsafe_fixes:
+                _echo(f"{found_s} Run --fix to apply {safe_s} fix(es).")
+            else:
+                _echo(f"{found_s} Run --fix --unsafe-fixes to apply all fixes.")
+        elif unsafe:
+            if not unsafe_fixes:
+                _echo(f"{found_s} Run --diff --unsafe-fixes to show the diff.")
+            else:
+                _echo(f"{found_s} Run --fix --unsafe-fixes to apply the fix.")
+        else:
+            _echo(f"{found_s} No auto-fixes available.")
     else:
-        _echo(f"{found_s} No auto-fixes available.")
+        if safe and unsafe:
+            _echo(f"{found_s} Run --fix to auto-fix {safe_s} of them ({unsafe_s} more with --fix --unsafe-fixes).")
+        elif safe:
+            _echo(f"{found_s} Run --fix to auto-fix {safe_s} of them.")
+        elif unsafe:
+            _echo(f"{found_s} Run --fix --unsafe-fixes to fix {unsafe_s} of them.")
+        else:
+            _echo(f"{found_s} No auto-fixes available.")
 
 
 def _summarize_fix(

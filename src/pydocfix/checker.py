@@ -6,7 +6,7 @@ import ast
 import dataclasses
 import logging
 import re
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Final, NamedTuple
 
@@ -52,36 +52,6 @@ class _NoqaState(NamedTuple):
     span: tuple[int, int] | None
     used_codes: set[str]
     suppressed_any: bool
-
-
-def _extract_docstrings(source: str, filepath: Path, tree: ast.AST | None = None) -> Iterator[_DocstringInfo]:
-    """Yield `_DocstringInfo` for every docstring in *source*.
-
-    If *tree* is provided it is used directly; otherwise the source is parsed.
-    Sharing a pre-parsed tree with callers ensures ``id()``-based lookups stay
-    consistent across the same AST instance.
-    """
-    if tree is None:
-        try:
-            tree = ast.parse(source, filename=str(filepath))
-        except SyntaxError:
-            logger.warning(f"{filepath}: could not parse (syntax error), skipping")
-            return
-
-    for node in ast.walk(tree):
-        try:
-            docstr: Final[str | None] = ast.get_docstring(node, clean=False)  # type: ignore
-        except TypeError:
-            continue  # node cannot have a docstring
-
-        if docstr is None:
-            continue  # node has no docstring
-
-        yield _DocstringInfo(
-            docstr,
-            node.body[0],  # type: ignore
-            node,
-        )
 
 
 _REGEX_OPENING_QUOTES: Final = re.compile(r"(?P<prefix>[rRuUfFbB]{0,2})(?P<quote>\"\"\"|\'{3}|\"|\')")
@@ -345,15 +315,6 @@ def _compute_symbol(parent_ast: ast.AST, grandparent: ast.AST | None) -> str:
     if isinstance(parent_ast, ast.ClassDef):
         return parent_ast.name
     return ""  # ast.Module or unexpected
-
-
-def _build_parent_map(tree: ast.AST) -> dict[int, ast.AST]:
-    """Return a mapping from ``id(child)`` to the child's direct parent node."""
-    parent_map: dict[int, ast.AST] = {}
-    for node in ast.walk(tree):
-        for child in ast.iter_child_nodes(node):
-            parent_map[id(child)] = node
-    return parent_map
 
 
 _DOCSTRING_NODE_TYPES = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
