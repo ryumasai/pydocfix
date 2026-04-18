@@ -38,21 +38,21 @@ pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a
 
 pydocfix performs linting **and** auto-fix generation in a single pass, yet is significantly faster than pydoclint (lint-only) thanks to parallel file processing:
 
-#### Parallel (default, auto-detected cores)
+#### Parallel (default, auto-detected cores — 10-core machine)
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.76 sec | 2.90 sec | **3.8x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.88 sec | 4.34 sec | **4.9x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.74 sec | 2.92 sec | **3.9x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.84 sec | 4.36 sec | **5.2x** |
 
 #### Single-threaded (`--jobs 1`)
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 1.53 sec | 2.95 sec | **1.9x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 2.00 sec | 4.34 sec | **2.2x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 2.18 sec | 2.92 sec | **1.3x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 2.41 sec | 4.36 sec | **1.8x** |
 
-> Median of 5 runs (+ 1 warmup). Parallel benchmark run on a 10-core machine; pydoclint runs single-threaded only.
+> Median of 5 runs (+ 1 warmup) via [hyperfine](https://github.com/sharkdp/hyperfine). pydoclint runs single-threaded only.
 
 ### Feature comparison
 
