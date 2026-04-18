@@ -20,6 +20,34 @@ from pydocstring import (
     PlainDocstring,
 )
 
+from pydocfix._types import (
+    ActivationCondition as ActivationCondition,
+)
+from pydocfix._types import (
+    Applicability as Applicability,
+)
+from pydocfix._types import (
+    Diagnostic as Diagnostic,
+)
+from pydocfix._types import (
+    DocstringLocation as DocstringLocation,
+)
+from pydocfix._types import (
+    Edit as Edit,
+)
+from pydocfix._types import (
+    Fix as Fix,
+)
+from pydocfix._types import (
+    Offset as Offset,
+)
+from pydocfix._types import (
+    Range as Range,
+)
+from pydocfix._types import (
+    Severity as Severity,
+)
+
 # Re-export data types so existing imports keep working.
 from pydocfix.rules._edits import (
     apply_edits as apply_edits,
@@ -50,33 +78,6 @@ from pydocfix.rules._registry import (
 )
 from pydocfix.rules._registry import (
     is_applicable as is_applicable,
-)
-from pydocfix.rules._types import (
-    ActivationCondition as ActivationCondition,
-)
-from pydocfix.rules._types import (
-    Applicability as Applicability,
-)
-from pydocfix.rules._types import (
-    Diagnostic as Diagnostic,
-)
-from pydocfix.rules._types import (
-    DocstringLocation as DocstringLocation,
-)
-from pydocfix.rules._types import (
-    Edit as Edit,
-)
-from pydocfix.rules._types import (
-    Fix as Fix,
-)
-from pydocfix.rules._types import (
-    Offset as Offset,
-)
-from pydocfix.rules._types import (
-    Range as Range,
-)
-from pydocfix.rules._types import (
-    Severity as Severity,
 )
 
 if TYPE_CHECKING:

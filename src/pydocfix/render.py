@@ -9,15 +9,14 @@ from pydocfix.colorize import ansi as _ansi
 
 if TYPE_CHECKING:
     from pydocfix.config import Config
-    from pydocfix.rules._types import Diagnostic
+    from pydocfix.rules import Diagnostic
 
 OutputFormat = Literal["full", "concise"]
 
 
 def _fix_tag(diag: Diagnostic, config: Config | None) -> str:
     """Return the fix tag string for a diagnostic (e.g. '[]', '[safe]', '[unsafe]')."""
-    from pydocfix.rules._registry import effective_applicability
-    from pydocfix.rules._types import Applicability
+    from pydocfix.rules import Applicability, effective_applicability
 
     if diag.fix is None:
         return "[]"

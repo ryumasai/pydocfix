@@ -8,6 +8,22 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pydocfix.config import Config
 
+from pydocfix._types import (
+    Applicability,
+    Diagnostic,
+    DocstringLocation,
+    Edit,
+    Fix,
+    Offset,
+    Range,
+    Severity,
+)
+from pydocfix.plugin_loader import (
+    discover_rules_in_module,
+    discover_rules_in_package,
+    discover_rules_in_path,
+    load_plugin_rules,
+)
 from pydocfix.rules._base import (
     BaseRule,
     DiagnoseContext,
@@ -32,27 +48,11 @@ from pydocfix.rules._registry import (
     effective_applicability,
     is_applicable,
 )
-from pydocfix.rules._types import (
-    Applicability,
-    Diagnostic,
-    DocstringLocation,
-    Edit,
-    Fix,
-    Offset,
-    Range,
-    Severity,
-)
 
 # --- Docstring-level rules ---
 from pydocfix.rules.doc.doc001 import DOC001
 from pydocfix.rules.doc.doc002 import DOC002
 from pydocfix.rules.doc.doc003 import DOC003
-from pydocfix.rules.plugin_loader import (
-    discover_rules_in_module,
-    discover_rules_in_package,
-    discover_rules_in_path,
-    load_plugin_rules,
-)
 
 # --- Parameter rules ---
 from pydocfix.rules.prm.prm001 import PRM001
