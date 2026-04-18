@@ -20,6 +20,7 @@ from pydocfix.rules._base import (
     Range,
     RuleRegistry,
     Severity,
+    _matches_any,
     apply_edits,
     delete_range,
     effective_applicability,
@@ -234,10 +235,6 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
 ]
 
 
-def _matches(code: str, patterns: frozenset[str]) -> bool:
-    """Return True if *code* matches any pattern (exact or prefix)."""
-    return any(code == p or code.startswith(p) for p in patterns)
-
 
 def _check_activation(rule: BaseRule, config: Config | None) -> bool:
     """Return True if *rule*'s activation condition is satisfied (or absent)."""
@@ -317,11 +314,11 @@ def build_registry(
     candidates_by_code: dict[str, BaseRule] = {}
     for cls in all_rule_classes:
         instance = cls(config)
-        if _matches(instance.code, ignored):
+        if _matches_any(instance.code, ignored):
             continue
         if (
             select_all
-            or (has_select and _matches(instance.code, selected))
+            or (has_select and _matches_any(instance.code, selected))
             or (not has_select and instance.enabled_by_default)
         ):
             if instance.code in candidates_by_code:

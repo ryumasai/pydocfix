@@ -5,7 +5,8 @@ from __future__ import annotations
 import pytest
 from click.testing import CliRunner
 
-from pydocfix.cli import _collect_files, cli
+from pydocfix.cli import cli
+from pydocfix.filewalker import collect_files
 
 
 @pytest.fixture
@@ -105,6 +106,6 @@ def greet():
         py_file = src_dir / "example.py"
         py_file.write_text("def foo():\n    pass\n", encoding="utf-8")
 
-        files = _collect_files([str(tmp_path), str(src_dir)])
+        files = collect_files([str(tmp_path), str(src_dir)])
 
         assert files.count(py_file) == 1

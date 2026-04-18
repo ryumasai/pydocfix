@@ -3,118 +3,20 @@
 from __future__ import annotations
 
 import difflib
-import fnmatch
 import logging
 import os
-import re
 import sys
-from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Final, NamedTuple
+from typing import Final
 
 import click
 
 from pydocfix import __version__
 from pydocfix.config import Config
+from pydocfix.filewalker import collect_files
+from pydocfix.parallel import FileResult, check_files_parallel, check_one_file
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Parallel file checking
-# ---------------------------------------------------------------------------
-
-
-class _FileResult(NamedTuple):
-    """Result of checking a single file."""
-
-    filepath: Path
-    source: str
-    diagnostics: list
-    new_source: str | None
-    remaining: list
-
-
-def _check_one_file(
-    filepath: Path,
-    type_to_rules: dict,
-    fix: bool,
-    unsafe_fixes: bool,
-    config: Config | None,
-    known_rule_codes: frozenset[str] | None = None,
-) -> _FileResult:
-    """Read and check a single file. Used by both serial and parallel paths."""
-    from pydocfix.checker import check_file
-
-    source = filepath.read_text(encoding="utf-8")
-    diagnostics, new_source, remaining = check_file(
-        source,
-        filepath,
-        type_to_rules,
-        fix=fix,
-        unsafe_fixes=unsafe_fixes,
-        config=config,
-        known_rule_codes=known_rule_codes,
-    )
-    return _FileResult(filepath, source, diagnostics, new_source, remaining)
-
-
-# --- multiprocessing worker ---
-
-_worker_type_to_rules: dict | None = None
-_worker_known_rule_codes: frozenset[str] | None = None
-
-
-def _worker_init(
-    ignore: list[str] | None,
-    select: list[str] | None,
-    config_obj: Config | None,
-    plugin_rule_classes: list[type] | None = None,
-) -> None:
-    """Initialize worker process by rebuilding the rule registry."""
-    global _worker_type_to_rules, _worker_known_rule_codes  # noqa: PLW0603
-    from pydocfix.rules import build_registry
-
-    registry = build_registry(
-        ignore=ignore,
-        select=select,
-        config=config_obj,
-        plugin_rules=plugin_rule_classes,
-    )
-    _worker_type_to_rules = registry.type_to_rules
-    _worker_known_rule_codes = registry.all_codes()
-
-
-def _worker_check(args: tuple) -> _FileResult:
-    """Worker function — runs in a child process."""
-    filepath, fix, unsafe_fixes, config_obj = args
-
-    if _worker_type_to_rules is None or _worker_known_rule_codes is None:
-        raise RuntimeError(
-            "Worker process not initialized: _worker_init() must be called before _worker_check()"
-        )
-    return _check_one_file(filepath, _worker_type_to_rules, fix, unsafe_fixes, config_obj, _worker_known_rule_codes)
-
-
-def _check_files_parallel(
-    targets: list[Path],
-    num_workers: int,
-    ignore: list[str] | None,
-    select: list[str] | None,
-    config: Config | None,
-    *,
-    fix: bool,
-    unsafe_fixes: bool,
-    plugin_rule_classes: list[type] | None = None,
-) -> list[_FileResult]:
-    """Check files using multiple processes."""
-    tasks = [(fp, fix, unsafe_fixes, config) for fp in targets]
-    with ProcessPoolExecutor(
-        max_workers=num_workers,
-        initializer=_worker_init,
-        initargs=(ignore, select, config, plugin_rule_classes),
-    ) as pool:
-        return list(pool.map(_worker_check, tasks))
 
 
 @click.group()
@@ -267,7 +169,7 @@ def check(
     type_to_rules: Final = registry.type_to_rules
     known_rule_codes: Final = registry.all_codes()
 
-    targets: Final = _collect_files(list(paths) or ["."], exclude=effective_exclude, root=project_root)
+    targets: Final = collect_files(list(paths) or ["."], exclude=effective_exclude, root=project_root)
     if not targets:
         logger.warning("no Python files found.")
         sys.exit(0)
@@ -291,9 +193,9 @@ def check(
 
     # --- Check files (parallel or sequential) ---
     do_fix = fix or diff
-    file_results: list[_FileResult]
+    file_results: list[FileResult]
     if num_workers > 1:
-        file_results = _check_files_parallel(
+        file_results = check_files_parallel(
             sorted(targets),
             num_workers,
             effective_ignore,
@@ -305,7 +207,7 @@ def check(
         )
     else:
         file_results = [
-            _check_one_file(fp, type_to_rules, do_fix, unsafe_fixes, config, known_rule_codes) for fp in sorted(targets)
+            check_one_file(fp, type_to_rules, do_fix, unsafe_fixes, config, known_rule_codes) for fp in sorted(targets)
         ]
 
     for result in file_results:
@@ -563,112 +465,6 @@ def _print_diff(filepath: Path, original: str, new_source: str, *, color: bool =
         else:
             sys.stdout.write(line)
     click.echo()
-
-
-def _glob_to_regex(pattern: str) -> re.Pattern[str]:
-    """Convert a glob pattern with ** support to a compiled regex.
-
-    - ``**`` matches zero or more path components (including none).
-    - ``*`` matches any sequence of characters except ``/``.
-    - ``?`` matches any single character except ``/``.
-    """
-    stripped = pattern.rstrip("/")
-    i = 0
-    parts: list[str] = ["^"]
-    while i < len(stripped):
-        if stripped[i : i + 2] == "**":
-            i += 2
-            if i < len(stripped) and stripped[i] == "/":
-                # **/  → zero or more path components followed by /
-                parts.append("(?:.*/)?")
-                i += 1
-            else:
-                # ** at end → anything
-                parts.append(".*")
-        elif stripped[i] == "*":
-            parts.append("[^/]*")
-            i += 1
-        elif stripped[i] == "?":
-            parts.append("[^/]")
-            i += 1
-        else:
-            parts.append(re.escape(stripped[i]))
-            i += 1
-    parts.append("$")
-    return re.compile("".join(parts))
-
-
-def _collect_files(
-    paths: list[str],
-    exclude: frozenset[str] = frozenset(),
-    root: Path | None = None,
-) -> list[Path]:
-    """Resolve paths to a flat list of Python files, skipping excluded directories.
-
-    ``exclude`` entries may be:
-
-    - Simple names (``__pycache__``, ``.venv``) — matched against the directory
-      name using :func:`fnmatch.fnmatch`.
-    - Glob patterns with ``/`` or ``**`` (e.g. ``tests/**/fixtures``) — matched
-      against the path relative to *root*.
-    """
-    suffixes: Final = {".py", ".pyi"}
-    _root = (root or Path.cwd()).resolve()
-
-    # Pre-compile patterns into two buckets for efficiency.
-    simple_patterns: list[str] = []  # matched against entry.name
-    path_patterns: list[re.Pattern[str]] = []  # matched against relative path
-    for pat in exclude:
-        stripped = pat.rstrip("/")
-        if "/" in stripped or "**" in stripped:
-            path_patterns.append(_glob_to_regex(stripped))
-        else:
-            simple_patterns.append(stripped)
-
-    def _is_excluded(entry: Path) -> bool:
-        for pat in simple_patterns:
-            if fnmatch.fnmatch(entry.name, pat):
-                return True
-        if path_patterns:
-            try:
-                rel = entry.resolve().relative_to(_root).as_posix()
-            except ValueError:
-                rel = entry.as_posix()
-            for compiled in path_patterns:
-                if compiled.match(rel):
-                    return True
-        return False
-
-    def _walk(directory: Path) -> list[Path]:
-        found: list[Path] = []
-        for entry in directory.iterdir():
-            if entry.is_dir():
-                if not _is_excluded(entry):
-                    found.extend(_walk(entry))
-            elif entry.is_file() and entry.suffix in suffixes:
-                found.append(entry)
-        return found
-
-    result: list[Path] = []
-    for p in paths:
-        path = Path(p)
-        if path.is_file() and path.suffix in suffixes:
-            result.append(path)
-        elif path.is_dir():
-            result.extend(_walk(path))
-        else:
-            logger.warning("path not found or not a Python file: %s", p)
-
-    # Avoid duplicate work when users pass overlapping paths (e.g. '.' and 'src').
-    unique: list[Path] = []
-    seen: set[str] = set()
-    for path in result:
-        key = str(path.resolve())
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(path)
-    return unique
 
 
 def main() -> None:
