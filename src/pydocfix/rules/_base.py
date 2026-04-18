@@ -19,7 +19,7 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix._types import (
+from pydocfix.models import (
     ActivationCondition,
     Diagnostic,
     DocstringLocation,

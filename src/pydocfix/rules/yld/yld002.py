@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleSection, NumPySection
 
-from pydocfix._types import Applicability, Diagnostic
+from pydocfix.models import Applicability, Diagnostic
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules._helpers import delete_section_fix
 from pydocfix.rules.yld._helpers import is_generator_function, is_yields_section

@@ -12,9 +12,8 @@ from typing import Final
 import click
 
 from pydocfix import __version__
-from pydocfix.config import Config
-from pydocfix.filewalker import collect_files
-from pydocfix.parallel import FileResult, check_files_parallel, check_one_file
+from pydocfix._filewalker import collect_files
+from pydocfix._parallel import FileResult, check_files_parallel, check_one_file
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +262,7 @@ def check(
                 diagnostics = remaining
 
         if not diff:
-            from pydocfix.render import render_diagnostic
+            from pydocfix._render import render_diagnostic
 
             effective_format = output_format or config.output_format
             is_concise = effective_format == "concise"
@@ -281,8 +280,8 @@ def check(
         remaining_diagnostics.extend(diagnostics)
 
     # --- Baseline generation ---
-    from pydocfix.colorize import _BOLD, _GREEN, _RED
-    from pydocfix.colorize import ansi as _ansi
+    from pydocfix._ansi import _BOLD, _GREEN, _RED
+    from pydocfix._ansi import ansi as _ansi
 
     if generate_baseline:
         if effective_baseline_path is None:
@@ -355,8 +354,8 @@ def _summarize_check(
     color: bool = False,
 ) -> None:
     """Print summary for check and diff modes."""
-    from pydocfix.colorize import _BOLD, _RED
-    from pydocfix.colorize import ansi as _ansi
+    from pydocfix._ansi import _BOLD, _RED
+    from pydocfix._ansi import ansi as _ansi
 
     found_s = _ansi(f"Found {total} violation(s).", _RED, _BOLD, color=color)
     safe_s = _ansi(str(safe), _BOLD, color=color)
@@ -403,8 +402,8 @@ def _summarize_fix(
     color: bool = False,
 ) -> None:
     """Print summary for --fix mode."""
-    from pydocfix.colorize import _BOLD, _GREEN, _RED
-    from pydocfix.colorize import ansi as _ansi
+    from pydocfix._ansi import _BOLD, _GREEN, _RED
+    from pydocfix._ansi import ansi as _ansi
     from pydocfix.rules import Applicability, effective_applicability
 
     def _echo(msg: str) -> None:
@@ -441,8 +440,8 @@ def _summarize_fix(
 
 def _print_diff(filepath: Path, original: str, new_source: str, *, color: bool = False) -> None:
     """Print unified diff between original and fixed source."""
-    from pydocfix.colorize import _BOLD, _DIM, _GREEN, _RED
-    from pydocfix.colorize import ansi as _ansi
+    from pydocfix._ansi import _BOLD, _DIM, _GREEN, _RED
+    from pydocfix._ansi import ansi as _ansi
 
     diff_lines = difflib.unified_diff(
         original.splitlines(keepends=True),

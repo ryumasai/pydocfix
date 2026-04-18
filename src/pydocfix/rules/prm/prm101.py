@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix._edits import replace_token
-from pydocfix._types import Applicability, Diagnostic, Fix
+from pydocfix.edits import replace_token
+from pydocfix.models import Applicability, Diagnostic, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules._helpers import normalize_optional
 from pydocfix.rules.prm._helpers import get_annotation_map, get_param_name_token

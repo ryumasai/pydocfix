@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix._types import Diagnostic
+from pydocfix.models import Diagnostic
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules.prm._helpers import get_param_name_token
 

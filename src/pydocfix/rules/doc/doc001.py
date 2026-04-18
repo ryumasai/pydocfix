@@ -12,7 +12,7 @@ from pydocstring import (
     NumPySectionKind,
 )
 
-from pydocfix._types import Applicability, Diagnostic, Edit, Fix
+from pydocfix.models import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 # Canonical section order for Google-style docstrings.

@@ -16,8 +16,8 @@ from pydocstring import (
     TextRange,
 )
 
-from pydocfix._edits import delete_range
-from pydocfix._types import Applicability, Fix
+from pydocfix.edits import delete_range
+from pydocfix.models import Applicability, Fix
 
 if TYPE_CHECKING:
     from pydocfix.config import Config

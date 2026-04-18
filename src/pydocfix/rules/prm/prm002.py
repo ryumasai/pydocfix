@@ -10,7 +10,7 @@ from pydocstring import (
     NumPySection,
 )
 
-from pydocfix._types import Applicability, Diagnostic
+from pydocfix.models import Applicability, Diagnostic
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules._helpers import delete_section_fix
 from pydocfix.rules.prm._helpers import get_signature_params, is_param_section

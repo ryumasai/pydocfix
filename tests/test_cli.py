@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from click.testing import CliRunner
 
+from pydocfix._filewalker import collect_files
 from pydocfix.cli import cli
-from pydocfix.filewalker import collect_files
 
 
 @pytest.fixture

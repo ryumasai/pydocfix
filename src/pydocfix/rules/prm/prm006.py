@@ -11,7 +11,7 @@ from pydocstring import (
     NumPySection,
 )
 
-from pydocfix._types import Applicability, Diagnostic, Edit, Fix
+from pydocfix.models import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules.prm._helpers import (
     bare_name,

@@ -8,8 +8,8 @@ from pydocstring import PlainDocstring
 
 from pydocfix.checker import check_file
 from pydocfix.config import Config
-from pydocfix._edits import replace_token
-from pydocfix._types import Applicability, Fix
+from pydocfix.edits import replace_token
+from pydocfix.models import Applicability, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules.sum.sum002 import SUM002
 from tests.helpers import make_type_to_rules

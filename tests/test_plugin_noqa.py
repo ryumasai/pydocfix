@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydocfix.checker import check_file
 from pydocfix.config import Config
-from pydocfix._types import Diagnostic
+from pydocfix.models import Diagnostic
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from tests.helpers import make_type_to_rules
 

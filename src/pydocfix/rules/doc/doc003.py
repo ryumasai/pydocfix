@@ -6,7 +6,7 @@ from collections.abc import Iterator
 
 from pydocstring import PlainDocstring
 
-from pydocfix._types import Applicability, Diagnostic, Edit, Fix
+from pydocfix.models import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 

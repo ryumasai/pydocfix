@@ -6,7 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from pydocfix._types import Applicability, Diagnostic
+from pydocfix.models import Applicability, Diagnostic
 
 if TYPE_CHECKING:
     from pydocfix.config import Config
