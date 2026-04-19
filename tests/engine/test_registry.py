@@ -6,7 +6,7 @@ import pytest
 from pydocstring import GoogleDocstring
 
 from pydocfix.config import Config
-from pydocfix.models import Applicability, Diagnostic, Fix, Offset, Range
+from pydocfix.diagnostics import Applicability, Diagnostic, Fix, Offset, Range
 from pydocfix.registry import effective_applicability, is_applicable
 from tests.engine._rules.safe001 import SAFE001
 from tests.engine._rules.unsafe001 import UNSAFE001
@@ -86,13 +86,6 @@ class TestIsApplicable:
 
         assert not is_applicable(d, unsafe_fixes=False)
         assert is_applicable(d, unsafe_fixes=True)
-
-    def test_display_only_never_applicable(self):
-        """DISPLAY_ONLY fix is never applicable."""
-        d = _diag("SAFE001", Applicability.DISPLAY_ONLY)
-
-        assert not is_applicable(d, unsafe_fixes=False)
-        assert not is_applicable(d, unsafe_fixes=True)
 
 
 class TestRuleRegistry:

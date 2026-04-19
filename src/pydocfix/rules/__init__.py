@@ -14,14 +14,13 @@ from pydocfix.edits import (
     insert_at,
     replace_token,
 )
-from pydocfix.models import (
+from pydocfix.diagnostics import (
     Applicability,
     Diagnostic,
     Edit,
     Fix,
     Offset,
     Range,
-    Severity,
 )
 from pydocfix.plugin_loader import (
     discover_rules_in_module,
@@ -167,7 +166,6 @@ __all__ = [
     "Offset",
     "Range",
     "RuleRegistry",
-    "Severity",
     "apply_edits",
     "build_registry",
     "delete_range",

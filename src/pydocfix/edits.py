@@ -8,7 +8,7 @@ from typing import Final
 
 from pydocstring import Token
 
-from pydocfix.models import Edit
+from pydocfix.diagnostics import Edit
 
 
 def replace_token(token: Token, new_text: str) -> Edit:

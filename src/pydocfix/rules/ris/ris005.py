@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleException, NumPyException
 
-from pydocfix.models import Applicability, Diagnostic
+from pydocfix.diagnostics import Applicability, Diagnostic
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules._helpers import delete_entry_fix
 from pydocfix.rules.ris._helpers import _bare_exc_name, get_raised_exceptions

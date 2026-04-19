@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from pydocfix.models import Diagnostic, Fix, Offset, Range, Severity
+from pydocfix.diagnostics import Diagnostic, Fix, Offset, Range
 
 
 @pytest.fixture
@@ -29,7 +29,6 @@ def make_diagnostic():
             message="test diagnostic",
             filepath="test.py",
             range=Range(start=Offset(1, 1), end=Offset(1, 10)),
-            severity=Severity.WARNING,
             symbol=symbol,
             fix=fix,
         )

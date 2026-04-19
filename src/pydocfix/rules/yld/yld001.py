@@ -14,7 +14,7 @@ from pydocstring import (
 )
 
 from pydocfix.edits import detect_section_indent, section_append_edit
-from pydocfix.models import Applicability, Diagnostic, Fix
+from pydocfix.diagnostics import Applicability, Diagnostic, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules._helpers import build_section_stub, detect_docstring_style, has_section
 from pydocfix.rules.yld._helpers import get_yield_type, is_generator_function

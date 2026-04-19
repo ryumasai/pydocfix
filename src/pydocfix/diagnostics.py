@@ -6,20 +6,11 @@ import enum
 from dataclasses import dataclass
 
 
-class Severity(enum.Enum):
-    """Severity level for diagnostics."""
-
-    ERROR = "error"
-    WARNING = "warning"
-    HINT = "hint"
-
-
 class Applicability(enum.Enum):
     """Whether a fix can be applied safely."""
 
     SAFE = "safe"
     UNSAFE = "unsafe"
-    DISPLAY_ONLY = "display-only"
 
 
 @dataclass(frozen=True)
@@ -67,7 +58,6 @@ class Diagnostic:
     message: str
     filepath: str
     range: Range
-    severity: Severity = Severity.WARNING
     fix: Fix | None = None
     symbol: str = ""
 

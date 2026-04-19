@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.models import Diagnostic
+from pydocfix.diagnostics import Diagnostic
 from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
 
 

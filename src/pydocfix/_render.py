@@ -25,8 +25,6 @@ def _fix_tag(diag: Diagnostic, config: Config | None) -> str:
         return "[safe]"
     if app == Applicability.UNSAFE:
         return "[unsafe]"
-    if app == Applicability.DISPLAY_ONLY:
-        return "[]"
     return "[]"
 
 

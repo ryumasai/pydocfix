@@ -45,7 +45,7 @@ class TestDiscoverRulesInModule:
 
     def test_module_with_no_rules_returns_empty(self):
         """a valid module that defines no BaseRule subclasses returns []."""
-        rules = discover_rules_in_module("pydocfix.models")
+        rules = discover_rules_in_module("pydocfix.diagnostics")
 
         assert rules == []
 

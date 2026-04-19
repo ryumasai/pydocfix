@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from pydocfix.edits import apply_edits, delete_range, detect_section_indent, insert_at, section_append_edit
-from pydocfix.models import Edit
+from pydocfix.diagnostics import Edit
 
 
 class TestApplyEdits:

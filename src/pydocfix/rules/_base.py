@@ -19,7 +19,7 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix.models import (
+from pydocfix.diagnostics import (
     Diagnostic,
     Fix,
     Offset,

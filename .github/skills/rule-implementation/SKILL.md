@@ -38,7 +38,7 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.models import Applicability, Diagnostic, Edit, Fix
+from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 class XYZ000(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
@@ -78,7 +78,7 @@ self._make_diagnostic(ctx, message, *, fix=None, target)
 
 ```python
 from pydocfix.edits import replace_token, insert_at, delete_range
-from pydocfix.models import Edit
+from pydocfix.diagnostics import Edit
 
 replace_token(token, new_text)      # replace a CST token entirely
 insert_at(offset, text)             # insert text at a byte offset (no deletion)
@@ -107,7 +107,7 @@ from pydocfix.edits import detect_section_indent, section_append_edit
 ## Applicability
 
 ```python
-from pydocfix.models import Applicability
+from pydocfix.diagnostics import Applicability
 
 Applicability.SAFE         # always applied with --fix
 Applicability.UNSAFE       # requires --unsafe-fixes

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
 from pydocfix.edits import replace_token
-from pydocfix.models import Applicability, Fix
+from pydocfix.diagnostics import Applicability, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 _TRIGGER = "CYCLIC"

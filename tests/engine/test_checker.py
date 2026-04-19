@@ -8,7 +8,6 @@ from pydocfix.checker import check_file
 from pydocfix.config import Config
 from tests.engine._rules.always001 import ALWAYS001
 from tests.engine._rules.cyclic001 import CYCLIC001
-from tests.engine._rules.display001 import DISPLAY001
 from tests.engine._rules.safe000 import SAFE000
 from tests.engine._rules.safe001 import SAFE001
 from tests.engine._rules.unsafe001 import UNSAFE001
@@ -215,18 +214,6 @@ class TestCheckFileRemainingAfterFix:
         _, _, remaining = check_file(source, _PATH, _registry(SAFE001(Config())), fix=True)
 
         assert not any(d.rule == "SAFE001" for d in remaining)
-
-
-class TestCheckFileDisplayOnly:
-    """DISPLAY_ONLY fix is never applied."""
-
-    def test_display_only_fix_not_applied(self, load_fixture):
-        """DISPLAY_ONLY fix produces a diagnostic but leaves the source unchanged."""
-        source = load_fixture("display_violation.py")
-        diagnostics, fixed, _ = check_file(source, _PATH, _registry(DISPLAY001(Config())), fix=True)
-
-        assert any(d.rule == "DISPLAY001" for d in diagnostics)
-        assert fixed is None
 
 
 class TestCheckFileUnusedNoqa:

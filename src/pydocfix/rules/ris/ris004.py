@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from pydocstring import GoogleSection, NumPySection
 
 from pydocfix.edits import detect_section_indent
-from pydocfix.models import Applicability, Diagnostic, Edit, Fix
+from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 from pydocfix.rules.ris._helpers import (
     _bare_exc_name,
