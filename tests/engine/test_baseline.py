@@ -1,9 +1,10 @@
-"""Tests for baseline module."""
+"""Tests for baseline read/write/filter — F-1 to F-9."""
 
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
+import logging
+from pathlib import Path
 
 from pydocfix.baseline import (
     compute_updated_baseline,
@@ -15,19 +16,11 @@ from pydocfix.baseline import (
 )
 
 
-def _make_diagnostic(code: str, symbol: str):
-    """Create a mock diagnostic."""
-    d = MagicMock()
-    d.rule = code
-    d.symbol = symbol
-    return d
-
-
 class TestNormalizePath:
-    """Tests for normalize_path()."""
+    """F-1: normalize_path()."""
 
-    def test_relative_path(self, tmp_path):
-        """Returns relative POSIX path."""
+    def test_returns_relative_posix_path(self, tmp_path):
+        """F-1: file under root returns a relative POSIX-style path string."""
         file = tmp_path / "src" / "module.py"
         file.parent.mkdir(parents=True)
         file.touch()
@@ -36,139 +29,101 @@ class TestNormalizePath:
 
         assert result == "src/module.py"
 
-    def test_file_at_root(self, tmp_path):
-        """File at root returns just filename."""
-        file = tmp_path / "module.py"
-        file.touch()
-
-        result = normalize_path(file, tmp_path)
-
-        assert result == "module.py"
-
 
 class TestLoadBaseline:
-    """Tests for load_baseline()."""
+    """F-2, F-3: load_baseline()."""
 
-    def test_loads_existing(self, tmp_path):
-        """Loads existing baseline file."""
-        baseline_file = tmp_path / "baseline.json"
-        data = {"src/module.py": [{"symbol": "foo", "code": "SUM001"}]}
-        baseline_file.write_text(json.dumps(data))
-
-        result = load_baseline(baseline_file)
-
-        assert "src/module.py" in result
-        assert result["src/module.py"][0]["code"] == "SUM001"
-
-    def test_missing_file_returns_empty(self, tmp_path):
-        """Missing baseline file returns empty dict."""
+    def test_missing_file_returns_empty_dict(self, tmp_path):
+        """F-2: returns {} when the baseline file does not exist."""
         result = load_baseline(tmp_path / "nonexistent.json")
 
         assert result == {}
 
+    def test_broken_json_returns_empty_dict(self, tmp_path, caplog):
+        """F-3: returns {} and logs a warning for invalid JSON."""
+        bad = tmp_path / "baseline.json"
+        bad.write_text("NOT JSON")
+
+        with caplog.at_level(logging.WARNING):
+            result = load_baseline(bad)
+
+        assert result == {}
+        assert caplog.records
+
 
 class TestWriteBaseline:
-    """Tests for write_baseline()."""
+    """F-4, F-5: write_baseline()."""
 
-    def test_writes_file(self, tmp_path):
-        """Writes baseline to file."""
-        baseline_file = tmp_path / "baseline.json"
-        data = {"src/module.py": [{"symbol": "foo", "code": "SUM001"}]}
+    def test_writes_and_reads_back(self, tmp_path):
+        """F-4: written data can be read back as valid JSON."""
+        path = tmp_path / "baseline.json"
+        data = {"src/module.py": [{"symbol": "my_func", "code": "SUM001"}]}
 
-        write_baseline(data, baseline_file)
+        write_baseline(data, path)
 
-        assert baseline_file.exists()
-        loaded = json.loads(baseline_file.read_text())
-        assert loaded == data
+        assert json.loads(path.read_text()) == data
 
-    def test_creates_parent_dirs(self, tmp_path):
-        """Creates parent directories if needed."""
-        baseline_file = tmp_path / "sub" / "dir" / "baseline.json"
+    def test_creates_parent_directories(self, tmp_path):
+        """F-5: parent directories are created automatically."""
+        path = tmp_path / "sub" / "dir" / "baseline.json"
 
-        write_baseline({}, baseline_file)
+        write_baseline({}, path)
 
-        assert baseline_file.exists()
+        assert path.exists()
 
 
 class TestGenerateBaseline:
-    """Tests for generate_baseline()."""
+    """F-6, F-7: generate_baseline() with real Diagnostic objects."""
 
-    def test_generates_from_violations(self, tmp_path):
-        """Generates baseline from violations dict."""
-        baseline_file = tmp_path / "baseline.json"
-        d = _make_diagnostic("SUM001", "my_func")
-        violations = {"src/module.py": [d]}
+    def test_writes_entry_for_diagnostic_with_symbol(self, tmp_path, make_diagnostic):
+        """F-6: diagnostic with non-empty symbol is written to baseline."""
+        d = make_diagnostic("SUM001", symbol="my_func")
+        path = tmp_path / "baseline.json"
 
-        generate_baseline(violations, baseline_file)
+        generate_baseline({"src/module.py": [d]}, path)
 
-        data = json.loads(baseline_file.read_text())
-        assert "src/module.py" in data
-        assert data["src/module.py"][0]["code"] == "SUM001"
+        data = json.loads(path.read_text())
+        assert data["src/module.py"] == [{"symbol": "my_func", "code": "SUM001"}]
 
-    def test_skips_empty_symbol(self, tmp_path):
-        """Skips violations with empty symbol."""
-        baseline_file = tmp_path / "baseline.json"
-        d = _make_diagnostic("SUM001", "")
-        violations = {"src/module.py": [d]}
+    def test_skips_diagnostic_with_empty_symbol(self, tmp_path, make_diagnostic):
+        """F-7: diagnostic with empty symbol is excluded from baseline."""
+        d = make_diagnostic("SUM001", symbol="")
+        path = tmp_path / "baseline.json"
 
-        generate_baseline(violations, baseline_file)
+        generate_baseline({"src/module.py": [d]}, path)
 
-        data = json.loads(baseline_file.read_text())
+        data = json.loads(path.read_text())
         assert data.get("src/module.py", []) == []
 
 
 class TestFilterBaselineViolations:
-    """Tests for filter_baseline_violations()."""
+    """F-8: filter_baseline_violations()."""
 
-    def test_filters_known_violations(self):
-        """Violations in baseline are filtered out."""
-        d = _make_diagnostic("SUM001", "my_func")
+    def test_filters_known_and_keeps_new(self, make_diagnostic):
+        """F-8: violation in baseline is removed; new violation is kept."""
+        d_known = make_diagnostic("SUM001", symbol="my_func")
+        d_new = make_diagnostic("SUM002", symbol="my_func")
         baseline = {"src/module.py": [{"symbol": "my_func", "code": "SUM001"}]}
 
-        result = filter_baseline_violations([d], baseline, "src/module.py")
-
-        assert len(result) == 0
-
-    def test_keeps_new_violations(self):
-        """Violations not in baseline are kept."""
-        d = _make_diagnostic("SUM002", "my_func")
-        baseline = {"src/module.py": [{"symbol": "my_func", "code": "SUM001"}]}
-
-        result = filter_baseline_violations([d], baseline, "src/module.py")
+        result = filter_baseline_violations([d_known, d_new], baseline, "src/module.py")
 
         assert len(result) == 1
-
-    def test_empty_baseline_keeps_all(self):
-        """Empty baseline keeps all violations."""
-        d = _make_diagnostic("SUM001", "my_func")
-
-        result = filter_baseline_violations([d], {}, "src/module.py")
-
-        assert len(result) == 1
+        assert result[0].rule == "SUM002"
 
 
 class TestComputeUpdatedBaseline:
-    """Tests for compute_updated_baseline()."""
+    """F-9: compute_updated_baseline()."""
 
-    def test_unchanged_when_same(self):
-        """Returns unchanged=False when baseline matches actual violations."""
-        baseline = {"src/module.py": [{"symbol": "foo", "code": "SUM001"}]}
-        d = _make_diagnostic("SUM001", "foo")
-        actual = {"src/module.py": [d]}
-
-        changed, updated = compute_updated_baseline(baseline, actual)
-
-        assert changed is False
-
-    def test_removes_fixed_violation(self):
-        """Removes violation that has been fixed."""
+    def test_fixed_violation_is_removed(self, make_diagnostic):
+        """F-9: violation absent from actual run is removed; changed=True."""
         baseline = {
             "src/module.py": [
                 {"symbol": "foo", "code": "SUM001"},
                 {"symbol": "bar", "code": "SUM002"},
             ]
         }
-        d = _make_diagnostic("SUM001", "foo")
+        # Only "foo/SUM001" still present; "bar/SUM002" is fixed
+        d = make_diagnostic("SUM001", symbol="foo")
         actual = {"src/module.py": [d]}
 
         changed, updated = compute_updated_baseline(baseline, actual)

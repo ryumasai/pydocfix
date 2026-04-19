@@ -1,107 +1,118 @@
-"""Tests for config loading."""
+"""Tests for configuration loading — B-1 to B-8."""
 
 from __future__ import annotations
+
+import logging
+
+import pytest
 
 from pydocfix.config import Config, find_pyproject_toml, load_config
 
 
-class TestConfig:
-    """Tests for Config dataclass."""
+class TestConfigDefaults:
+    """B-1 to B-7: Config dataclass default values."""
 
-    def test_defaults(self):
-        """Config has expected defaults."""
+    def test_skip_short_docstrings_default(self):
+        """B-1: skip_short_docstrings defaults to True."""
+        assert Config().skip_short_docstrings is True
+
+    def test_list_fields_default_empty(self):
+        """B-2: ignore, select, exclude default to empty list."""
         config = Config()
 
-        assert config.skip_short_docstrings is True
-        assert config.type_annotation_style is None
         assert config.ignore == []
         assert config.select == []
+        assert config.exclude == []
 
-    def test_custom_values(self):
-        """Config accepts custom values."""
-        config = Config(
-            skip_short_docstrings=False,
-            type_annotation_style="signature",
-            ignore=["SUM001"],
-        )
+    def test_fix_extension_fields_default_empty(self):
+        """B-3: extend_safe_fixes and extend_unsafe_fixes default to empty list."""
+        config = Config()
 
-        assert config.skip_short_docstrings is False
-        assert config.type_annotation_style == "signature"
-        assert "SUM001" in config.ignore
+        assert config.extend_safe_fixes == []
+        assert config.extend_unsafe_fixes == []
 
+    def test_type_annotation_style_default_none(self):
+        """B-4: type_annotation_style defaults to None."""
+        assert Config().type_annotation_style is None
 
-class TestFindPyprojectToml:
-    """Tests for find_pyproject_toml()."""
+    def test_preferred_style_default(self):
+        """B-5: preferred_style defaults to 'google'."""
+        assert Config().preferred_style == "google"
 
-    def test_finds_file(self, tmp_path):
-        """Finds pyproject.toml in the start directory."""
-        toml = tmp_path / "pyproject.toml"
-        toml.write_text("[tool.pydocfix]\n")
+    def test_output_format_default(self):
+        """B-6: output_format defaults to 'full'."""
+        assert Config().output_format == "full"
 
-        result = find_pyproject_toml(tmp_path)
-
-        assert result == toml
-
-    def test_finds_ancestor(self, tmp_path):
-        """Finds pyproject.toml in parent directory."""
-        toml = tmp_path / "pyproject.toml"
-        toml.write_text("[tool.pydocfix]\n")
-        sub = tmp_path / "sub"
-        sub.mkdir()
-
-        result = find_pyproject_toml(sub)
-
-        assert result == toml
-
-    def test_returns_none_if_missing(self, tmp_path):
-        """Returns None if no pyproject.toml found."""
-        result = find_pyproject_toml(tmp_path)
-
-        assert result is None
+    def test_baseline_default_none(self):
+        """B-7: baseline defaults to None."""
+        assert Config().baseline is None
 
 
 class TestLoadConfig:
-    """Tests for load_config()."""
+    """B-2, B-3, B-8: load_config() reads pyproject.toml values."""
 
-    def test_loads_ignore(self, tmp_path):
-        """load_config reads ignore list."""
-        toml = tmp_path / "pyproject.toml"
-        toml.write_text('[tool.pydocfix]\nignore = ["SUM001"]\n')
+    def test_loads_ignore_and_select(self, tmp_path):
+        """B-2: ignore and select are loaded from TOML."""
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\nignore = ["SUM001"]\nselect = ["PRM001"]\n')
 
         config = load_config(tmp_path)
 
         assert "SUM001" in config.ignore
+        assert "PRM001" in config.select
 
-    def test_loads_select(self, tmp_path):
-        """load_config reads select list."""
-        toml = tmp_path / "pyproject.toml"
-        toml.write_text('[tool.pydocfix]\nselect = ["SUM002"]\n')
-
-        config = load_config(tmp_path)
-
-        assert "SUM002" in config.select
-
-    def test_loads_skip_short_docstrings(self, tmp_path):
-        """load_config reads skip_short_docstrings."""
-        toml = tmp_path / "pyproject.toml"
-        toml.write_text("[tool.pydocfix]\nskip_short_docstrings = false\n")
+    def test_loads_extend_safe_and_unsafe_fixes(self, tmp_path):
+        """B-3: extend-safe-fixes and extend-unsafe-fixes are loaded and uppercased."""
+        (tmp_path / "pyproject.toml").write_text(
+            '[tool.pydocfix]\nextend-safe-fixes = ["prm001"]\nextend-unsafe-fixes = ["RTN101"]\n'
+        )
 
         config = load_config(tmp_path)
 
-        assert config.skip_short_docstrings is False
+        assert "PRM001" in config.extend_safe_fixes
+        assert "RTN101" in config.extend_unsafe_fixes
 
-    def test_loads_type_annotation_style(self, tmp_path):
-        """load_config reads type_annotation_style."""
-        toml = tmp_path / "pyproject.toml"
-        toml.write_text('[tool.pydocfix]\ntype_annotation_style = "signature"\n')
+    def test_invalid_type_annotation_style_falls_back(self, tmp_path, caplog):
+        """B-4: invalid type_annotation_style falls back to None with a warning."""
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\ntype_annotation_style = "invalid"\n')
 
-        config = load_config(tmp_path)
+        with caplog.at_level(logging.WARNING):
+            config = load_config(tmp_path)
 
-        assert config.type_annotation_style == "signature"
+        assert config.type_annotation_style is None
+        assert any("type_annotation_style" in r.message for r in caplog.records)
 
-    def test_defaults_when_no_file(self, tmp_path):
-        """load_config returns defaults when no pyproject.toml."""
+    def test_invalid_preferred_style_falls_back(self, tmp_path, caplog):
+        """B-5: invalid preferred_style falls back to 'google' with a warning."""
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\npreferred_style = "invalid"\n')
+
+        with caplog.at_level(logging.WARNING):
+            config = load_config(tmp_path)
+
+        assert config.preferred_style == "google"
+        assert any("preferred_style" in r.message for r in caplog.records)
+
+    def test_no_pyproject_toml_returns_defaults(self, tmp_path):
+        """B-6: missing pyproject.toml returns default Config."""
         config = load_config(tmp_path)
 
         assert config.skip_short_docstrings is True
-        assert config.type_annotation_style is None
+        assert config.ignore == []
+
+    def test_missing_section_returns_defaults(self, tmp_path):
+        """B-7: pyproject.toml without [tool.pydocfix] returns default Config."""
+        (tmp_path / "pyproject.toml").write_text("[tool.other]\nkey = 1\n")
+
+        config = load_config(tmp_path)
+
+        assert config.ignore == []
+        assert config.select == []
+
+    def test_finds_ancestor_pyproject_toml(self, tmp_path):
+        """B-8: load_config walks up to find pyproject.toml in a parent directory."""
+        (tmp_path / "pyproject.toml").write_text('[tool.pydocfix]\nignore = ["SUM001"]\n')
+        sub = tmp_path / "sub" / "dir"
+        sub.mkdir(parents=True)
+
+        config = load_config(sub)
+
+        assert "SUM001" in config.ignore

@@ -1,3 +1,3 @@
 def greet():
-    """Say hello"""
+    """All good."""
     pass
