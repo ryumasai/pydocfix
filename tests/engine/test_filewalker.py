@@ -1,4 +1,4 @@
-"""Tests for file collection — E-1 to E-5."""
+"""Tests for file collection."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ from pydocfix._filewalker import collect_files
 
 
 class TestCollectFiles:
-    """E-1 to E-5: collect_files()."""
+    """collect_files()."""
 
     def test_collects_py_and_pyi_excludes_txt(self, tmp_path):
-        """E-1: .py and .pyi files are collected; .txt is not."""
+        """.py and .pyi files are collected; .txt is not."""
         (tmp_path / "a.py").touch()
         (tmp_path / "b.pyi").touch()
         (tmp_path / "c.txt").touch()
@@ -22,7 +22,7 @@ class TestCollectFiles:
         assert "c.txt" not in names
 
     def test_deduplicates_overlapping_paths(self, tmp_path):
-        """E-2: passing a dir and its parent does not produce duplicate paths."""
+        """passing a dir and its parent does not produce duplicate paths."""
         sub = tmp_path / "sub"
         sub.mkdir()
         (sub / "module.py").touch()
@@ -33,7 +33,7 @@ class TestCollectFiles:
         assert len(py_files) == 1
 
     def test_exclude_simple_name(self, tmp_path):
-        """E-3: a directory matching a simple exclude name is skipped."""
+        """a directory matching a simple exclude name is skipped."""
         hidden = tmp_path / "__pycache__"
         hidden.mkdir()
         (hidden / "cached.py").touch()
@@ -46,7 +46,7 @@ class TestCollectFiles:
         assert "module.py" in names
 
     def test_exclude_glob_pattern(self, tmp_path):
-        """E-4: a glob pattern in exclude skips matching nested paths."""
+        """a glob pattern in exclude skips matching nested paths."""
         fixtures = tmp_path / "tests" / "fixtures"
         fixtures.mkdir(parents=True)
         (fixtures / "fix.py").touch()
@@ -63,7 +63,7 @@ class TestCollectFiles:
         assert "src.py" in names
 
     def test_nonexistent_path_returns_empty(self, tmp_path, caplog):
-        """E-5: a path that does not exist produces a warning and no files."""
+        """a path that does not exist produces a warning and no files."""
         import logging
 
         with caplog.at_level(logging.WARNING):
@@ -71,3 +71,18 @@ class TestCollectFiles:
 
         assert result == []
         assert any("nonexistent" in r.message for r in caplog.records)
+
+    def test_single_file_path_is_collected(self, tmp_path):
+        """a direct .py file path is collected without walking a directory."""
+        f = tmp_path / "standalone.py"
+        f.touch()
+
+        result = collect_files([str(f)])
+
+        assert any(p.name == "standalone.py" for p in result)
+
+    def test_empty_paths_returns_empty(self):
+        """passing an empty list returns an empty result."""
+        result = collect_files([])
+
+        assert result == []

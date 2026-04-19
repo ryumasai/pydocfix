@@ -1,24 +1,30 @@
-"""Tests for edit creation and application — D-1 to D-6."""
+"""Tests for edit creation and application."""
 
 from __future__ import annotations
 
 import pytest
 
-from pydocfix.edits import apply_edits, detect_section_indent
+from pydocfix.edits import apply_edits, delete_range, detect_section_indent, insert_at, section_append_edit
 from pydocfix.models import Edit
 
 
 class TestApplyEdits:
-    """D-1 to D-4: apply_edits()."""
+    """apply_edits()."""
+
+    def test_empty_edits_returns_original(self):
+        """empty edit list returns the original string unchanged."""
+        result = apply_edits("Hello world.", [])
+
+        assert result == "Hello world."
 
     def test_single_edit(self):
-        """D-1: a single edit is applied correctly."""
+        """a single edit is applied correctly."""
         result = apply_edits("Hello world.", [Edit(start=0, end=5, new_text="Hi")])
 
         assert result == "Hi world."
 
     def test_multiple_non_overlapping_edits(self):
-        """D-2: multiple non-overlapping edits are applied in reverse order."""
+        """multiple non-overlapping edits are applied in reverse order."""
         result = apply_edits(
             "Hello world.",
             [
@@ -30,7 +36,7 @@ class TestApplyEdits:
         assert result == "Hi there."
 
     def test_overlapping_edits_raise(self):
-        """D-3: overlapping edits raise ValueError."""
+        """overlapping edits raise ValueError."""
         with pytest.raises(ValueError, match="[Oo]verlap"):
             apply_edits(
                 "Hello",
@@ -38,24 +44,68 @@ class TestApplyEdits:
             )
 
     def test_utf8_multibyte_characters(self):
-        """D-4: byte offsets are respected for multibyte UTF-8 characters."""
+        """byte offsets are respected for multibyte UTF-8 characters."""
         # "こんにちは" = 5 chars × 3 bytes each = 15 bytes
         result = apply_edits("こんにちは world", [Edit(start=0, end=15, new_text="Hello")])
 
         assert result == "Hello world"
 
 
+class TestHelperFactories:
+    """insert_at(), delete_range() factory helpers."""
+
+    def test_insert_at_zero(self):
+        """insert_at(0, text) inserts at the start."""
+        edit = insert_at(0, "Hi ")
+        result = apply_edits("world", [edit])
+
+        assert result == "Hi world"
+
+    def test_delete_range(self):
+        """delete_range removes the specified byte span."""
+        edit = delete_range(5, 11)
+        result = apply_edits("Hello world!", [edit])
+
+        assert result == "Hello!"
+
+
+class TestSectionAppendEdit:
+    """section_append_edit()."""
+
+    def test_appends_to_multiline_docstring(self):
+        """section is inserted before trailing indent in a multiline docstring."""
+        ds_text = "Summary.\n\n    "
+        root_end = len(ds_text.encode("utf-8"))
+        edit = section_append_edit(ds_text, root_end, "    Returns:\n        None.")
+
+        result = apply_edits(ds_text, [edit])
+
+        assert "Returns:" in result
+        assert result.endswith("    ")  # closing indent preserved
+
+    def test_appends_to_single_line_docstring(self):
+        """section is appended with blank-line separator for single-line docstring."""
+        ds_text = "Summary."
+        root_end = len(ds_text.encode("utf-8"))
+        edit = section_append_edit(ds_text, root_end, "    Returns:\n        None.")
+
+        result = apply_edits(ds_text, [edit])
+
+        assert "Returns:" in result
+        assert "\n\n" in result  # blank line separator
+
+
 class TestDetectSectionIndent:
-    """D-5 to D-6: detect_section_indent()."""
+    """detect_section_indent()."""
 
     def test_single_line_uses_col_offset(self):
-        """D-5: single-line docstring returns stmt_col_offset spaces."""
+        """single-line docstring returns stmt_col_offset spaces."""
         result = detect_section_indent("Summary text.", stmt_col_offset=4)
 
         assert result == "    "
 
     def test_multiline_with_trailing_blank_line(self):
-        """D-6: multiline docstring with trailing whitespace-only line returns that line."""
+        """multiline docstring with trailing whitespace-only line returns that line."""
         text = "Summary.\n\n    Args:\n        x: int.\n    "
         result = detect_section_indent(text)
 
