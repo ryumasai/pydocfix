@@ -7,8 +7,8 @@ from typing import Final
 
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.edits import insert_at
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
+from pydocfix.fixes import insert_at
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 _DEFAULT_PERIOD: Final[str] = "."

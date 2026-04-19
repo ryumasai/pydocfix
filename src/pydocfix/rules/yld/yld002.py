@@ -9,8 +9,8 @@ from pydocstring import GoogleSection, NumPySection
 
 from pydocfix.diagnostics import Applicability, Diagnostic
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules._helpers import delete_section_fix
-from pydocfix.rules.yld._helpers import is_generator_function, is_yields_section
+from pydocfix.rules.helpers import delete_section_fix
+from pydocfix.rules.yld.helpers import is_generator_function, is_yields_section
 
 
 class YLD002(BaseRule[GoogleSection | NumPySection]):

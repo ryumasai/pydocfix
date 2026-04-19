@@ -28,7 +28,7 @@ def check_one_file(
     known_rule_codes: frozenset[str] | None = None,
 ) -> FileResult:
     """Read and check a single file. Used by both serial and parallel paths."""
-    from pydocfix.checker import check_file
+    from pydocfix.engine.checker import check_file
 
     source = filepath.read_text(encoding="utf-8")
     diagnostics, new_source, remaining = check_file(

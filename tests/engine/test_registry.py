@@ -7,7 +7,7 @@ from pydocstring import GoogleDocstring
 
 from pydocfix.config import Config
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix, Offset, Range
-from pydocfix.registry import effective_applicability, is_applicable
+from pydocfix.engine.registry import effective_applicability, is_applicable
 from tests.engine._rules.safe001 import SAFE001
 from tests.engine._rules.unsafe001 import UNSAFE001
 from tests.helpers import make_registry

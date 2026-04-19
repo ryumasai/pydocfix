@@ -6,7 +6,7 @@ import ast
 import dataclasses
 import logging
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Final, NamedTuple
 
@@ -19,17 +19,15 @@ from pydocstring import (
 )
 
 from pydocfix.config import Config
-from pydocfix.noqa import NoqaDirective, find_inline_noqa, parse_file_noqa
+from pydocfix.engine.fixer import apply_fixes
+from pydocfix.engine.noqa import NoqaDirective, find_inline_noqa, parse_file_noqa
 from pydocfix.rules import (
     BaseRule,
     DiagnoseContext,
     Diagnostic,
     DocstringLocation,
-    Edit,
-    Fix,
     Offset,
     Range,
-    apply_edits,
     is_applicable,
 )
 
@@ -93,15 +91,6 @@ def _locate_docstring(
         opening_quote=matched.group(0),
         closing_quote=closing,
     )
-
-
-def _has_overlap(accepted: Iterable[Edit], candidate: Fix) -> bool:
-    """Return True if any edit in *candidate* overlaps with *accepted* edits."""
-    for new in candidate.edits:
-        for existing in accepted:
-            if new.start < existing.end and existing.start < new.end:
-                return True
-    return False
 
 
 class _RuleVisitor(Visitor):
@@ -235,52 +224,6 @@ def _diagnose_docstring(
     )
     pydocstring.walk(parsed, visitor)
     return visitor.diagnostics
-
-
-def _apply_nonoverlapping_fixes(
-    ds_content: str,
-    ds_diagnostics: list[Diagnostic],
-    unsafe_fixes: bool,
-    config: Config | None = None,
-) -> tuple[str | None, int]:
-    """Apply non-overlapping fixes to a docstring.
-
-    Returns (new_content_or_none, count_of_applied_fixes).
-    """
-    accepted_edits: list[Edit] = []
-    applied = 0
-    for d in ds_diagnostics:
-        if not is_applicable(d, unsafe_fixes, config):
-            continue
-        fix = d.fix
-        if fix is None:
-            continue
-        if _has_overlap(accepted_edits, fix):
-            logger.warning(
-                "skipping fix from rule %s (overlapping edits)",
-                d.rule,
-            )
-            continue
-        accepted_edits.extend(fix.edits)
-        applied += 1
-
-    if not accepted_edits:
-        return None, 0
-    content = apply_edits(ds_content, accepted_edits)
-    # When multiple sections are appended simultaneously to a single-line
-    # docstring, each edit adds a trailing "\n<indent>" that becomes a
-    # whitespace-only line immediately before the next section's "\n\n"
-    # separator.  Normalize "\n<whitespace-only line>\n\n" → "\n\n".
-    # Guard: only normalise when the *original* content had no newlines — that
-    # is, it was a single-line docstring.  For multiline docstrings the
-    # section-insertion edits are non-overlapping (multiline path in
-    # section_append_edit), so the artifact never occurs and running the
-    # substitution could incorrectly remove legitimate whitespace-only lines
-    # (e.g. inside a code-example block with trailing spaces before a blank
-    # line).
-    if "\n" not in ds_content:
-        content = re.sub(r"\n[ \t]+\n\n", "\n\n", content)
-    return content, applied
 
 
 def _compute_symbol(parent_ast: ast.AST, grandparent: ast.AST | None) -> str:
@@ -498,16 +441,10 @@ def _fix_docstring(
     current_content = ds_content
 
     for _iteration in range(_MAX_FIX_ITERATIONS):
-        new_content, applied = _apply_nonoverlapping_fixes(
-            current_content,
-            ds_diagnostics,
-            unsafe_fixes,
-            config,
-        )
-        if new_content is None:
-            break  # nothing fixable remains
-        current_content = new_content
-
+        accepted_fixes = [d.fix for d in ds_diagnostics if is_applicable(d, unsafe_fixes, config) and d.fix is not None]
+        if not accepted_fixes:
+            break
+        current_content = apply_fixes(current_content, accepted_fixes)
         # Re-diagnose the fixed docstring, re-annotate symbol
         ds_diagnostics = _diagnose_docstring(
             type_to_rules,

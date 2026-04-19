@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.edits import replace_token
 from pydocfix.diagnostics import Applicability, Fix
+from pydocfix.fixes import replace_token
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 
 _VIOLATION = "VIOLATION(UNSAFE001)"

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydocfix._filewalker import collect_files
+from pydocfix.engine.filewalker import collect_files
 
 
 class TestCollectFiles:

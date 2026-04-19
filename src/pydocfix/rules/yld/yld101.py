@@ -7,11 +7,11 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
-from pydocfix.edits import replace_token
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
+from pydocfix.fixes import replace_token
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules._helpers import normalize_optional
-from pydocfix.rules.yld._helpers import get_yield_type
+from pydocfix.rules.helpers import normalize_optional
+from pydocfix.rules.yld.helpers import get_yield_type
 
 
 class YLD101(BaseRule[GoogleYield | NumPyYields]):

@@ -9,8 +9,8 @@ from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.diagnostics import Applicability, Diagnostic
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules._helpers import delete_entry_fix
-from pydocfix.rules.prm._helpers import get_param_name_token
+from pydocfix.rules.helpers import delete_entry_fix
+from pydocfix.rules.prm.helpers import get_param_name_token
 
 
 class PRM003(BaseRule[GoogleArg | NumPyParameter]):

@@ -13,11 +13,11 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix.edits import detect_section_indent, section_append_edit
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
+from pydocfix.fixes import section_append_edit
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules._helpers import build_section_stub, detect_docstring_style, has_section
-from pydocfix.rules.rtn._helpers import has_return_annotation
+from pydocfix.rules.helpers import build_section_stub, detect_docstring_style, detect_section_indent, has_section
+from pydocfix.rules.rtn.helpers import has_return_annotation
 
 
 class RTN001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):

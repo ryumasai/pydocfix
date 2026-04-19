@@ -7,8 +7,8 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.edits import delete_range
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
+from pydocfix.fixes import delete_range
 from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
 
 

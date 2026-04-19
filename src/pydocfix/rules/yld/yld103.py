@@ -9,7 +9,7 @@ from pydocstring import GoogleYield, NumPyYields
 
 from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
-from pydocfix.rules.yld._helpers import get_yield_type
+from pydocfix.rules.yld.helpers import get_yield_type
 
 
 class YLD103(BaseRule[GoogleYield | NumPyYields]):

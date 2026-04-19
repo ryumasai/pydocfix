@@ -7,10 +7,10 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.edits import replace_token
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
+from pydocfix.fixes import replace_token
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules._helpers import normalize_optional
+from pydocfix.rules.helpers import normalize_optional
 
 
 class RTN101(BaseRule[GoogleReturn | NumPyReturns]):

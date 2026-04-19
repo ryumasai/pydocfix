@@ -6,7 +6,7 @@ import difflib
 from collections.abc import Sequence
 from pathlib import Path
 
-from pydocfix.checker import check_file
+from pydocfix.engine.checker import check_file
 from pydocfix.rules import BaseRule
 from tests.helpers import make_type_to_rules
 
@@ -49,7 +49,7 @@ def render_fixture(
     Returns:
         Rendered diagnostic string (ruff-style), deduplicated by (rule, lineno, col).
     """
-    from pydocfix._render import render_diagnostic
+    from pydocfix.render import render_diagnostic
 
     source = fixture_path.read_text(encoding="utf-8")
     type_to_rules = make_type_to_rules(*rules)

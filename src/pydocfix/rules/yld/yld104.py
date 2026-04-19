@@ -7,10 +7,10 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
-from pydocfix.edits import delete_range
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
+from pydocfix.fixes import delete_range
 from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
-from pydocfix.rules.yld._helpers import get_yield_type
+from pydocfix.rules.yld.helpers import get_yield_type
 
 
 class YLD104(BaseRule[GoogleYield | NumPyYields]):

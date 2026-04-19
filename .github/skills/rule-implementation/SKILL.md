@@ -77,7 +77,7 @@ self._make_diagnostic(ctx, message, *, fix=None, target)
 ## Edit Helpers (from `_edits.py`)
 
 ```python
-from pydocfix.edits import replace_token, insert_at, delete_range
+from pydocfix.fixes import replace_token, insert_at, delete_range
 from pydocfix.diagnostics import Edit
 
 replace_token(token, new_text)      # replace a CST token entirely
@@ -89,17 +89,20 @@ Edit(start, end, new_text)          # low-level: direct byte-range replacement
 All offsets are **UTF-8 byte positions** relative to the start of the docstring
 content (after the opening triple-quote).
 
-### Section-level helpers (from `_helpers.py`)
+### Section-level helpers (from `helpers.py`)
 
 ```python
-from pydocfix.rules._helpers import (
+from pydocfix.rules.helpers import (
     find_section,        # find a section by kind
     has_section,         # bool check for a section
     delete_section_fix,  # Fix that deletes a whole section
     delete_entry_fix,    # Fix that deletes a single entry within a section
-    detect_docstring_style,  # "google" | "numpy" | "plain"
+    detect_docstring_style,  # "google" | "numpy"
+    detect_section_indent,   # indentation string for new sections
+    build_section_stub,      # build a formatted section stub string
+    normalize_optional,      # strip Optional/None from type strings
 )
-from pydocfix.edits import detect_section_indent, section_append_edit
+from pydocfix.fixes import section_append_edit
 ```
 
 ---

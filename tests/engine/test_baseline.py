@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
-from pydocfix.baseline import (
+from pydocfix.engine.baseline import (
     compute_updated_baseline,
     filter_baseline_violations,
     generate_baseline,

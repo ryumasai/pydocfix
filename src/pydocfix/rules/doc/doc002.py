@@ -24,9 +24,9 @@ from pydocstring import (
     NumPyYields,
 )
 
-from pydocfix.edits import detect_section_indent
 from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.rules.helpers import detect_section_indent
 
 _NUMPY_ENTRY_TYPES: frozenset[type] = frozenset(
     {

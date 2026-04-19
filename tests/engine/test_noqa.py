@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydocfix.noqa import NoqaDirective, find_inline_noqa, parse_file_noqa, parse_inline_noqa
+from pydocfix.engine.noqa import NoqaDirective, find_inline_noqa, parse_file_noqa, parse_inline_noqa
 
 
 class TestNoqaDirective:

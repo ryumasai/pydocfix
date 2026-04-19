@@ -1,4 +1,4 @@
-"""Shared helper functions for all rule categories."""
+"""Shared helper utilities for rule authors and plugin developers."""
 
 from __future__ import annotations
 
@@ -16,11 +16,32 @@ from pydocstring import (
     TextRange,
 )
 
-from pydocfix.edits import delete_range
 from pydocfix.diagnostics import Applicability, Fix
+from pydocfix.fixes import delete_range
 
 if TYPE_CHECKING:
     from pydocfix.config import Config
+
+
+def detect_section_indent(ds_text: str, stmt_col_offset: int = 0) -> str:
+    """Detect the section-level indentation from docstring content.
+
+    For multiline docstrings the last line is typically only whitespace
+    (the indent before the closing triple-quote) and directly gives the
+    section indent.  Otherwise the first non-empty indented line after the
+    summary is used, falling back to *stmt_col_offset* spaces.
+    """
+    lines = ds_text.split("\n")
+    if len(lines) > 1:
+        last = lines[-1]
+        if not last.strip():
+            return last
+        for line in lines[1:]:
+            if line and not line.isspace():
+                n = len(line) - len(line.lstrip(" \t"))
+                if n > 0:
+                    return line[:n]
+    return " " * stmt_col_offset
 
 
 def find_section(

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from pydocfix.edits import apply_edits, delete_range, detect_section_indent, insert_at, section_append_edit
 from pydocfix.diagnostics import Edit
+from pydocfix.engine.fixer import apply_edits
+from pydocfix.fixes import delete_range, insert_at, section_append_edit
+from pydocfix.rules.helpers import detect_section_indent
 
 
 class TestApplyEdits:

@@ -13,7 +13,7 @@ from pydocstring import (
 
 from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules.prm._helpers import (
+from pydocfix.rules.prm.helpers import (
     bare_name,
     get_documented_param_nodes,
     get_signature_params,

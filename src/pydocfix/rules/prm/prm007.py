@@ -12,8 +12,8 @@ from pydocstring import (
 
 from pydocfix.diagnostics import Applicability, Diagnostic
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules._helpers import delete_entry_fix
-from pydocfix.rules.prm._helpers import (
+from pydocfix.rules.helpers import delete_entry_fix
+from pydocfix.rules.prm.helpers import (
     get_documented_param_nodes,
     get_param_name_token,
     is_param_section,

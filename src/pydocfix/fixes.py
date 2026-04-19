@@ -1,14 +1,20 @@
-"""Edit creation and application utilities."""
+"""Fix and Edit factory utilities for plugin authors."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from itertools import pairwise
-from typing import Final
-
 from pydocstring import Token
 
-from pydocfix.diagnostics import Edit
+from pydocfix.diagnostics import Applicability, Edit, Fix
+
+
+def safe_fix(edits: list[Edit]) -> Fix:
+    """Create a safe Fix from a list of Edits."""
+    return Fix(edits=edits, applicability=Applicability.SAFE)
+
+
+def unsafe_fix(edits: list[Edit]) -> Fix:
+    """Create an unsafe Fix from a list of Edits."""
+    return Fix(edits=edits, applicability=Applicability.UNSAFE)
 
 
 def replace_token(token: Token, new_text: str) -> Edit:
@@ -24,27 +30,6 @@ def insert_at(offset: int, text: str) -> Edit:
 def delete_range(start: int, end: int) -> Edit:
     """Delete a byte range."""
     return Edit(start=start, end=end, new_text="")
-
-
-def detect_section_indent(ds_text: str, stmt_col_offset: int = 0) -> str:
-    """Detect the section-level indentation from docstring content.
-
-    For multiline docstrings the last line is typically only whitespace
-    (the indent before the closing triple-quote) and directly gives the
-    section indent.  Otherwise the first non-empty indented line after the
-    summary is used, falling back to *stmt_col_offset* spaces.
-    """
-    lines = ds_text.split("\n")
-    if len(lines) > 1:
-        last = lines[-1]
-        if not last.strip():
-            return last
-        for line in lines[1:]:
-            if line and not line.isspace():
-                n = len(line) - len(line.lstrip(" \t"))
-                if n > 0:
-                    return line[:n]
-    return " " * stmt_col_offset
 
 
 def section_append_edit(ds_text: str, root_end: int, section_text: str) -> Edit:
@@ -79,20 +64,3 @@ def section_append_edit(ds_text: str, root_end: int, section_text: str) -> Edit:
         end=root_end,
         new_text=f"\n\n{section_text}\n{indent}",
     )
-
-
-def apply_edits(source: str, edits: Iterable[Edit]) -> str:
-    """Apply Edits to a docstring, in reverse-offset order.
-
-    Edit offsets are UTF-8 byte positions (as returned by pydocstring-rs).
-    """
-    sorted_edits: Final[list[Edit]] = sorted(edits, key=lambda e: e.start, reverse=True)
-    # Validate no overlaps
-    for prev, curr in pairwise(sorted_edits):
-        if curr.end > prev.start:
-            msg = f"Overlapping edits: [{curr.start}:{curr.end}] and [{prev.start}:{prev.end}]"
-            raise ValueError(msg)
-    buf: bytes = source.encode("utf-8")
-    for edit in sorted_edits:
-        buf = buf[: edit.start] + edit.new_text.encode("utf-8") + buf[edit.end :]
-    return buf.decode("utf-8")

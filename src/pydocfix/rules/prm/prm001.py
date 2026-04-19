@@ -13,11 +13,11 @@ from pydocstring import (
     PlainDocstring,
 )
 
-from pydocfix.edits import detect_section_indent, section_append_edit
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
+from pydocfix.fixes import section_append_edit
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules._helpers import build_section_stub, detect_docstring_style, has_section
-from pydocfix.rules.prm._helpers import get_signature_params
+from pydocfix.rules.helpers import build_section_stub, detect_docstring_style, detect_section_indent, has_section
+from pydocfix.rules.prm.helpers import get_signature_params
 
 
 class PRM001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):

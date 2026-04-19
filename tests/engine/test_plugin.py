@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from pydocstring import PlainDocstring
 
-from pydocfix.plugin_loader import discover_rules_in_module, discover_rules_in_path, load_plugin_rules
+from pydocfix.engine.plugin_loader import discover_rules_in_module, discover_rules_in_path, load_plugin_rules
 from pydocfix.rules import build_registry
 from pydocfix.rules._base import BaseRule, DiagnoseContext
 

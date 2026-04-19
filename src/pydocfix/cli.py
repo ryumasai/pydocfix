@@ -12,8 +12,8 @@ from typing import Final
 import click
 
 from pydocfix import __version__
-from pydocfix._filewalker import collect_files
-from pydocfix._parallel import FileResult, check_files_parallel, check_one_file
+from pydocfix.engine.filewalker import collect_files
+from pydocfix.engine.parallel import FileResult, check_files_parallel, check_one_file
 
 logger = logging.getLogger(__name__)
 
@@ -101,19 +101,19 @@ def check(
 
     use_color = _should_use_color(no_color)
 
-    from pydocfix.baseline import (
+    from pydocfix.config import DEFAULT_EXCLUDE, find_pyproject_toml, load_config
+    from pydocfix.engine.baseline import (
         compute_updated_baseline,
         filter_baseline_violations,
         load_baseline,
         normalize_path,
     )
-    from pydocfix.baseline import (
+    from pydocfix.engine.baseline import (
         generate_baseline as _generate_baseline,
     )
-    from pydocfix.baseline import (
+    from pydocfix.engine.baseline import (
         write_baseline as _write_baseline,
     )
-    from pydocfix.config import DEFAULT_EXCLUDE, find_pyproject_toml, load_config
     from pydocfix.rules import Applicability, build_registry, effective_applicability, load_plugin_rules
 
     config = load_config()
@@ -186,7 +186,7 @@ def check(
     # Collect raw (pre-baseline-filter) violations for baseline generation / auto-regen
     raw_violations_by_file: dict[str, list] = {}
     # Pre-build baseline lookup once so it is not rebuilt per-file in the loop
-    from pydocfix.baseline import _build_lookup as _build_baseline_lookup
+    from pydocfix.engine.baseline import _build_lookup as _build_baseline_lookup
 
     baseline_lookup = _build_baseline_lookup(baseline_data) if baseline_data else {}
 
@@ -262,7 +262,7 @@ def check(
                 diagnostics = remaining
 
         if not diff:
-            from pydocfix._render import render_diagnostic
+            from pydocfix.render import render_diagnostic
 
             effective_format = output_format or config.output_format
             is_concise = effective_format == "concise"
@@ -280,8 +280,8 @@ def check(
         remaining_diagnostics.extend(diagnostics)
 
     # --- Baseline generation ---
-    from pydocfix._ansi import _BOLD, _GREEN, _RED
-    from pydocfix._ansi import ansi as _ansi
+    from pydocfix.ansi import _BOLD, _GREEN, _RED
+    from pydocfix.ansi import ansi as _ansi
 
     if generate_baseline:
         if effective_baseline_path is None:
@@ -354,8 +354,8 @@ def _summarize_check(
     color: bool = False,
 ) -> None:
     """Print summary for check and diff modes."""
-    from pydocfix._ansi import _BOLD, _RED
-    from pydocfix._ansi import ansi as _ansi
+    from pydocfix.ansi import _BOLD, _RED
+    from pydocfix.ansi import ansi as _ansi
 
     found_s = _ansi(f"Found {total} violation(s).", _RED, _BOLD, color=color)
     safe_s = _ansi(str(safe), _BOLD, color=color)
@@ -363,6 +363,7 @@ def _summarize_check(
 
     def _echo(msg: str) -> None:
         click.echo(msg, color=color or None)
+
     if diff:
         if safe and unsafe:
             if not unsafe_fixes:
@@ -402,8 +403,8 @@ def _summarize_fix(
     color: bool = False,
 ) -> None:
     """Print summary for --fix mode."""
-    from pydocfix._ansi import _BOLD, _GREEN, _RED
-    from pydocfix._ansi import ansi as _ansi
+    from pydocfix.ansi import _BOLD, _GREEN, _RED
+    from pydocfix.ansi import ansi as _ansi
     from pydocfix.rules import Applicability, effective_applicability
 
     def _echo(msg: str) -> None:
@@ -440,8 +441,8 @@ def _summarize_fix(
 
 def _print_diff(filepath: Path, original: str, new_source: str, *, color: bool = False) -> None:
     """Print unified diff between original and fixed source."""
-    from pydocfix._ansi import _BOLD, _DIM, _GREEN, _RED
-    from pydocfix._ansi import ansi as _ansi
+    from pydocfix.ansi import _BOLD, _DIM, _GREEN, _RED
+    from pydocfix.ansi import ansi as _ansi
 
     diff_lines = difflib.unified_diff(
         original.splitlines(keepends=True),

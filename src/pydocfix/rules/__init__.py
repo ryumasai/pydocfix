@@ -8,12 +8,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pydocfix.config import Config
 
-from pydocfix.edits import (
-    apply_edits,
-    delete_range,
-    insert_at,
-    replace_token,
-)
 from pydocfix.diagnostics import (
     Applicability,
     Diagnostic,
@@ -22,32 +16,41 @@ from pydocfix.diagnostics import (
     Offset,
     Range,
 )
-from pydocfix.plugin_loader import (
+from pydocfix.engine.plugin_loader import (
     discover_rules_in_module,
     discover_rules_in_package,
     discover_rules_in_path,
     load_plugin_rules,
 )
-from pydocfix.registry import (
+from pydocfix.engine.registry import (
     RuleRegistry,
     _matches_any,
     effective_applicability,
     is_applicable,
 )
-from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext, DocstringLocation
-from pydocfix.rules._helpers import (
-    build_section_stub,
-    delete_entry_fix,
-    delete_section_fix,
-    detect_docstring_style,
-    find_section,
-    has_section,
+from pydocfix.fixes import (
+    delete_range,
+    insert_at,
+    replace_token,
+    safe_fix,
+    unsafe_fix,
 )
+from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext, DocstringLocation
 
 # --- Docstring-level rules ---
 from pydocfix.rules.doc.doc001 import DOC001
 from pydocfix.rules.doc.doc002 import DOC002
 from pydocfix.rules.doc.doc003 import DOC003
+from pydocfix.rules.helpers import (
+    build_section_stub,
+    delete_entry_fix,
+    delete_section_fix,
+    detect_docstring_style,
+    detect_section_indent,
+    find_section,
+    has_section,
+    normalize_optional,
+)
 
 # --- Parameter rules ---
 from pydocfix.rules.prm.prm001 import PRM001
@@ -104,58 +107,6 @@ from pydocfix.rules.yld.yld106 import YLD106
 __all__ = [
     "Applicability",
     "BaseRule",
-    # **** RULES ****
-    # sum
-    "SUM001",
-    "SUM002",
-    # doc
-    "DOC001",
-    "DOC002",
-    "DOC003",
-    # prm
-    "PRM001",
-    "PRM002",
-    "PRM003",
-    "PRM004",
-    "PRM005",
-    "PRM006",
-    "PRM007",
-    "PRM008",
-    "PRM009",
-    "PRM101",
-    "PRM102",
-    "PRM103",
-    "PRM104",
-    "PRM105",
-    "PRM106",
-    "PRM201",
-    "PRM202",
-    # ris
-    "RIS001",
-    "RIS002",
-    "RIS003",
-    "RIS004",
-    "RIS005",
-    # rtn
-    "RTN001",
-    "RTN002",
-    "RTN003",
-    "RTN101",
-    "RTN102",
-    "RTN103",
-    "RTN104",
-    "RTN105",
-    "RTN106",
-    # yld
-    "YLD001",
-    "YLD002",
-    "YLD003",
-    "YLD101",
-    "YLD102",
-    "YLD103",
-    "YLD104",
-    "YLD105",
-    "YLD106",
     # **** FRAMEWORK ****
     "ActivationCondition",
     "DiagnoseContext",
@@ -166,20 +117,24 @@ __all__ = [
     "Offset",
     "Range",
     "RuleRegistry",
-    "apply_edits",
+    "apply_fixes",
     "build_registry",
     "delete_range",
     "insert_at",
     "effective_applicability",
     "is_applicable",
     "replace_token",
+    "safe_fix",
+    "unsafe_fix",
     # **** HELPERS ****
     "build_section_stub",
     "delete_entry_fix",
     "delete_section_fix",
     "detect_docstring_style",
+    "detect_section_indent",
     "find_section",
     "has_section",
+    "normalize_optional",
     # **** PLUGIN SYSTEM ****
     "discover_rules_in_module",
     "discover_rules_in_package",

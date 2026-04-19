@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydocfix.checker import check_file
+from pydocfix.engine.checker import check_file
 from pydocfix.config import Config
 from tests.engine._rules.always001 import ALWAYS001
 from tests.engine._rules.cyclic001 import CYCLIC001

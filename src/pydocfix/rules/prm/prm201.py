@@ -9,7 +9,7 @@ from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules.prm._helpers import bare_name, get_param_name_token
+from pydocfix.rules.prm.helpers import bare_name, get_param_name_token
 
 
 class PRM201(BaseRule[GoogleArg | NumPyParameter]):

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from pydocfix._ansi import _BOLD, _DIM, _RED
-from pydocfix._ansi import ansi as _ansi
+from pydocfix.ansi import _BOLD, _DIM, _RED
+from pydocfix.ansi import ansi as _ansi
 
 if TYPE_CHECKING:
     from pydocfix.config import Config

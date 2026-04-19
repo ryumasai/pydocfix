@@ -12,8 +12,8 @@ from pydocstring import (
 
 from pydocfix.diagnostics import Applicability, Diagnostic
 from pydocfix.rules._base import BaseRule, DiagnoseContext
-from pydocfix.rules._helpers import delete_section_fix
-from pydocfix.rules.rtn._helpers import is_returns_section, returns_a_value
+from pydocfix.rules.helpers import delete_section_fix
+from pydocfix.rules.rtn.helpers import is_returns_section, returns_a_value
 
 
 class RTN002(BaseRule[GoogleSection | NumPySection]):

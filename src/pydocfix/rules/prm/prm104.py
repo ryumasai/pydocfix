@@ -7,10 +7,10 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
-from pydocfix.edits import delete_range
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
+from pydocfix.fixes import delete_range
 from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
-from pydocfix.rules.prm._helpers import bare_name, get_annotation_map, get_param_name_token
+from pydocfix.rules.prm.helpers import bare_name, get_annotation_map, get_param_name_token
 
 
 class PRM104(BaseRule[GoogleArg | NumPyParameter]):
