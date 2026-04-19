@@ -25,6 +25,13 @@ class EXAMPLE001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
 
     This rule enforces that docstrings have a minimum length to ensure
     adequate documentation.
+
+    Supports plugin-config:
+
+    .. code-block:: toml
+
+        [tool.pydocfix.plugin-config.example001]
+        min-length = 10  # default: 10
     """
 
     code = "EXAMPLE001"
@@ -38,7 +45,8 @@ class EXAMPLE001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
             return
 
         summary_text = node.summary.text.strip()
-        min_length = 10
+        plugin_cfg = self.config.plugin_config.get("example001", {}) if self.config else {}
+        min_length: int = int(plugin_cfg.get("min-length", 10))
 
         if len(summary_text) < min_length:
             yield self._make_diagnostic(

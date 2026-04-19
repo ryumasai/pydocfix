@@ -6,6 +6,7 @@ import logging
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ class Config:
     output_format: str = "full"
     plugin_modules: list[str] = field(default_factory=list)
     plugin_paths: list[str] = field(default_factory=list)
+    plugin_config: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def find_pyproject_toml(start: Path | None = None) -> Path | None:
@@ -104,6 +106,12 @@ def load_config(start: Path | None = None) -> Config:
     extend_unsafe_fixes: list[str] = [str(c).upper() for c in section.get("extend-unsafe-fixes", [])]
     plugin_modules: list[str] = [str(m) for m in section.get("plugin-modules", [])]
     plugin_paths: list[str] = [str(p) for p in section.get("plugin-paths", [])]
+    raw_plugin_config = section.get("plugin-config", {})
+    plugin_config: dict[str, dict[str, Any]] = (
+        {k: dict(v) for k, v in raw_plugin_config.items() if isinstance(v, dict)}
+        if isinstance(raw_plugin_config, dict)
+        else {}
+    )
     output_format: str = section.get("output-format", "full").lower()
     if output_format not in {"full", "concise"}:
         logger.warning(
@@ -125,4 +133,5 @@ def load_config(start: Path | None = None) -> Config:
         output_format=output_format,
         plugin_modules=plugin_modules,
         plugin_paths=plugin_paths,
+        plugin_config=plugin_config,
     )
