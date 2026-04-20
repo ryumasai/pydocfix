@@ -21,14 +21,16 @@ from pydocstring import (
 from pydocfix.config import Config
 from pydocfix.engine.fixer import apply_fixes
 from pydocfix.engine.noqa import NoqaDirective, find_inline_noqa, parse_file_noqa
-from pydocfix.rules import (
-    BaseRule,
-    DiagnoseContext,
+from pydocfix.engine.registry import RuleRegistry, is_applicable
+from pydocfix.rules._base import (
+    BaseCtx,
+    ClassCtx,
     Diagnostic,
     DocstringLocation,
+    FunctionCtx,
+    ModuleCtx,
     Offset,
     Range,
-    is_applicable,
 )
 
 logger = logging.getLogger(__name__)
@@ -98,34 +100,21 @@ class _RuleVisitor(Visitor):
 
     def __init__(
         self,
-        type_to_rules: dict[type, list[BaseRule]],
-        filepath: Path,
-        parsed: GoogleDocstring | NumPyDocstring | PlainDocstring,
-        parent_ast: ast.AST,
-        ds_stmt: ast.stmt,
-        ds_content: str,
-        ds_loc: DocstringLocation,
-        class_ast: ast.ClassDef | None = None,
+        registry: RuleRegistry,
+        ctx: BaseCtx,
     ) -> None:
-        self._type_to_rules = type_to_rules
-        self._ctx = DiagnoseContext(
-            filepath=filepath,
-            docstring_text=ds_content,
-            docstring_cst=parsed,
-            parent_ast=parent_ast,
-            docstring_stmt=ds_stmt,
-            docstring_location=ds_loc,
-            class_ast=class_ast,
-        )
+        self._registry = registry
+        self._ctx = ctx
+        self._ctx_type = type(ctx)
         self.diagnostics: list[Diagnostic] = []
 
     def _dispatch(self, node, *, walk_ctx=None):
         """Dispatch a node to matching rules."""
-        matching = self._type_to_rules.get(type(node), [])
+        matching = self._registry.handlers_for(self._ctx_type, type(node))
         if not matching:
             return
-        for rule in matching:
-            self.diagnostics.extend(rule.diagnose(node, self._ctx))
+        for rule_fn in matching:
+            self.diagnostics.extend(rule_fn(node, self._ctx))
 
     # Google style
     def enter_google_docstring(self, node, ctx):
@@ -204,8 +193,65 @@ _MAX_FIX_ITERATIONS: Final[int] = 10
 """Maximum number of fix iterations per docstring before giving up."""
 
 
+def _build_ctx(
+    parent_ast: ast.AST,
+    *,
+    filepath: Path,
+    ds_content: str,
+    parsed: GoogleDocstring | NumPyDocstring | PlainDocstring,
+    ds_stmt: ast.stmt,
+    ds_loc: DocstringLocation,
+    config: Config | None,
+    class_ast: ast.ClassDef | None,
+) -> BaseCtx:
+    """Create the appropriate context type based on parent AST node."""
+    if isinstance(parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return FunctionCtx(
+            parent=parent_ast,
+            filepath=filepath,
+            docstring_text=ds_content,
+            docstring_cst=parsed,
+            docstring_location=ds_loc,
+            docstring_stmt=ds_stmt,
+            config=config,
+            class_ast=class_ast,
+        )
+    if isinstance(parent_ast, ast.ClassDef):
+        return ClassCtx(
+            parent=parent_ast,
+            filepath=filepath,
+            docstring_text=ds_content,
+            docstring_cst=parsed,
+            docstring_location=ds_loc,
+            docstring_stmt=ds_stmt,
+            config=config,
+            class_ast=class_ast,
+        )
+    if isinstance(parent_ast, ast.Module):
+        return ModuleCtx(
+            parent=parent_ast,
+            filepath=filepath,
+            docstring_text=ds_content,
+            docstring_cst=parsed,
+            docstring_location=ds_loc,
+            docstring_stmt=ds_stmt,
+            config=config,
+            class_ast=class_ast,
+        )
+    # Fallback (shouldn't happen)
+    return BaseCtx(
+        filepath=filepath,
+        docstring_text=ds_content,
+        docstring_cst=parsed,
+        docstring_location=ds_loc,
+        docstring_stmt=ds_stmt,
+        config=config,
+        class_ast=class_ast,
+    )
+
+
 def _diagnose_docstring(
-    type_to_rules: dict[type, list[BaseRule]],
+    registry: RuleRegistry,
     config: Config | None,
     filepath: Path,
     parent_ast: ast.AST,
@@ -216,16 +262,17 @@ def _diagnose_docstring(
 ) -> list[Diagnostic]:
     """Parse and diagnose a single docstring, returning diagnostics."""
     parsed = pydocstring.parse(ds_content)
-    visitor = _RuleVisitor(
-        type_to_rules=type_to_rules,
+    ctx = _build_ctx(
+        parent_ast,
         filepath=filepath,
-        parsed=parsed,
-        parent_ast=parent_ast,
-        ds_stmt=ds_stmt,
         ds_content=ds_content,
+        parsed=parsed,
+        ds_stmt=ds_stmt,
         ds_loc=ds_loc,
+        config=config,
         class_ast=class_ast,
     )
+    visitor = _RuleVisitor(registry=registry, ctx=ctx)
     pydocstring.walk(parsed, visitor)
     return visitor.diagnostics
 
@@ -362,7 +409,7 @@ def _check_unused_inline_noqa(
 
 
 def _process_docstring(
-    type_to_rules: dict[type, list[BaseRule]],
+    registry: RuleRegistry,
     config: Config | None,
     filepath: Path,
     parent_ast: ast.AST,
@@ -379,7 +426,7 @@ def _process_docstring(
     """
     class_ast = grandparent if isinstance(grandparent, ast.ClassDef) else None
     ds_diagnostics = _diagnose_docstring(
-        type_to_rules,
+        registry,
         config,
         filepath,
         parent_ast,
@@ -429,7 +476,7 @@ def _process_docstring(
 
 
 def _fix_docstring(
-    type_to_rules: dict[type, list[BaseRule]],
+    registry: RuleRegistry,
     config: Config | None,
     filepath: Path,
     parent_ast: ast.AST,
@@ -454,7 +501,7 @@ def _fix_docstring(
         current_content = apply_fixes(current_content, accepted_fixes)
         # Re-diagnose the fixed docstring, re-annotate symbol
         ds_diagnostics = _diagnose_docstring(
-            type_to_rules,
+            registry,
             config,
             filepath,
             parent_ast,
@@ -480,7 +527,7 @@ def _fix_docstring(
 def check_file(
     source: str,
     filepath: Path,
-    type_to_rules: dict[type, list[BaseRule]],
+    registry: RuleRegistry,
     *,
     fix: bool = False,
     unsafe_fixes: bool = False,
@@ -492,12 +539,12 @@ def check_file(
     Args:
         source: Source code text to check.
         filepath: Path to the file being checked.
-        type_to_rules: Mapping from CST node types to applicable rules.
+        registry: Rule registry containing all applicable rules.
         fix: Whether to apply fixes.
         unsafe_fixes: Whether to apply unsafe fixes.
         config: Configuration object.
         known_rule_codes: Set of all known rule codes (for noqa validation).
-            If None, extracted from type_to_rules.
+            If None, extracted from registry.
 
     Returns:
         Tuple of (all_diagnostics, fixed_source_or_none, remaining_after_fix).
@@ -519,7 +566,7 @@ def check_file(
 
     # Extract known rule codes for noqa validation
     if known_rule_codes is None:
-        known_rule_codes = frozenset(rule.code for rules in type_to_rules.values() for rule in rules)
+        known_rule_codes = registry.all_codes()
 
     # Collect docstrings in a single AST pass (parent info tracked inline)
     _docstring_infos: list[_DocstringInfo]
@@ -535,7 +582,7 @@ def check_file(
             continue
 
         ds_diagnostics, noqa_state, symbol = _process_docstring(
-            type_to_rules,
+            registry,
             config,
             filepath,
             parent_ast,
@@ -554,7 +601,7 @@ def check_file(
         if fix and ds_diagnostics:
             fix_class_ast = grandparent if isinstance(grandparent, ast.ClassDef) else None
             ds_remaining, new_content = _fix_docstring(
-                type_to_rules,
+                registry,
                 config,
                 filepath,
                 parent_ast,

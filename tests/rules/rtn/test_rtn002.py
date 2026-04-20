@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydocfix.rules.rtn.rtn002 import RTN002
+from pydocfix.rules.rtn.rtn002 import rtn002
 
 from ..conftest import check_rule, load_fixture
 
@@ -11,7 +11,7 @@ CATEGORY = "rtn"
 
 class TestRTN002:
     def _rules(self):
-        return [RTN002()]
+        return [rtn002]
 
     def test_rule(self, snapshot):
         fixture = load_fixture("rtn002.py", CATEGORY)

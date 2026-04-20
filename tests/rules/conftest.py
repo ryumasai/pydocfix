@@ -6,9 +6,10 @@ import difflib
 from collections.abc import Sequence
 from pathlib import Path
 
+from pydocfix.config import Config
 from pydocfix.engine.checker import check_file
-from pydocfix.rules import BaseRule
-from tests.helpers import make_type_to_rules
+from pydocfix.rules._base import RuleFn
+from tests.helpers import make_registry
 
 
 def load_fixture(fixture_name: str, category: str) -> Path:
@@ -24,7 +25,7 @@ def load_fixture(fixture_name: str, category: str) -> Path:
 
     Example:
         >>> path = load_fixture("prm001.py", "prm")
-        >>> output = render_fixture(path, [PRM001(Config())])
+        >>> output = render_fixture(path, [prm001])
     """
     fixture_dir = Path(__file__).parent / category / "fixtures"
     fixture_path = fixture_dir / fixture_name
@@ -35,9 +36,10 @@ def load_fixture(fixture_name: str, category: str) -> Path:
 
 def render_fixture(
     fixture_path: Path,
-    rules: Sequence[BaseRule],
+    rules: Sequence[RuleFn],
     *,
     display_path: str | None = None,
+    config: Config | None = None,
 ) -> str:
     """Run rules on fixture and return rendered diagnostic string.
 
@@ -52,8 +54,8 @@ def render_fixture(
     from pydocfix.render import render_diagnostic
 
     source = fixture_path.read_text(encoding="utf-8")
-    type_to_rules = make_type_to_rules(*rules)
-    diagnostics, _, _ = check_file(source, fixture_path, type_to_rules)
+    registry = make_registry(*rules)
+    diagnostics, _, _ = check_file(source, fixture_path, registry, config=config)
 
     seen: set[tuple[str, int, int]] = set()
     unique_diags = []
@@ -71,9 +73,10 @@ def render_fixture(
 
 def fix_fixture(
     fixture_path: Path,
-    rules: Sequence[BaseRule],
+    rules: Sequence[RuleFn],
     *,
     unsafe_fixes: bool = True,
+    config: Config | None = None,
 ) -> str | None:
     """Run rules on fixture with fix=True and return fixed source.
 
@@ -86,13 +89,14 @@ def fix_fixture(
         Fixed source string, or None if no fix was applied.
     """
     source = fixture_path.read_text(encoding="utf-8")
-    type_to_rules = make_type_to_rules(*rules)
+    registry = make_registry(*rules)
     _, fixed_source, _ = check_file(
         source,
         fixture_path,
-        type_to_rules,
+        registry,
         fix=True,
         unsafe_fixes=unsafe_fixes,
+        config=config,
     )
     return fixed_source
 
@@ -105,10 +109,11 @@ def _section_sep(label: str, width: int = 50) -> str:
 
 def check_rule(
     fixture_path: Path,
-    rules: Sequence[BaseRule],
+    rules: Sequence[RuleFn],
     *,
     display_path: str | None = None,
     unsafe_fixes: bool = True,
+    config: Config | None = None,
 ) -> str:
     """Run rules on fixture and return combined diagnostics + diff snapshot.
 
@@ -147,8 +152,8 @@ def check_rule(
     path_str = display_path or fixture_path.name
     source = fixture_path.read_text(encoding="utf-8")
 
-    diag_output = render_fixture(fixture_path, rules, display_path=path_str)
-    fixed = fix_fixture(fixture_path, rules, unsafe_fixes=unsafe_fixes)
+    diag_output = render_fixture(fixture_path, rules, display_path=path_str, config=config)
+    fixed = fix_fixture(fixture_path, rules, unsafe_fixes=unsafe_fixes, config=config)
 
     diag_sep = _section_sep("Diagnostics")
     diff_sep = _section_sep("Diff")

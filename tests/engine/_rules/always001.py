@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.diagnostics import Diagnostic
+from pydocfix.rules._base import BaseCtx, ClassCtx, FunctionCtx, ModuleCtx, make_diagnostic, rule
 
 
-class ALWAYS001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
+@rule(
+    "ALWAYS001", targets=(FunctionCtx, ClassCtx, ModuleCtx), cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring)
+)
+def always001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Fires a diagnostic on every docstring regardless of content."""
-
-    code = "ALWAYS001"
-
-    def diagnose(self, node, ctx: DiagnoseContext):
-        yield self._make_diagnostic(ctx, "Always fires on every docstring", target=node)
+    yield make_diagnostic("ALWAYS001", ctx, "Always fires on every docstring", target=node)

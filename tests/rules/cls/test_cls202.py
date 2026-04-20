@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydocfix.rules.cls.cls202 import CLS202
+from pydocfix.rules.cls.cls202 import cls202
 
 from ..conftest import check_rule, load_fixture
 
@@ -11,7 +11,7 @@ CATEGORY = "cls"
 
 class TestCLS202:
     def _rules(self):
-        return [CLS202()]
+        return [cls202]
 
     def test_rule(self, snapshot):
         fixture = load_fixture("cls202.py", CATEGORY)

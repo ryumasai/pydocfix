@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import pytest
-from pydocstring import GoogleDocstring
 
 from pydocfix.config import Config
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix, Offset, Range
 from pydocfix.engine.registry import effective_applicability, is_applicable
-from tests.engine._rules.safe001 import SAFE001
-from tests.engine._rules.unsafe001 import UNSAFE001
+from pydocfix.rules._base import FunctionCtx
+from tests.engine._rules.safe001 import safe001
+from tests.engine._rules.unsafe001 import unsafe001
 from tests.helpers import make_registry
 
 
@@ -93,21 +93,21 @@ class TestRuleRegistry:
 
     def test_register_and_get(self):
         """registered rule is retrievable by code."""
-        rule = SAFE001(Config())
-        registry = make_registry(rule)
+        registry = make_registry(safe001)
 
-        assert registry.get("SAFE001") is rule
+        assert registry.get("SAFE001") is safe001
 
-    def test_rules_for_kind(self):
-        """rules_for_kind returns rules matching the CST node type."""
-        rule = SAFE001(Config())
-        registry = make_registry(rule)
+    def test_handlers_for_returns_matching_rules(self):
+        """handlers_for returns rules matching the (ctx_type, cst_type) pair."""
+        from pydocstring import GoogleDocstring
 
-        assert rule in registry.rules_for_kind(GoogleDocstring)
+        registry = make_registry(safe001)
+
+        assert safe001 in registry.handlers_for(FunctionCtx, GoogleDocstring)
 
     def test_filter_by_codes_ignore(self):
         """filter_by_codes with ignore removes specified code."""
-        registry = make_registry(SAFE001(Config()), UNSAFE001(Config()))
+        registry = make_registry(safe001, unsafe001)
 
         filtered = registry.filter_by_codes(ignore=frozenset(["SAFE001"]))
 
@@ -116,7 +116,7 @@ class TestRuleRegistry:
 
     def test_filter_by_codes_select(self):
         """filter_by_codes with select keeps only specified code."""
-        registry = make_registry(SAFE001(Config()), UNSAFE001(Config()))
+        registry = make_registry(safe001, unsafe001)
 
         filtered = registry.filter_by_codes(select=frozenset(["SAFE001"]))
 
@@ -125,7 +125,7 @@ class TestRuleRegistry:
 
     def test_filter_by_codes_prefix(self):
         """prefix in ignore removes all matching codes."""
-        registry = make_registry(SAFE001(Config()), UNSAFE001(Config()))
+        registry = make_registry(safe001, unsafe001)
 
         # "SAFE" prefix matches SAFE001 but not UNSAFE001
         filtered = registry.filter_by_codes(ignore=frozenset(["SAFE"]))

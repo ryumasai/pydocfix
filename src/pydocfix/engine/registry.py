@@ -10,7 +10,7 @@ from pydocfix.diagnostics import Applicability, Diagnostic
 
 if TYPE_CHECKING:
     from pydocfix.config import Config
-    from pydocfix.rules._base import BaseRule
+    from pydocfix.rules._base import RuleFn
 
 
 def _matches_any(code: str, patterns: frozenset[str]) -> bool:
@@ -48,37 +48,34 @@ def is_applicable(diag: Diagnostic, unsafe_fixes: bool, config: Config | None = 
 
 @dataclass
 class RuleRegistry:
-    """Manages available rules."""
+    """Manages available rule functions."""
 
-    _rules: dict[str, BaseRule] = field(default_factory=dict)
-    _by_kind: dict[type, list[BaseRule]] = field(default_factory=lambda: defaultdict(list))
+    _rules: dict[str, RuleFn] = field(default_factory=dict)
+    _handlers: dict[tuple[type, type], list[RuleFn]] = field(default_factory=lambda: defaultdict(list))
 
-    def register(self, rule: BaseRule) -> None:
-        """Register a rule instance."""
-        self._rules[rule.code] = rule
-        for kind in rule._targets:
-            self._by_kind[kind].append(rule)
+    def register(self, rule_fn: RuleFn) -> None:
+        """Register a rule function (decorated with ``@rule``)."""
+        code: str = rule_fn._rule_code  # type: ignore[attr-defined]
+        self._rules[code] = rule_fn
+        for ctx_type in rule_fn._targets_ctx:  # type: ignore[attr-defined]
+            for cst_type in rule_fn._targets_cst:  # type: ignore[attr-defined]
+                self._handlers[(ctx_type, cst_type)].append(rule_fn)
 
-    def get(self, code: str) -> BaseRule | None:
-        """Get a rule by code."""
+    def get(self, code: str) -> RuleFn | None:
+        """Get a rule function by code."""
         return self._rules.get(code)
 
-    def rules_for_kind(self, kind: type) -> list[BaseRule]:
-        """Get all rules that handle a specific CST node type."""
-        return self._by_kind.get(kind, [])
+    def handlers_for(self, ctx_type: type, cst_type: type) -> list[RuleFn]:
+        """Get all rule functions for a (ctx_type, cst_type) pair."""
+        return self._handlers.get((ctx_type, cst_type), [])
 
-    def all_rules(self) -> list[BaseRule]:
-        """Get all registered rules."""
+    def all_rules(self) -> list[RuleFn]:
+        """Get all registered rule functions."""
         return list(self._rules.values())
 
     def all_codes(self) -> frozenset[str]:
         """Get all registered rule codes."""
         return frozenset(self._rules.keys())
-
-    @property
-    def type_to_rules(self) -> dict[type, list[BaseRule]]:
-        """Get the CST node type to rules mapping."""
-        return dict(self._by_kind)
 
     def filter_by_codes(
         self,
@@ -99,11 +96,12 @@ class RuleRegistry:
         selected = select or frozenset()
 
         filtered = RuleRegistry()
-        for rule in self.all_rules():
-            if _matches_any(rule.code, ignored):
+        for rule_fn in self.all_rules():
+            code = rule_fn._rule_code  # type: ignore[attr-defined]
+            if _matches_any(code, ignored):
                 continue
-            if selected and not _matches_any(rule.code, selected):
+            if selected and not _matches_any(code, selected):
                 continue
-            filtered.register(rule)
+            filtered.register(rule_fn)
 
         return filtered

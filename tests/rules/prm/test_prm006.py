@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydocfix.rules.prm.prm006 import PRM006
+from pydocfix.rules.prm.prm006 import prm006
 
 from ..conftest import check_rule, load_fixture
 
@@ -11,7 +11,7 @@ CATEGORY = "prm"
 
 class TestPRM006:
     def _rules(self):
-        return [PRM006()]
+        return [prm006]
 
     def test_rule(self, snapshot):
         fixture = load_fixture("prm006.py", CATEGORY)

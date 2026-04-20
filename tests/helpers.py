@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from pydocfix.rules import BaseRule, RuleRegistry
+from typing import TYPE_CHECKING
+
+from pydocfix.rules import RuleRegistry
+
+if TYPE_CHECKING:
+    from pydocfix.rules._base import RuleFn
 
 
-def make_registry(*rule_instances: BaseRule) -> RuleRegistry:
-    """Build a RuleRegistry from rule instances."""
+def make_registry(*rule_fns: RuleFn) -> RuleRegistry:
+    """Build a RuleRegistry from rule functions."""
     registry = RuleRegistry()
-    for rule in rule_instances:
-        registry.register(rule)
+    for rule_fn in rule_fns:
+        registry.register(rule_fn)
     return registry
-
-
-def make_type_to_rules(*rule_instances: BaseRule) -> dict[type, list[BaseRule]]:
-    """Build a CST-type-to-rules dispatch map from rule instances."""
-    return make_registry(*rule_instances).type_to_rules

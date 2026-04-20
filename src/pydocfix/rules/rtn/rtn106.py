@@ -2,32 +2,30 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
 from pydocfix.diagnostics import Diagnostic
-from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
+from pydocfix.rules._base import ActivationCondition, FunctionCtx, make_diagnostic, rule
 
 
-class RTN106(BaseRule[GoogleReturn | NumPyReturns]):
+@rule(
+    "RTN106",
+    targets=FunctionCtx,
+    cst_types=(GoogleReturn, NumPyReturns),
+    enabled_by_default=False,
+    conflicts_with=frozenset({"RTN105"}),
+    activation_condition=ActivationCondition("type_annotation_style", frozenset({"docstring"})),
+)
+def rtn106(node: GoogleReturn | NumPyReturns, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Documented return has a type annotation in the function signature (types belong in docstring)."""
+    cst_node = node
 
-    code = "RTN106"
-    enabled_by_default = False
-    conflicts_with = frozenset({"RTN105"})
-    activation_condition = ActivationCondition("type_annotation_style", frozenset({"docstring"}))
+    func = ctx.parent
+    if func.returns is None:
+        return  # no annotation in signature — nothing to flag
 
-    def diagnose(self, node: GoogleReturn | NumPyReturns, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = node
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
-
-        func = ctx.parent_ast
-        if func.returns is None:  # type: ignore[union-attr]
-            return  # no annotation in signature — nothing to flag
-
-        yield self._make_diagnostic(
-            ctx, "Return has a type annotation in signature; types belong in the docstring.", target=cst_node
-        )
+    yield make_diagnostic(
+        "RTN106", ctx, "Return has a type annotation in signature; types belong in the docstring.", target=cst_node
+    )

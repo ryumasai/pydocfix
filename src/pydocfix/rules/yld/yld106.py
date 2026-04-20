@@ -2,32 +2,30 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
 from pydocfix.diagnostics import Diagnostic
-from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
+from pydocfix.rules._base import ActivationCondition, FunctionCtx, make_diagnostic, rule
 from pydocfix.rules.yld.helpers import get_yield_type
 
 
-class YLD106(BaseRule[GoogleYield | NumPyYields]):
+@rule(
+    "YLD106",
+    targets=FunctionCtx,
+    cst_types=(GoogleYield, NumPyYields),
+    enabled_by_default=False,
+    conflicts_with=frozenset({"YLD105"}),
+    activation_condition=ActivationCondition("type_annotation_style", frozenset({"docstring"})),
+)
+def yld106(node: GoogleYield | NumPyYields, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Documented yield has a type annotation in the function signature (types belong in docstring)."""
+    cst_node = node
 
-    code = "YLD106"
-    enabled_by_default = False
-    conflicts_with = frozenset({"YLD105"})
-    activation_condition = ActivationCondition("type_annotation_style", frozenset({"docstring"}))
+    if get_yield_type(ctx.parent) is None:
+        return  # no annotation in signature — nothing to flag
 
-    def diagnose(self, node: GoogleYield | NumPyYields, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = node
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
-
-        if get_yield_type(ctx.parent_ast) is None:
-            return  # no annotation in signature — nothing to flag
-
-        yield self._make_diagnostic(
-            ctx, "Yield has a type annotation in signature; types belong in the docstring.", target=cst_node
-        )
+    yield make_diagnostic(
+        "YLD106", ctx, "Yield has a type annotation in signature; types belong in the docstring.", target=cst_node
+    )

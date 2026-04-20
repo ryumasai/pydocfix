@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from pydocfix.config import Config
-from pydocfix.rules.prm.prm105 import PRM105
+from pydocfix.rules.prm.prm105 import prm105
 
 from ..conftest import check_rule, load_fixture
 
@@ -12,7 +11,7 @@ CATEGORY = "prm"
 
 class TestPRM105:
     def _rules(self):
-        return [PRM105(Config(type_annotation_style="signature"))]
+        return [prm105]
 
     def test_rule(self, snapshot):
         fixture = load_fixture("prm105.py", CATEGORY)

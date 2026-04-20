@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.diagnostics import Diagnostic
+from pydocfix.rules._base import BaseCtx, FunctionCtx, ModuleCtx, rule
 
 
-class PLUGIN002(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
+@rule(
+    "PLUGIN002",
+    targets=(FunctionCtx, ModuleCtx),
+    cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring),
+)
+def plugin002(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Plugin rule in a _-prefixed file; should never be discovered via path."""
-
-    code = "PLUGIN002"
-
-    def diagnose(self, node, ctx: DiagnoseContext):
-        return iter(())
+    return iter(())

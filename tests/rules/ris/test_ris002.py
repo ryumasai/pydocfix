@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from pydocfix.config import Config
-from pydocfix.rules.ris.ris002 import RIS002
+from pydocfix.rules.ris.ris002 import ris002
 
 from ..conftest import check_rule, load_fixture
 
@@ -12,7 +11,7 @@ CATEGORY = "ris"
 
 class TestRIS002:
     def _rules(self):
-        return [RIS002(Config())]
+        return [ris002]
 
     def test_rule(self, snapshot):
         fixture = load_fixture("ris002.py", CATEGORY)

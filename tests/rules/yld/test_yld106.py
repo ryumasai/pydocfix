@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pydocfix.config import Config
-from pydocfix.rules.yld.yld106 import YLD106
+from pydocfix.rules.yld.yld106 import yld106
 
 from ..conftest import check_rule, load_fixture
 
@@ -12,8 +12,13 @@ CATEGORY = "yld"
 
 class TestYLD106:
     def _rules(self):
-        return [YLD106(Config(type_annotation_style="docstring"))]
+        return [yld106]
 
     def test_rule(self, snapshot):
         fixture = load_fixture("yld106.py", CATEGORY)
-        assert check_rule(fixture, self._rules(), display_path="yld106.py") == snapshot
+        assert (
+            check_rule(
+                fixture, self._rules(), display_path="yld106.py", config=Config(type_annotation_style="docstring")
+            )
+            == snapshot
+        )

@@ -42,15 +42,15 @@ pydocfix performs linting **and** auto-fix generation in a single pass, yet is s
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.72 sec | 2.85 sec | **4.0x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.84 sec | 4.26 sec | **5.1x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.74 sec | 2.90 sec | **3.9x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.85 sec | 4.24 sec | **5.0x** |
 
 #### Single-threaded (`--jobs 1`)
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 2.16 sec | 2.85 sec | **1.3x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 2.41 sec | 4.26 sec | **1.8x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 2.18 sec | 2.90 sec | **1.3x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 2.43 sec | 4.24 sec | **1.7x** |
 
 > Median of 5 runs (+ 1 warmup) via [hyperfine](https://github.com/sharkdp/hyperfine). pydoclint runs single-threaded only.
 > pydoclint configured with `--arg-type-hints-in-signature False --arg-type-hints-in-docstring False` to match pydocfix's default (no `type_annotation_style` set).
@@ -59,8 +59,8 @@ pydocfix performs linting **and** auto-fix generation in a single pass, yet is s
 
 | Project | pydocfix | pydoclint |
 |---------|------:|------:|
-| [numpy](https://github.com/numpy/numpy) | 2,571 | 2,787 |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 4,552 | 5,230 |
+| [numpy](https://github.com/numpy/numpy) | 2,562 | 2,787 |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 4,551 | 5,230 |
 
 > Violation counts differ because pydoclint additionally checks class attributes (DOC6xx), which pydocfix does not implement.
 

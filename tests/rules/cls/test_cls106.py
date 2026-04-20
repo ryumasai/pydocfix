@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pydocfix.config import Config
-from pydocfix.rules.cls.cls106 import CLS106
+from pydocfix.rules.cls.cls106 import cls106
 
 from ..conftest import check_rule, load_fixture
 
@@ -12,8 +12,17 @@ CATEGORY = "cls"
 
 class TestCLS106:
     def _rules(self):
-        return [CLS106(Config(class_docstring_style="class"))]
+        return [cls106]
 
     def test_rule(self, snapshot):
         fixture = load_fixture("cls106.py", CATEGORY)
-        assert check_rule(fixture, self._rules(), display_path="cls106.py", unsafe_fixes=True) == snapshot
+        assert (
+            check_rule(
+                fixture,
+                self._rules(),
+                display_path="cls106.py",
+                unsafe_fixes=True,
+                config=Config(class_docstring_style="class"),
+            )
+            == snapshot
+        )

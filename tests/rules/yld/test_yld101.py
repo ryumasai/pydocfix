@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from pydocfix.config import Config
-from pydocfix.rules.yld.yld101 import YLD101
+from pydocfix.rules.yld.yld101 import yld101
 
 from ..conftest import check_rule, load_fixture
 
@@ -12,7 +11,7 @@ CATEGORY = "yld"
 
 class TestYLD101:
     def _rules(self):
-        return [YLD101(Config())]
+        return [yld101]
 
     def test_rule(self, snapshot):
         fixture = load_fixture("yld101.py", CATEGORY)

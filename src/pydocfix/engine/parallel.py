@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from pydocfix.config import Config
+from pydocfix.engine.registry import RuleRegistry
 
 
 class FileResult(NamedTuple):
@@ -21,7 +22,7 @@ class FileResult(NamedTuple):
 
 def check_one_file(
     filepath: Path,
-    type_to_rules: dict,
+    registry: RuleRegistry,
     fix: bool,
     unsafe_fixes: bool,
     config: Config | None,
@@ -34,7 +35,7 @@ def check_one_file(
     diagnostics, new_source, remaining = check_file(
         source,
         filepath,
-        type_to_rules,
+        registry,
         fix=fix,
         unsafe_fixes=unsafe_fixes,
         config=config,
@@ -45,7 +46,7 @@ def check_one_file(
 
 # --- multiprocessing worker ---
 
-_worker_type_to_rules: dict | None = None
+_worker_registry: RuleRegistry | None = None
 _worker_known_rule_codes: frozenset[str] | None = None
 
 
@@ -56,7 +57,7 @@ def _worker_init(
     plugin_rule_classes: list[type] | None = None,
 ) -> None:
     """Initialize worker process by rebuilding the rule registry."""
-    global _worker_type_to_rules, _worker_known_rule_codes  # noqa: PLW0603
+    global _worker_registry, _worker_known_rule_codes  # noqa: PLW0603
     from pydocfix.rules import build_registry
 
     registry = build_registry(
@@ -65,7 +66,7 @@ def _worker_init(
         config=config_obj,
         plugin_rules=plugin_rule_classes,
     )
-    _worker_type_to_rules = registry.type_to_rules
+    _worker_registry = registry
     _worker_known_rule_codes = registry.all_codes()
 
 
@@ -73,9 +74,9 @@ def _worker_check(args: tuple) -> FileResult:
     """Worker function — runs in a child process."""
     filepath, fix, unsafe_fixes, config_obj = args
 
-    if _worker_type_to_rules is None or _worker_known_rule_codes is None:
+    if _worker_registry is None or _worker_known_rule_codes is None:
         raise RuntimeError("Worker process not initialized: _worker_init() must be called before _worker_check()")
-    return check_one_file(filepath, _worker_type_to_rules, fix, unsafe_fixes, config_obj, _worker_known_rule_codes)
+    return check_one_file(filepath, _worker_registry, fix, unsafe_fixes, config_obj, _worker_known_rule_codes)
 
 
 def check_files_parallel(

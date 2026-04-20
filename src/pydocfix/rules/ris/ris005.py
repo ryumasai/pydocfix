@@ -2,38 +2,32 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleException, NumPyException
 
 from pydocfix.diagnostics import Applicability, Diagnostic
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 from pydocfix.rules.helpers import delete_entry_fix
 from pydocfix.rules.ris.helpers import _bare_exc_name, get_raised_exceptions
 
 
-class RIS005(BaseRule[GoogleException | NumPyException]):
+@rule("RIS005", targets=FunctionCtx, cst_types=(GoogleException, NumPyException))
+def ris005(node: GoogleException | NumPyException, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Raises entry documents an exception not raised in the function body."""
+    cst_node = node
 
-    code = "RIS005"
+    type_token = cst_node.type
+    if type_token is None:
+        return
 
-    def diagnose(self, node: GoogleException | NumPyException, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = node
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
+    documented_name = _bare_exc_name(type_token.text)
+    raised_names = {_bare_exc_name(e) for e in get_raised_exceptions(ctx.parent)}
 
-        type_token = cst_node.type
-        if type_token is None:
-            return
+    if documented_name in raised_names:
+        return
 
-        documented_name = _bare_exc_name(type_token.text)
-        raised_names = {_bare_exc_name(e) for e in get_raised_exceptions(ctx.parent_ast)}
+    fix = delete_entry_fix(ctx.docstring_text, cst_node.range, Applicability.UNSAFE)
 
-        if documented_name in raised_names:
-            return
-
-        fix = delete_entry_fix(ctx.docstring_text, cst_node.range, Applicability.UNSAFE)
-
-        message = f"Raises entry '{type_token.text}' not raised in function body."
-        yield self._make_diagnostic(ctx, message, fix=fix, target=type_token)
+    message = f"Raises entry '{type_token.text}' not raised in function body."
+    yield make_diagnostic("RIS005", ctx, message, fix=fix, target=type_token)

@@ -2,38 +2,32 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleSection, NumPySection
 
 from pydocfix.diagnostics import Applicability, Diagnostic
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 from pydocfix.rules.helpers import delete_section_fix
 from pydocfix.rules.ris.helpers import get_raised_exceptions, is_raises_section
 
 
-class RIS002(BaseRule[GoogleSection | NumPySection]):
+@rule("RIS002", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+def ris002(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring has a Raises section but function body has no raise statements."""
+    section = node
 
-    code = "RIS002"
+    if not is_raises_section(section):
+        return
 
-    def diagnose(self, node: GoogleSection | NumPySection, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        section = node
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
+    raised = get_raised_exceptions(ctx.parent)
+    if raised:
+        return
 
-        if not is_raises_section(section):
-            return
+    # Delete the entire Raises section
+    fix = delete_section_fix(ctx.docstring_text, section, Applicability.SAFE)
 
-        raised = get_raised_exceptions(ctx.parent_ast)
-        if raised:
-            return
-
-        # Delete the entire Raises section
-        fix = delete_section_fix(ctx.docstring_text, section, Applicability.SAFE)
-
-        header_name = section.header_name
-        yield self._make_diagnostic(
-            ctx, "Unnecessary Raises section in docstring.", fix=fix, target=header_name or section
-        )
+    header_name = section.header_name
+    yield make_diagnostic(
+        "RIS002", ctx, "Unnecessary Raises section in docstring.", fix=fix, target=header_name or section
+    )

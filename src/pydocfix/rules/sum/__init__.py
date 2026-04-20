@@ -1,9 +1,9 @@
 """Summary-related linting rules (SUM0xx)."""
 
-from pydocfix.rules.sum.sum001 import SUM001
-from pydocfix.rules.sum.sum002 import SUM002
+from pydocfix.rules.sum.sum001 import sum001
+from pydocfix.rules.sum.sum002 import sum002
 
 __all__ = [
-    "SUM001",
-    "SUM002",
+    "sum001",
+    "sum002",
 ]

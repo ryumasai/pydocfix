@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pydocfix.config import Config
-from pydocfix.rules.prm.prm001 import PRM001
+from pydocfix.rules.prm.prm001 import prm001
 
 from ..conftest import check_rule, load_fixture
 
@@ -12,18 +12,43 @@ CATEGORY = "prm"
 
 class TestPRM001:
     def _rules(self):
-        return [PRM001(Config(skip_short_docstrings=False))]
+        return [prm001]
 
     def test_rule(self, snapshot):
         fixture = load_fixture("prm001.py", CATEGORY)
-        assert check_rule(fixture, self._rules(), display_path="prm001.py", unsafe_fixes=True) == snapshot
+        assert (
+            check_rule(
+                fixture,
+                self._rules(),
+                display_path="prm001.py",
+                unsafe_fixes=True,
+                config=Config(skip_short_docstrings=False),
+            )
+            == snapshot
+        )
 
     def test_class_docstring_style_guard(self, snapshot):
-        rules = [PRM001(Config(skip_short_docstrings=False, class_docstring_style="class"))]
         fixture = load_fixture("prm001_class_style.py", CATEGORY)
-        assert check_rule(fixture, rules, display_path="prm001_class_style.py", unsafe_fixes=True) == snapshot
+        assert (
+            check_rule(
+                fixture,
+                [prm001],
+                display_path="prm001_class_style.py",
+                unsafe_fixes=True,
+                config=Config(skip_short_docstrings=False, class_docstring_style="class"),
+            )
+            == snapshot
+        )
 
     def test_class_docstring_style_guard_init(self, snapshot):
-        rules = [PRM001(Config(skip_short_docstrings=False, class_docstring_style="init"))]
         fixture = load_fixture("prm001_init_style.py", CATEGORY)
-        assert check_rule(fixture, rules, display_path="prm001_init_style.py", unsafe_fixes=True) == snapshot
+        assert (
+            check_rule(
+                fixture,
+                [prm001],
+                display_path="prm001_init_style.py",
+                unsafe_fixes=True,
+                config=Config(skip_short_docstrings=False, class_docstring_style="init"),
+            )
+            == snapshot
+        )

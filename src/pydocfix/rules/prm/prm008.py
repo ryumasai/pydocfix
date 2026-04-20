@@ -2,33 +2,27 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.diagnostics import Diagnostic
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 from pydocfix.rules.prm.helpers import get_param_name_token
 
 
-class PRM008(BaseRule[GoogleArg | NumPyParameter]):
+@rule("PRM008", targets=FunctionCtx, cst_types=(GoogleArg, NumPyParameter))
+def prm008(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring parameter has no description."""
+    cst_node = node
 
-    code = "PRM008"
+    name_token = get_param_name_token(cst_node)
+    if name_token is None:
+        return
 
-    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = node
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
+    desc = cst_node.description
+    if desc is not None and desc.text.strip():
+        return
 
-        name_token = get_param_name_token(cst_node)
-        if name_token is None:
-            return
-
-        desc = cst_node.description
-        if desc is not None and desc.text.strip():
-            return
-
-        message = f"Parameter '{name_token.text}' has no description."
-        yield self._make_diagnostic(ctx, message, target=name_token)
+    message = f"Parameter '{name_token.text}' has no description."
+    yield make_diagnostic("PRM008", ctx, message, target=name_token)

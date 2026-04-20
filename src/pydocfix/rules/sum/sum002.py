@@ -9,31 +9,26 @@ from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
 from pydocfix.fixes import insert_at
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.rules._base import BaseCtx, ClassCtx, FunctionCtx, ModuleCtx, make_diagnostic, rule
 
 _DEFAULT_PERIOD: Final[str] = "."
 _PERIOD_SET: Final[frozenset[str]] = frozenset([_DEFAULT_PERIOD, "!", "?"])
 
 
-class SUM002(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
+@rule("SUM002", targets=(FunctionCtx, ClassCtx, ModuleCtx), cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring))
+def sum002(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Summary should end with a period."""
+    root = node
+    if root.summary is None:
+        return
 
-    code = "SUM002"
+    token = root.summary
+    summary: Final[str] = token.text.strip()
+    last_char: Final[str | None] = summary[-1] if summary else None
 
-    def diagnose(
-        self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext
-    ) -> Iterator[Diagnostic]:
-        root = node
-        if root.summary is None:
-            return
-
-        token = root.summary
-        summary: Final[str] = token.text.strip()
-        last_char: Final[str | None] = summary[-1] if summary else None
-
-        if last_char not in _PERIOD_SET:
-            fix = Fix(
-                edits=[insert_at(token.range.end, _DEFAULT_PERIOD)],
-                applicability=Applicability.SAFE,
-            )
-            yield self._make_diagnostic(ctx, "Summary should end with a period.", fix=fix, target=token)
+    if last_char not in _PERIOD_SET:
+        fix = Fix(
+            edits=[insert_at(token.range.end, _DEFAULT_PERIOD)],
+            applicability=Applicability.SAFE,
+        )
+        yield make_diagnostic("SUM002", ctx, "Summary should end with a period.", fix=fix, target=token)

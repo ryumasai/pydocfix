@@ -2,45 +2,39 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleArg, NumPyParameter
 
 from pydocfix.diagnostics import Diagnostic
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 from pydocfix.rules.prm.helpers import bare_name, get_annotation_map, get_param_name_token, get_signature_params
 
 
-class PRM102(BaseRule[GoogleArg | NumPyParameter]):
+@rule("PRM102", targets=FunctionCtx, cst_types=(GoogleArg, NumPyParameter))
+def prm102(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Parameter has no type annotation in either docstring or signature."""
+    cst_node = node
 
-    code = "PRM102"
+    if isinstance(cst_node, GoogleArg):
+        name_token = get_param_name_token(cst_node)
+        type_token = cst_node.type
+    else:
+        name_token = get_param_name_token(cst_node)
+        type_token = cst_node.type
+    if name_token is None:
+        return
 
-    def diagnose(self, node: GoogleArg | NumPyParameter, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = node
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
+    if type_token is not None and type_token.text.strip():
+        return  # has type in docstring
 
-        if isinstance(cst_node, GoogleArg):
-            name_token = get_param_name_token(cst_node)
-            type_token = cst_node.type
-        else:
-            name_token = get_param_name_token(cst_node)
-            type_token = cst_node.type
-        if name_token is None:
-            return
+    b = bare_name(name_token.text)
+    sig_params = {bare_name(n) for n, _ in get_signature_params(ctx.parent)}
+    if b not in sig_params:
+        return  # not a real parameter — PRM002's responsibility
+    ann_map = get_annotation_map(ctx.parent)
+    if b in ann_map:
+        return  # has type in signature
 
-        if type_token is not None and type_token.text.strip():
-            return  # has type in docstring
-
-        b = bare_name(name_token.text)
-        sig_params = {bare_name(n) for n, _ in get_signature_params(ctx.parent_ast)}
-        if b not in sig_params:
-            return  # not a real parameter — PRM002's responsibility
-        ann_map = get_annotation_map(ctx.parent_ast)
-        if b in ann_map:
-            return  # has type in signature
-
-        message = f"Parameter '{name_token.text}' has no type in docstring or signature."
-        yield self._make_diagnostic(ctx, message, target=name_token)
+    message = f"Parameter '{name_token.text}' has no type in docstring or signature."
+    yield make_diagnostic("PRM102", ctx, message, target=name_token)

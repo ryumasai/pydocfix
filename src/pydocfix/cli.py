@@ -119,16 +119,16 @@ def check(
     config = load_config()
 
     # Load plugin rules from config
-    plugin_rule_classes: list[type] = []
+    plugin_rule_fns: list = []
     if config.plugin_modules or config.plugin_paths:
         plugin_paths_objs = [Path(p) for p in config.plugin_paths]
         try:
-            plugin_rule_classes = load_plugin_rules(
+            plugin_rule_fns = load_plugin_rules(
                 plugin_modules=config.plugin_modules or None,
                 plugin_paths=plugin_paths_objs or None,
             )
-            if plugin_rule_classes:
-                logger.info("Loaded %d plugin rule(s)", len(plugin_rule_classes))
+            if plugin_rule_fns:
+                logger.info("Loaded %d plugin rule(s)", len(plugin_rule_fns))
         except Exception as e:
             logger.error("Failed to load plugins: %s", e)
 
@@ -163,9 +163,8 @@ def check(
         ignore=effective_ignore,
         select=effective_select,
         config=config,
-        plugin_rules=plugin_rule_classes or None,
+        plugin_rules=plugin_rule_fns or None,
     )
-    type_to_rules: Final = registry.type_to_rules
     known_rule_codes: Final = registry.all_codes()
 
     targets: Final = collect_files(list(paths) or ["."], exclude=effective_exclude, root=project_root)
@@ -202,11 +201,11 @@ def check(
             config,
             fix=do_fix,
             unsafe_fixes=unsafe_fixes,
-            plugin_rule_classes=plugin_rule_classes or None,
+            plugin_rule_classes=plugin_rule_fns or None,
         )
     else:
         file_results = [
-            check_one_file(fp, type_to_rules, do_fix, unsafe_fixes, config, known_rule_codes) for fp in sorted(targets)
+            check_one_file(fp, registry, do_fix, unsafe_fixes, config, known_rule_codes) for fp in sorted(targets)
         ]
 
     for result in file_results:

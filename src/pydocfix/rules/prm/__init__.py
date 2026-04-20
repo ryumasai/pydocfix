@@ -1,39 +1,39 @@
 """Parameter-related linting rules (PRM0xx, PRM1xx, PRM2xx)."""
 
-from pydocfix.rules.prm.prm001 import PRM001
-from pydocfix.rules.prm.prm002 import PRM002
-from pydocfix.rules.prm.prm003 import PRM003
-from pydocfix.rules.prm.prm004 import PRM004
-from pydocfix.rules.prm.prm005 import PRM005
-from pydocfix.rules.prm.prm006 import PRM006
-from pydocfix.rules.prm.prm007 import PRM007
-from pydocfix.rules.prm.prm008 import PRM008
-from pydocfix.rules.prm.prm009 import PRM009
-from pydocfix.rules.prm.prm101 import PRM101
-from pydocfix.rules.prm.prm102 import PRM102
-from pydocfix.rules.prm.prm103 import PRM103
-from pydocfix.rules.prm.prm104 import PRM104
-from pydocfix.rules.prm.prm105 import PRM105
-from pydocfix.rules.prm.prm106 import PRM106
-from pydocfix.rules.prm.prm201 import PRM201
-from pydocfix.rules.prm.prm202 import PRM202
+from pydocfix.rules.prm.prm001 import prm001
+from pydocfix.rules.prm.prm002 import prm002
+from pydocfix.rules.prm.prm003 import prm003
+from pydocfix.rules.prm.prm004 import prm004
+from pydocfix.rules.prm.prm005 import prm005
+from pydocfix.rules.prm.prm006 import prm006
+from pydocfix.rules.prm.prm007 import prm007
+from pydocfix.rules.prm.prm008 import prm008
+from pydocfix.rules.prm.prm009 import prm009
+from pydocfix.rules.prm.prm101 import prm101
+from pydocfix.rules.prm.prm102 import prm102
+from pydocfix.rules.prm.prm103 import prm103
+from pydocfix.rules.prm.prm104 import prm104
+from pydocfix.rules.prm.prm105 import prm105
+from pydocfix.rules.prm.prm106 import prm106
+from pydocfix.rules.prm.prm201 import prm201
+from pydocfix.rules.prm.prm202 import prm202
 
 __all__ = [
-    "PRM001",
-    "PRM002",
-    "PRM003",
-    "PRM004",
-    "PRM005",
-    "PRM006",
-    "PRM007",
-    "PRM008",
-    "PRM009",
-    "PRM101",
-    "PRM102",
-    "PRM103",
-    "PRM104",
-    "PRM105",
-    "PRM106",
-    "PRM201",
-    "PRM202",
+    "prm001",
+    "prm002",
+    "prm003",
+    "prm004",
+    "prm005",
+    "prm006",
+    "prm007",
+    "prm008",
+    "prm009",
+    "prm101",
+    "prm102",
+    "prm103",
+    "prm104",
+    "prm105",
+    "prm106",
+    "prm201",
+    "prm202",
 ]
