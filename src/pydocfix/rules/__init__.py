@@ -37,6 +37,21 @@ from pydocfix.fixes import (
 )
 from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext, DocstringLocation
 
+# --- Class rules ---
+from pydocfix.rules.cls.cls001 import CLS001
+from pydocfix.rules.cls.cls101 import CLS101
+from pydocfix.rules.cls.cls102 import CLS102
+from pydocfix.rules.cls.cls103 import CLS103
+from pydocfix.rules.cls.cls104 import CLS104
+from pydocfix.rules.cls.cls105 import CLS105
+from pydocfix.rules.cls.cls106 import CLS106
+from pydocfix.rules.cls.cls201 import CLS201
+from pydocfix.rules.cls.cls202 import CLS202
+from pydocfix.rules.cls.cls203 import CLS203
+from pydocfix.rules.cls.cls204 import CLS204
+from pydocfix.rules.cls.cls205 import CLS205
+from pydocfix.rules.cls.cls206 import CLS206
+
 # --- Docstring-level rules ---
 from pydocfix.rules.doc.doc001 import DOC001
 from pydocfix.rules.doc.doc002 import DOC002
@@ -148,6 +163,19 @@ _BUILTIN_RULES: list[type[BaseRule]] = [
     DOC001,
     DOC002,
     DOC003,
+    CLS001,
+    CLS101,
+    CLS102,
+    CLS103,
+    CLS104,
+    CLS105,
+    CLS106,
+    CLS201,
+    CLS202,
+    CLS203,
+    CLS204,
+    CLS205,
+    CLS206,
     PRM001,
     PRM002,
     PRM003,

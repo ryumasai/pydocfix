@@ -1,0 +1,1 @@
+"""CLS rule tests package."""

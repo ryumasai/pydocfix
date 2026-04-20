@@ -40,6 +40,7 @@ class Config:
     type_annotation_style: str | None = None
     allow_optional_shorthand: bool = False
     preferred_style: str = "google"
+    class_docstring_style: str | None = None
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
@@ -101,6 +102,13 @@ def load_config(start: Path | None = None) -> Config:
     skip_short_docstrings: bool = bool(raw_ssd) if raw_ssd is not None else True
     raw_aos = section.get("allow_optional_shorthand")
     allow_optional_shorthand: bool = bool(raw_aos) if raw_aos is not None else False
+    class_docstring_style: str | None = section.get("class-docstring-style") or None
+    if class_docstring_style is not None and class_docstring_style not in {"class", "init", "both"}:
+        logger.warning(
+            "invalid class-docstring-style %r (expected 'class', 'init', or 'both'); ignoring",
+            class_docstring_style,
+        )
+        class_docstring_style = None
     baseline: str | None = section.get("baseline") or None
     extend_safe_fixes: list[str] = [str(c).upper() for c in section.get("extend-safe-fixes", [])]
     extend_unsafe_fixes: list[str] = [str(c).upper() for c in section.get("extend-unsafe-fixes", [])]
@@ -124,6 +132,7 @@ def load_config(start: Path | None = None) -> Config:
         select=select,
         type_annotation_style=type_annotation_style,
         preferred_style=preferred_style,
+        class_docstring_style=class_docstring_style,
         exclude=exclude,
         skip_short_docstrings=skip_short_docstrings,
         allow_optional_shorthand=allow_optional_shorthand,

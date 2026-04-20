@@ -105,6 +105,7 @@ class _RuleVisitor(Visitor):
         ds_stmt: ast.stmt,
         ds_content: str,
         ds_loc: DocstringLocation,
+        class_ast: ast.ClassDef | None = None,
     ) -> None:
         self._type_to_rules = type_to_rules
         self._ctx = DiagnoseContext(
@@ -114,6 +115,7 @@ class _RuleVisitor(Visitor):
             parent_ast=parent_ast,
             docstring_stmt=ds_stmt,
             docstring_location=ds_loc,
+            class_ast=class_ast,
         )
         self.diagnostics: list[Diagnostic] = []
 
@@ -210,6 +212,7 @@ def _diagnose_docstring(
     ds_stmt: ast.stmt,
     ds_content: str,
     ds_loc: DocstringLocation,
+    class_ast: ast.ClassDef | None = None,
 ) -> list[Diagnostic]:
     """Parse and diagnose a single docstring, returning diagnostics."""
     parsed = pydocstring.parse(ds_content)
@@ -221,6 +224,7 @@ def _diagnose_docstring(
         ds_stmt=ds_stmt,
         ds_content=ds_content,
         ds_loc=ds_loc,
+        class_ast=class_ast,
     )
     pydocstring.walk(parsed, visitor)
     return visitor.diagnostics
@@ -373,6 +377,7 @@ def _process_docstring(
 
     Returns ``(diagnostics, noqa_state, symbol)``.
     """
+    class_ast = grandparent if isinstance(grandparent, ast.ClassDef) else None
     ds_diagnostics = _diagnose_docstring(
         type_to_rules,
         config,
@@ -381,6 +386,7 @@ def _process_docstring(
         ds_stmt,
         ds_content,
         ds_loc,
+        class_ast=class_ast,
     )
 
     # Find inline noqa
@@ -433,6 +439,7 @@ def _fix_docstring(
     ds_diagnostics: list[Diagnostic],
     unsafe_fixes: bool,
     symbol: str,
+    class_ast: ast.ClassDef | None = None,
 ) -> tuple[list[Diagnostic], str | None]:
     """Apply iterative fixes to a docstring until stable.
 
@@ -454,6 +461,7 @@ def _fix_docstring(
             ds_stmt,
             current_content,
             ds_loc,
+            class_ast=class_ast,
         )
         ds_diagnostics = [dataclasses.replace(d, symbol=symbol) for d in ds_diagnostics]
         if not ds_diagnostics or not any(is_applicable(d, unsafe_fixes, config) for d in ds_diagnostics):
@@ -544,6 +552,7 @@ def check_file(
 
         # Fix phase (per-docstring) — iterate until stable
         if fix and ds_diagnostics:
+            fix_class_ast = grandparent if isinstance(grandparent, ast.ClassDef) else None
             ds_remaining, new_content = _fix_docstring(
                 type_to_rules,
                 config,
@@ -555,6 +564,7 @@ def check_file(
                 ds_diagnostics,
                 unsafe_fixes,
                 symbol,
+                class_ast=fix_class_ast,
             )
             remaining_after_fix.extend(ds_remaining)
 

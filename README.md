@@ -42,15 +42,15 @@ pydocfix performs linting **and** auto-fix generation in a single pass, yet is s
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.72 sec | 2.87 sec | **4.0x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.84 sec | 4.21 sec | **5.0x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 0.72 sec | 2.85 sec | **4.0x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 0.84 sec | 4.26 sec | **5.1x** |
 
 #### Single-threaded (`--jobs 1`)
 
 | Project | Files | Lines | pydocfix | pydoclint | Speedup |
 |---------|------:|------:|---------:|----------:|--------:|
-| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 2.16 sec | 2.87 sec | **1.3x** |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 2.39 sec | 4.21 sec | **1.8x** |
+| [numpy](https://github.com/numpy/numpy) | 425 | 252K | 2.16 sec | 2.85 sec | **1.3x** |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 637 | 372K | 2.41 sec | 4.26 sec | **1.8x** |
 
 > Median of 5 runs (+ 1 warmup) via [hyperfine](https://github.com/sharkdp/hyperfine). pydoclint runs single-threaded only.
 > pydoclint configured with `--arg-type-hints-in-signature False --arg-type-hints-in-docstring False` to match pydocfix's default (no `type_annotation_style` set).
@@ -59,10 +59,10 @@ pydocfix performs linting **and** auto-fix generation in a single pass, yet is s
 
 | Project | pydocfix | pydoclint |
 |---------|------:|------:|
-| [numpy](https://github.com/numpy/numpy) | 2,556 | 2,787 |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 4,542 | 5,230 |
+| [numpy](https://github.com/numpy/numpy) | 2,571 | 2,787 |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 4,552 | 5,230 |
 
-> Violation counts differ because pydoclint additionally checks class/`__init__` docstring structure (DOC3xx) and class attributes (DOC6xx), which pydocfix does not implement.
+> Violation counts differ because pydoclint additionally checks class attributes (DOC6xx), which pydocfix does not implement.
 
 ### Feature comparison
 
@@ -76,7 +76,7 @@ pydocfix performs linting **and** auto-fix generation in a single pass, yet is s
 | Return type checking | ✅ | ✅ |
 | Yield checking | ✅ | ✅ |
 | Raises checking | ✅ | ✅ |
-| Class docstring / `__init__` rules | - | ✅ |
+| Class docstring / `__init__` rules | ✅ | ✅ |
 | Class attribute checking | - | ✅ |
 | Default value checking (`optional` / `default`) | ✅ | — |
 | Byte-level diagnostics | ✅ | — |
@@ -145,6 +145,14 @@ type_annotation_style = "signature"
 # Controls the format of auto-generated sections for plain (summary-only) docstrings.
 # Existing Google/NumPy-style docstrings are always fixed in their detected style.
 preferred_style = "google"
+
+# Where __init__ arguments and raises should be documented.
+# PRM001/RIS001 never fire on __init__; use CLS rules instead.
+#   omitted  — CLS103–CLS106 and CLS203–CLS206 are disabled; __init__ is not checked (default)
+#   "class"  — Args/Raises belong in the class docstring (CLS105/CLS106 enforce presence)
+#   "init"   — Args/Raises belong in the __init__ docstring (CLS205/CLS206 enforce presence)
+#   "both"   — Args/Raises may appear in either; presence/absence not enforced
+class-docstring-style = "class"
 
 # Paths/patterns to exclude (in addition to built-in defaults).
 # Supports:
@@ -253,6 +261,26 @@ Each rule is classified as **safe** fix, **unsafe** fix, or report-only.
 | DOC001 | ✅ | unsafe | Section order doesn't match convention |
 | DOC002 | ✅ | safe | Incorrect indentation of a docstring section entry |
 | DOC003 | ✅ | safe | One-line docstring should be written on a single line |
+
+### Class (CLS)
+
+| Code | Default | Fix | Description |
+|------|:-------:|:---:|-------------|
+| CLS001 | ✅ | — | `__init__` has its own docstring but the class also has one |
+| CLS101 | ✅ | safe | Class docstring has a Returns section |
+| CLS102 | ✅ | safe | Class docstring has a Yields section |
+| CLS103 | | unsafe | Class docstring has an Args section (`class_docstring_style = "init"`) |
+| CLS104 | | unsafe | Class docstring has a Raises section (`class_docstring_style = "init"`) |
+| CLS105 | | unsafe | Class docstring missing Args section (`class_docstring_style = "class"`) |
+| CLS106 | | unsafe | Class docstring missing Raises section (`class_docstring_style = "class"`) |
+| CLS201 | ✅ | safe | `__init__` docstring has a Returns section |
+| CLS202 | ✅ | safe | `__init__` docstring has a Yields section |
+| CLS203 | | unsafe | `__init__` docstring has an Args section (`class_docstring_style = "class"`) |
+| CLS204 | | unsafe | `__init__` docstring has a Raises section (`class_docstring_style = "class"`) |
+| CLS205 | | unsafe | `__init__` docstring missing Args section (`class_docstring_style = "init"`) |
+| CLS206 | | unsafe | `__init__` docstring missing Raises section (`class_docstring_style = "init"`) |
+
+> **Note:** PRM001 and RIS001 never fire on `__init__`; use CLS rules to enforce `__init__` docstring conventions.
 
 ## Rule selectors
 

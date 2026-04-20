@@ -205,7 +205,7 @@ def run_pydocfix(target: Path, runs: int, jobs: int | None = None) -> BenchResul
         if len(parts) >= 4:
             msg = parts[3].strip()
             code = msg.split()[0] if msg else ""
-            if code and code.startswith(("DOC", "SUM", "PRM", "RTN", "YLD", "RIS")):
+            if code and code.startswith(("CLS", "DOC", "SUM", "PRM", "RTN", "YLD", "RIS")):
                 codes.add(code)
                 count += 1
     result.violation_count = count

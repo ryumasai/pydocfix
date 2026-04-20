@@ -1,45 +1,44 @@
-"""Rule PRM001 - Function has parameters but docstring has no Args/Parameters section."""
+"""Rule CLS205 - __init__ docstring missing Args section (style='init')."""
 
 from __future__ import annotations
 
 import ast
 from collections.abc import Iterator
 
-from pydocstring import (
-    GoogleDocstring,
-    GoogleSectionKind,
-    NumPyDocstring,
-    NumPySectionKind,
-    PlainDocstring,
-)
+from pydocstring import GoogleDocstring, GoogleSectionKind, NumPyDocstring, NumPySectionKind, PlainDocstring
 
 from pydocfix.diagnostics import Applicability, Diagnostic, Fix
 from pydocfix.fixes import section_append_edit
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.rules._base import ActivationCondition, BaseRule, DiagnoseContext
 from pydocfix.rules.helpers import build_section_stub, detect_docstring_style, detect_section_indent, has_section
 from pydocfix.rules.prm.helpers import get_signature_params
 
 
-class PRM001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
-    """Function has parameters but docstring has no Args/Parameters section."""
+class CLS205(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
+    """__init__ docstring is missing an Args/Parameters section but class_docstring_style is 'init'."""
 
-    code = "PRM001"
+    code = "CLS205"
+    enabled_by_default = False
+    activation_condition = ActivationCondition("class_docstring_style", frozenset({"init"}))
 
     def diagnose(
         self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext
     ) -> Iterator[Diagnostic]:
-        root = node
+        if self.config is None or self.config.class_docstring_style != "init":
+            return
         if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
-        # __init__ args are always handled by CLS rules
-        if ctx.parent_ast.name == "__init__":
+        if ctx.parent_ast.name != "__init__":
+            return
+
+        root = node
+        if isinstance(root, PlainDocstring) and (self.config is None or self.config.skip_short_docstrings):
             return
 
         sig_params = get_signature_params(ctx.parent_ast)
         if not sig_params:
             return
-        if isinstance(root, PlainDocstring) and (self.config is None or self.config.skip_short_docstrings):
-            return  # summary-only docstring — skip per skip_short_docstrings
+
         if not isinstance(root, PlainDocstring) and has_section(
             root, GoogleSectionKind.ARGS, NumPySectionKind.PARAMETERS
         ):
@@ -55,5 +54,8 @@ class PRM001(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
         )
         summary_token = root.summary
         yield self._make_diagnostic(
-            ctx, "Missing Args/Parameters section in docstring.", fix=fix, target=summary_token or root
+            ctx,
+            "__init__ docstring is missing an Args/Parameters section (class_docstring_style is 'init').",
+            fix=fix,
+            target=summary_token or root,
         )

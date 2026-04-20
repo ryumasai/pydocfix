@@ -1,4 +1,64 @@
 # serializer version: 1
+# name: TestPRM001.test_class_docstring_style_guard
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  prm001_class_style.py:8:8: PRM001 [unsafe] Missing Args/Parameters section in docstring.
+     |
+   7 | def regular_function_missing_args(x: int, y: str) -> None:
+   8 |     """Do something."""
+     |        ^^^^^^^^^^^^^
+   9 |     pass
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  --- prm001_class_style.py
+  +++ prm001_class_style.py (fixed)
+  @@ -5,7 +5,12 @@
+   
+   # violation: regular function with params but no Args section
+   def regular_function_missing_args(x: int, y: str) -> None:
+  -    """Do something."""
+  +    """Do something.
+  +
+  +    Args:
+  +        x (int):
+  +        y (str):
+  +    """
+       pass
+  '''
+# ---
+# name: TestPRM001.test_class_docstring_style_guard_init
+  '''
+  ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  prm001_init_style.py:8:8: PRM001 [unsafe] Missing Args/Parameters section in docstring.
+     |
+   7 | def regular_function_missing_args(x: int, y: str) -> None:
+   8 |     """Do something."""
+     |        ^^^^^^^^^^^^^
+   9 |     pass
+     |
+  
+  ━━━ Diff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  --- prm001_init_style.py
+  +++ prm001_init_style.py (fixed)
+  @@ -5,7 +5,12 @@
+   
+   # violation: regular function with params but no Args section
+   def regular_function_missing_args(x: int, y: str) -> None:
+  -    """Do something."""
+  +    """Do something.
+  +
+  +    Args:
+  +        x (int):
+  +        y (str):
+  +    """
+       pass
+  '''
+# ---
 # name: TestPRM001.test_rule
   '''
   ━━━ Diagnostics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

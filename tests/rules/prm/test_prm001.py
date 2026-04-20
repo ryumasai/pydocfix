@@ -17,3 +17,13 @@ class TestPRM001:
     def test_rule(self, snapshot):
         fixture = load_fixture("prm001.py", CATEGORY)
         assert check_rule(fixture, self._rules(), display_path="prm001.py", unsafe_fixes=True) == snapshot
+
+    def test_class_docstring_style_guard(self, snapshot):
+        rules = [PRM001(Config(skip_short_docstrings=False, class_docstring_style="class"))]
+        fixture = load_fixture("prm001_class_style.py", CATEGORY)
+        assert check_rule(fixture, rules, display_path="prm001_class_style.py", unsafe_fixes=True) == snapshot
+
+    def test_class_docstring_style_guard_init(self, snapshot):
+        rules = [PRM001(Config(skip_short_docstrings=False, class_docstring_style="init"))]
+        fixture = load_fixture("prm001_init_style.py", CATEGORY)
+        assert check_rule(fixture, rules, display_path="prm001_init_style.py", unsafe_fixes=True) == snapshot
