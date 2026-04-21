@@ -7,4 +7,4 @@ def foo(x: float) -> float:
     Returns:
         float: The result.
     """
-    return x * 2
+    return x

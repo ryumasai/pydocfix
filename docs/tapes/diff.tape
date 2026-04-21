@@ -1,10 +1,11 @@
 Output "docs/images/diff.gif"
 
 Set FontSize 40
-Set Width 1200
-Set Height 600
+Set TypingSpeed 30ms
+Set Width 1800
+Set Height 900
 
-Sleep 200ms
-Type "pydocfix check docs/tapes/example.py --diff --select PRM101 --unsafe-fixes"
+Sleep 30ms
+Type "pydocfix check docs/tapes/example.py --diff --unsafe-fixes"
 Enter
-Sleep 2s
+Sleep 4s

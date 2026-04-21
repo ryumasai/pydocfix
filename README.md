@@ -23,7 +23,22 @@ pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a
 
 ### Example
 
-pydocfix points to the **exact token** — the 3-char `int` inside `price (int)`:
+Given this function ([`docs/tapes/example.py`](docs/tapes/example.py)) where the docstring says `int` but the signature says `float`:
+
+```python
+def foo(x: float) -> float:
+    """Do something with x.
+
+    Args:
+        x (int): The input value.
+
+    Returns:
+        float: The result.
+    """
+    return x
+```
+
+pydocfix points to the **exact token** — the 3-char `int` inside `x (int)`:
 
 <img alt="pydocfix diagnostic output" src="docs/images/diagnostic.gif">
 
@@ -31,7 +46,7 @@ Run `--diff` to preview the surgical fix — only `int` → `float` is changed:
 
 <img alt="pydocfix diff output" src="docs/images/diff.gif">
 
-Apply with `pydocfix check example.py --fix --unsafe-fixes`.
+Apply with `pydocfix check example.py --fix --unsafe-fixes` to update `int` → `float`.
 
 ## Features
 

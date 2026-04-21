@@ -1,10 +1,11 @@
 Output "docs/images/diagnostic.gif"
 
 Set FontSize 40
-Set Width 1200
-Set Height 600
+Set TypingSpeed 30ms
+Set Width 1800
+Set Height 900
 
-Sleep 200ms
-Type "pydocfix check docs/tapes/example.py --select PRM101"
+Sleep 30ms
+Type "pydocfix check docs/tapes/example.py"
 Enter
-Sleep 2s
+Sleep 4s
