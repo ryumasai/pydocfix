@@ -10,12 +10,12 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.rules import (
+from pydocfix.diagnostics import (
     Applicability,
     Diagnostic,
     Fix,
-    insert_at,
 )
+from pydocfix.fixes import insert_at
 from pydocfix.rules._base import BaseCtx, ClassCtx, FunctionCtx, ModuleCtx, make_diagnostic, rule
 
 

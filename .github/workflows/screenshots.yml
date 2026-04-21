@@ -46,4 +46,4 @@ jobs:
           title: "docs: update screenshots"
           body: "Automated screenshot update from VHS."
           labels: documentation
-          assignees: ryumasai
+          reviewers: ryumasai
