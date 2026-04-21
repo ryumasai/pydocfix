@@ -15,7 +15,9 @@ _FIXED = "FIXED(SAFE000)."
 
 
 @rule(
-    "SAFE000", ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring})
+    "SAFE000",
+    ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
 )
 def safe000(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Detects VIOLATION(SAFE001) and proposes a competing fix over the same token."""

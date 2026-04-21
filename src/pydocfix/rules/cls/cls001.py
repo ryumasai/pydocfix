@@ -11,7 +11,11 @@ from pydocfix.diagnostics import Diagnostic
 from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 
 
-@rule("CLS001", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}))
+@rule(
+    "CLS001",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
+)
 def cls001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """__init__ has its own docstring but the class also has a docstring."""
     if ctx.parent.name != "__init__":

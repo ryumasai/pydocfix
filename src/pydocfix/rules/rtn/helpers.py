@@ -40,8 +40,11 @@ def returns_a_value(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
         def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
             pass
 
-        visit_AsyncFunctionDef = visit_FunctionDef  # noqa: N815
-        visit_ClassDef = visit_FunctionDef  # noqa: N815
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N815
+            pass
+
+        def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N815
+            pass
 
     v = _Visitor()
     for child in func.body:

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 
 from pydocstring import (
     GoogleArg,
     GoogleSection,
+    NumPyParameter,
     NumPySection,
 )
 
@@ -31,7 +32,7 @@ def _entry_span(ds_bytes: bytes, param_node) -> tuple[int, int]:
 
 def _build_reorder_fix(
     ds_text: str,
-    doc_params: list[tuple[str, object]],
+    doc_params: Sequence[tuple[str, GoogleArg | NumPyParameter]],
     sig_order: list[str],
 ) -> Fix:
     ds_bytes = ds_text.encode("utf-8")

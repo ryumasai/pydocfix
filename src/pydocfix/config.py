@@ -6,7 +6,7 @@ import logging
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class Config:
     skip_short_docstrings: bool = True
     type_annotation_style: str | None = None
     allow_optional_shorthand: bool = False
-    preferred_style: str = "google"
+    preferred_style: Literal["google", "numpy"] = "google"
     class_docstring_style: str | None = None
     ignore: list[str] = field(default_factory=list)
     select: list[str] = field(default_factory=list)

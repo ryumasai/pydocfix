@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from pydocfix.config import Config
 from pydocfix.engine.registry import RuleRegistry
+
+if TYPE_CHECKING:
+    from pydocfix.rules._base import RuleFn
 
 
 class FileResult(NamedTuple):
@@ -54,7 +57,7 @@ def _worker_init(
     ignore: list[str] | None,
     select: list[str] | None,
     config_obj: Config | None,
-    plugin_rule_classes: list[type] | None = None,
+    plugin_rule_classes: list[RuleFn] | None = None,
 ) -> None:
     """Initialize worker process by rebuilding the rule registry."""
     global _worker_registry, _worker_known_rule_codes  # noqa: PLW0603
@@ -88,7 +91,7 @@ def check_files_parallel(
     *,
     fix: bool,
     unsafe_fixes: bool,
-    plugin_rule_classes: list[type] | None = None,
+    plugin_rule_classes: list[RuleFn] | None = None,
 ) -> list[FileResult]:
     """Check files using multiple processes."""
     tasks = [(fp, fix, unsafe_fixes, config) for fp in targets]

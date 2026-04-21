@@ -19,7 +19,11 @@ from pydocfix.rules.helpers import build_section_stub, detect_docstring_style, d
 from pydocfix.rules.yld.helpers import get_yield_type, is_generator_function
 
 
-@rule("YLD001", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}))
+@rule(
+    "YLD001",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
+)
 def yld001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Generator function has no Yields section in docstring."""
     root = node

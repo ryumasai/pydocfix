@@ -19,7 +19,11 @@ from pydocfix.rules.helpers import build_section_stub, detect_docstring_style, d
 from pydocfix.rules.ris.helpers import get_raised_exceptions
 
 
-@rule("RIS001", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}))
+@rule(
+    "RIS001",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
+)
 def ris001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Function has raise statements but docstring has no Raises section."""
     root = node

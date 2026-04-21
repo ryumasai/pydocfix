@@ -7,9 +7,9 @@ This module provides context types (``FunctionCtx``, ``ClassCtx``,
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Final, NamedTuple
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Final, NamedTuple, Protocol, cast
 
 from pydocstring import (
     GoogleDocstring,
@@ -28,13 +28,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from pydocfix.config import Config
-
-# ---------------------------------------------------------------------------
-# Type aliases
-# ---------------------------------------------------------------------------
-
-RuleFn = Callable[..., Iterator[Diagnostic]]
-
 
 # ---------------------------------------------------------------------------
 # Positional helpers
@@ -112,21 +105,21 @@ class BaseCtx:
 class FunctionCtx(BaseCtx):
     """Context for rules that target function/method docstrings."""
 
-    parent: ast.FunctionDef | ast.AsyncFunctionDef = None  # type: ignore[assignment]
+    parent: ast.FunctionDef | ast.AsyncFunctionDef = field(kw_only=True)
 
 
 @dataclass
 class ClassCtx(BaseCtx):
     """Context for rules that target class docstrings."""
 
-    parent: ast.ClassDef = None  # type: ignore[assignment]
+    parent: ast.ClassDef = field(kw_only=True)
 
 
 @dataclass
 class ModuleCtx(BaseCtx):
     """Context for rules that target module docstrings."""
 
-    parent: ast.Module = None  # type: ignore[assignment]
+    parent: ast.Module = field(kw_only=True)
 
 
 # ---------------------------------------------------------------------------
@@ -134,6 +127,21 @@ class ModuleCtx(BaseCtx):
 # ---------------------------------------------------------------------------
 
 CtxType = type[FunctionCtx] | type[ClassCtx] | type[ModuleCtx]
+
+
+class RuleFn(Protocol):
+    """Callable protocol for ``@rule``-decorated functions."""
+
+    _rule_code: str
+    _enabled_by_default: bool
+    _conflicts_with: frozenset[str]
+    _activation_condition: ActivationCondition | None
+    _ctx_types: frozenset[CtxType]
+    _cst_types: frozenset[type]
+    __qualname__: str
+    __module__: str
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Iterator[Diagnostic]: ...
 
 
 def rule(
@@ -147,14 +155,15 @@ def rule(
 ):
     """Decorator that marks a function as a pydocfix rule."""
 
-    def decorator(func: RuleFn) -> RuleFn:
-        func._rule_code = code  # type: ignore[attr-defined]
-        func._enabled_by_default = enabled_by_default  # type: ignore[attr-defined]
-        func._conflicts_with = conflicts_with  # type: ignore[attr-defined]
-        func._activation_condition = activation_condition  # type: ignore[attr-defined]
-        func._ctx_types = ctx_types  # type: ignore[attr-defined]
-        func._cst_types = cst_types  # type: ignore[attr-defined]
-        return func
+    def decorator(func: Callable[..., Iterator[Diagnostic]]) -> RuleFn:
+        fn = cast(Any, func)
+        fn._rule_code = code
+        fn._enabled_by_default = enabled_by_default
+        fn._conflicts_with = conflicts_with
+        fn._activation_condition = activation_condition
+        fn._ctx_types = ctx_types
+        fn._cst_types = cst_types
+        return cast(RuleFn, func)
 
     return decorator
 

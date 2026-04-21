@@ -20,7 +20,9 @@ from pydocfix.rules.helpers import build_section_stub, detect_docstring_style, d
 from pydocfix.rules.rtn.helpers import has_return_annotation
 
 
-@rule("RTN001", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}))
+@rule(
+    "RTN001", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring})
+)
 def rtn001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Function has return type annotation but docstring has no Returns section."""
     root = node
@@ -32,7 +34,8 @@ def rtn001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: Functio
         return
 
     style = detect_docstring_style(root, ctx.config)
-    ret_ann = ast.unparse(ctx.parent.returns)  # type: ignore[union-attr]
+    assert ctx.parent.returns is not None  # guarded by has_return_annotation check above
+    ret_ann = ast.unparse(ctx.parent.returns)
     section_indent = detect_section_indent(ctx.docstring_text, ctx.docstring_stmt.col_offset)
 
     stub = build_section_stub("returns", style, section_indent, [ret_ann])

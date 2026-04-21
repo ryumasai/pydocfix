@@ -40,7 +40,12 @@ def _has_default_mention(cst_node: GoogleArg | NumPyParameter) -> bool:
     return bool(desc and _DEFAULT_RE.search(desc.text))
 
 
-@rule("PRM202", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleArg, NumPyParameter}), enabled_by_default=False)
+@rule(
+    "PRM202",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleArg, NumPyParameter}),
+    enabled_by_default=False,
+)
 def prm202(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Parameter has a default value but docstring does not mention ``default``."""
     cst_node = node

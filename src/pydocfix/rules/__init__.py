@@ -256,9 +256,7 @@ def _resolve_conflicts(candidates: list[RuleFn], config: Config | None) -> list[
     for rule_fn in candidates:
         code = rule_fn._rule_code  # type: ignore[attr-defined]
         active_conflicts = rule_fn._conflicts_with & candidate_codes  # type: ignore[attr-defined]
-        if not active_conflicts:
-            result.append(rule_fn)
-        elif _check_activation(rule_fn, config):
+        if not active_conflicts or _check_activation(rule_fn, config):
             result.append(rule_fn)
         else:
             cond = rule_fn._activation_condition  # type: ignore[attr-defined]

@@ -168,7 +168,7 @@ def detect_docstring_style(
         return "google"
     # PlainDocstring — use config preference
     if config is not None:
-        return config.preferred_style  # type: ignore[return-value]
+        return config.preferred_style
     return "google"
 
 

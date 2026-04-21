@@ -14,7 +14,9 @@ _TRIGGER = "CYCLIC"
 
 
 @rule(
-    "CYCLIC001", ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring})
+    "CYCLIC001",
+    ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
 )
 def cyclic001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Fires on any summary containing 'CYCLIC' and fixes it to another 'CYCLIC' string."""

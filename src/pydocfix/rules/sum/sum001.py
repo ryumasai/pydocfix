@@ -18,7 +18,11 @@ def _has_summary(root: GoogleDocstring | NumPyDocstring | PlainDocstring) -> boo
     return bool(text and text.strip())
 
 
-@rule("SUM001", ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}))
+@rule(
+    "SUM001",
+    ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
+)
 def sum001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Docstring has no summary line."""
     root = node
