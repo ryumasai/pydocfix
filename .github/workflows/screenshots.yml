@@ -21,7 +21,7 @@ jobs:
 
       - name: Install pydocfix
         run: |
-          apt-get update && apt-get install -y python3 python3-pip
+          apt-get update && apt-get install -y git python3 python3-pip
           pip install -e . --break-system-packages
 
       - name: Generate diagnostic screenshot
