@@ -12,7 +12,7 @@ from pydocfix.rules.helpers import delete_entry_fix
 from pydocfix.rules.prm.helpers import get_param_name_token
 
 
-@rule("PRM003", targets=FunctionCtx, cst_types=(GoogleArg, NumPyParameter))
+@rule("PRM003", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleArg, NumPyParameter}))
 def prm003(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring should not document ``self`` or ``cls``."""
     cst_node = node

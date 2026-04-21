@@ -21,6 +21,18 @@ pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a
 - **Surgical auto-fix** — edits replace precise byte ranges, so fixes never corrupt adjacent content
 - **Iterative fix loop** — apply non-overlapping fixes, re-parse, repeat until stable
 
+### Example
+
+pydocfix points to the **exact token** — the 3-char `int` inside `price (int)`:
+
+<img alt="pydocfix diagnostic output" src="docs/images/diagnostic.gif">
+
+Run `--diff` to preview the surgical fix — only `int` → `float` is changed:
+
+<img alt="pydocfix diff output" src="docs/images/diff.gif">
+
+Apply with `pydocfix check example.py --fix --unsafe-fixes`.
+
 ## Features
 
 - **Auto-fix** — Automatically repair docstring issues with safe/unsafe classification

@@ -42,28 +42,30 @@ _NUMPY_ENTRY_TYPES: frozenset[type] = frozenset(
     }
 )
 
-_CST_TYPES = (
-    GoogleArg,
-    GoogleReturn,
-    GoogleException,
-    GoogleYield,
-    GoogleAttribute,
-    GoogleWarning,
-    GoogleSeeAlsoItem,
-    GoogleMethod,
-    NumPyParameter,
-    NumPyReturns,
-    NumPyException,
-    NumPyYields,
-    NumPyAttribute,
-    NumPyWarning,
-    NumPySeeAlsoItem,
-    NumPyReference,
-    NumPyMethod,
+_CST_TYPES = frozenset(
+    {
+        GoogleArg,
+        GoogleReturn,
+        GoogleException,
+        GoogleYield,
+        GoogleAttribute,
+        GoogleWarning,
+        GoogleSeeAlsoItem,
+        GoogleMethod,
+        NumPyParameter,
+        NumPyReturns,
+        NumPyException,
+        NumPyYields,
+        NumPyAttribute,
+        NumPyWarning,
+        NumPySeeAlsoItem,
+        NumPyReference,
+        NumPyMethod,
+    }
 )
 
 
-@rule("DOC002", targets=(FunctionCtx, ClassCtx, ModuleCtx), cst_types=_CST_TYPES)
+@rule("DOC002", ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}), cst_types=_CST_TYPES)
 def doc002(
     node: GoogleArg
     | GoogleReturn

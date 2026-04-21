@@ -10,7 +10,7 @@ from pydocfix.diagnostics import Diagnostic
 from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 
 
-@rule("YLD003", targets=FunctionCtx, cst_types=(GoogleYield, NumPyYields))
+@rule("YLD003", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleYield, NumPyYields}))
 def yld003(node: GoogleYield | NumPyYields, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Yields section entry has no description."""
     cst_node = node

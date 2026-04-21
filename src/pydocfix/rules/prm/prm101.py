@@ -13,7 +13,7 @@ from pydocfix.rules.helpers import normalize_optional
 from pydocfix.rules.prm.helpers import get_annotation_map, get_param_name_token
 
 
-@rule("PRM101", targets=FunctionCtx, cst_types=(GoogleArg, NumPyParameter))
+@rule("PRM101", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleArg, NumPyParameter}))
 def prm101(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring parameter type does not match type hint."""
     cst_node = node

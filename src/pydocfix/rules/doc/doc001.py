@@ -117,7 +117,7 @@ def _section_clean_end(section_bytes: bytes) -> int:
     return clean_end
 
 
-@rule("DOC001", targets=(FunctionCtx, ClassCtx), cst_types=(GoogleDocstring, NumPyDocstring))
+@rule("DOC001", ctx_types=frozenset({FunctionCtx, ClassCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring}))
 def doc001(node: GoogleDocstring | NumPyDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Docstring sections are not in canonical order."""
     root = node

@@ -36,8 +36,8 @@ def _build_delete_type_fix(cst_node: GoogleArg | NumPyParameter, ds_text: str) -
 
 @rule(
     "PRM104",
-    targets=FunctionCtx,
-    cst_types=(GoogleArg, NumPyParameter),
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleArg, NumPyParameter}),
     enabled_by_default=False,
     conflicts_with=frozenset({"PRM103"}),
     activation_condition=ActivationCondition("type_annotation_style", frozenset({"signature"})),

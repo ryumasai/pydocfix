@@ -10,7 +10,7 @@ from pydocfix.diagnostics import Diagnostic
 from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 
 
-@rule("RIS003", targets=FunctionCtx, cst_types=(GoogleException, NumPyException))
+@rule("RIS003", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleException, NumPyException}))
 def ris003(node: GoogleException | NumPyException, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Raises entry has no description."""
     cst_node = node

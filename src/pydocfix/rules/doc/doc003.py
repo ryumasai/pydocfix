@@ -10,7 +10,7 @@ from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
 from pydocfix.rules._base import BaseCtx, ClassCtx, FunctionCtx, ModuleCtx, make_diagnostic, rule
 
 
-@rule("DOC003", targets=(FunctionCtx, ClassCtx, ModuleCtx), cst_types=PlainDocstring)
+@rule("DOC003", ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}), cst_types=frozenset({PlainDocstring}))
 def doc003(node: PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """One-line docstring should be written on a single line."""
     root = node

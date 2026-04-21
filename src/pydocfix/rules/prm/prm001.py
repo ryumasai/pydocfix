@@ -19,7 +19,7 @@ from pydocfix.rules.helpers import build_section_stub, detect_docstring_style, d
 from pydocfix.rules.prm.helpers import get_signature_params
 
 
-@rule("PRM001", targets=FunctionCtx, cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring))
+@rule("PRM001", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}))
 def prm001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Function has parameters but docstring has no Args/Parameters section."""
     root = node

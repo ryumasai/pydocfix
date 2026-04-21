@@ -13,8 +13,8 @@ from pydocfix.rules.prm.helpers import bare_name, get_annotation_map, get_param_
 
 @rule(
     "PRM106",
-    targets=FunctionCtx,
-    cst_types=(GoogleArg, NumPyParameter),
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleArg, NumPyParameter}),
     enabled_by_default=False,
     conflicts_with=frozenset({"PRM105"}),
     activation_condition=ActivationCondition("type_annotation_style", frozenset({"docstring"})),

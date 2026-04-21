@@ -15,7 +15,7 @@ from pydocfix.rules.helpers import delete_section_fix
 from pydocfix.rules.prm.helpers import get_signature_params, is_param_section
 
 
-@rule("PRM002", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+@rule("PRM002", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def prm002(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Function has no parameters but docstring has an Args/Parameters section."""
     section = node

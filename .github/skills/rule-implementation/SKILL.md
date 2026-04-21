@@ -39,38 +39,34 @@ from collections.abc import Iterator
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
 from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
-from pydocfix.rules._base import BaseRule, DiagnoseContext
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 
-class XYZ000(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
+
+@rule(
+    "XYZ000",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
+)
+def xyz000(
+    node: GoogleDocstring | NumPyDocstring | PlainDocstring,
+    ctx: FunctionCtx,
+) -> Iterator[Diagnostic]:
     """One-line description."""
-
-    code = "XYZ000"
-
-    def diagnose(self, node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        root = node
-        # ... detect violation ...
-        fix = Fix(edits=[...], applicability=Applicability.SAFE)
-        yield self._make_diagnostic(ctx, "Message.", fix=fix, target=root)
+    root = node
+    # ... detect violation ...
+    fix = Fix(edits=[...], applicability=Applicability.SAFE)
+    yield make_diagnostic("XYZ000", ctx, "Message.", fix=fix, target=root)
 ```
 
-### Generic Type Parameter
+### `ctx_types` and `cst_types`
 
-`BaseRule[T]` determines which CST node types trigger the rule.
-Use a union to match multiple styles:
+`ctx_types` specifies which context types trigger the rule (`FunctionCtx`, `ClassCtx`, `ModuleCtx`).
+`cst_types` specifies which CST node types trigger the rule. Use a frozenset to match multiple styles:
 
 ```python
 # Matches Google, NumPy, and Plain docstrings
-class XYZ000(BaseRule[GoogleDocstring | NumPyDocstring | PlainDocstring]):
+cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring})
 ```
-
-### `_make_diagnostic` signature
-
-```python
-self._make_diagnostic(ctx, message, *, fix=None, target)
-```
-
-- `target` must be a CST node or token that has a `.range` attribute (used to compute source location).
-- Pass `fix=None` for detect-only (non-fixable) rules.
 
 ---
 
@@ -124,9 +120,9 @@ Guidelines:
 
 ---
 
-## DiagnoseContext
+## Context (`ctx`)
 
-Available inside `diagnose()` as `ctx`:
+Available inside the rule function as `ctx`:
 
 ```python
 ctx.filepath           # Path — source file being checked
@@ -211,8 +207,8 @@ See the [rule-testing skill](./../rule-testing/SKILL.md) for creating tests.
 
 - **Do not import from `pydocfix.rules`** inside a rule file — import directly from `pydocfix.rules._base` and `pydocfix.rules._helpers` to avoid circular imports.
 - `Edit` offsets are **byte** positions, not character positions. Use `.encode("utf-8")` when computing offsets manually.
-- `_make_diagnostic`'s `target` must expose `.range.start` / `.range.end` as integer byte offsets (all CST nodes from pydocstring-rs do).
-- When the rule only applies to one docstring style, narrow the generic type: `BaseRule[GoogleDocstring]`.
+- `make_diagnostic`'s `target` must expose `.range.start` / `.range.end` as integer byte offsets (all CST nodes from pydocstring-rs do).
+- When the rule only applies to one docstring style, narrow `cst_types`: `cst_types=frozenset({GoogleDocstring})`.
 - **Do not forget to add the rule to `_BUILTIN_RULES`** (built-in rules only; plugin rules are registered automatically). Adding the class to `__all__` and importing it in `src/pydocfix/rules/__init__.py` is not enough — the rule must also appear in the `_BUILTIN_RULES` list, otherwise it is never registered and will never detect anything.
 - Rules that conflict with each other declare `conflicts_with = frozenset({"OTHER000"})`.
 - Rules gated on config use `activation_condition = ActivationCondition(attr="type_annotation_style", values=frozenset({"docstring"}))`.

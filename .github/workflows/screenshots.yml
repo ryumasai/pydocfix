@@ -1,0 +1,41 @@
+name: Screenshots
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/tapes/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install pydocfix
+        run: pip install -e .
+
+      - name: Generate diagnostic screenshot
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/tapes/diagnostic.tape
+
+      - name: Generate diff screenshot
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/tapes/diff.tape
+
+      - name: Commit screenshots
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: update screenshots"
+          file_pattern: "docs/images/*.gif"

@@ -11,7 +11,7 @@ from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 from pydocfix.rules.prm.helpers import get_param_name_token
 
 
-@rule("PRM008", targets=FunctionCtx, cst_types=(GoogleArg, NumPyParameter))
+@rule("PRM008", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleArg, NumPyParameter}))
 def prm008(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring parameter has no description."""
     cst_node = node

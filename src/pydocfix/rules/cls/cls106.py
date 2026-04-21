@@ -16,8 +16,8 @@ from pydocfix.rules.ris.helpers import get_raised_exceptions
 
 @rule(
     "CLS106",
-    targets=ClassCtx,
-    cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring),
+    ctx_types=frozenset({ClassCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
     enabled_by_default=False,
     activation_condition=ActivationCondition("class_docstring_style", frozenset({"class"})),
 )

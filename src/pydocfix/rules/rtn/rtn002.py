@@ -15,7 +15,7 @@ from pydocfix.rules.helpers import delete_section_fix
 from pydocfix.rules.rtn.helpers import is_returns_section, returns_a_value
 
 
-@rule("RTN002", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+@rule("RTN002", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def rtn002(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Returns section present but the function does not return a value."""
     section = node

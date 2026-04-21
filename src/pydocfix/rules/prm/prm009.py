@@ -23,7 +23,7 @@ def _get_vararg_kwarg_names(func: ast.FunctionDef | ast.AsyncFunctionDef) -> dic
     return result
 
 
-@rule("PRM009", targets=FunctionCtx, cst_types=(GoogleArg, NumPyParameter))
+@rule("PRM009", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleArg, NumPyParameter}))
 def prm009(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring parameter name missing '*' or '**' prefix."""
     cst_node = node

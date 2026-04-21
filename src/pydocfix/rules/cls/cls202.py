@@ -12,7 +12,7 @@ from pydocfix.rules.cls.helpers import is_yields_section
 from pydocfix.rules.helpers import delete_section_fix
 
 
-@rule("CLS202", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+@rule("CLS202", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def cls202(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """__init__ docstring contains a Yields section."""
     if ctx.parent.name != "__init__":

@@ -31,7 +31,7 @@ def _build_stub(name: str, ann: str | None, *, is_numpy: bool, indent: str) -> s
     return f"\n{indent}{name}:"
 
 
-@rule("PRM004", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+@rule("PRM004", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def prm004(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring has Args/Parameters section but is missing documented parameters."""
     section = node

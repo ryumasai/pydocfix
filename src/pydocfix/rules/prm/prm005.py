@@ -25,7 +25,7 @@ def _get_signature_names(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[st
     return names
 
 
-@rule("PRM005", targets=FunctionCtx, cst_types=(GoogleArg, NumPyParameter))
+@rule("PRM005", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleArg, NumPyParameter}))
 def prm005(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring documents a parameter that does not exist in the function signature."""
     cst_node = node

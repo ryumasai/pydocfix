@@ -11,7 +11,7 @@ from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 from pydocfix.rules.yld.helpers import get_yield_type
 
 
-@rule("YLD102", targets=FunctionCtx, cst_types=(GoogleYield, NumPyYields))
+@rule("YLD102", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleYield, NumPyYields}))
 def yld102(node: GoogleYield | NumPyYields, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Yield type not specified in either docstring or signature."""
     cst_node = node

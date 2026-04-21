@@ -13,8 +13,8 @@ from pydocfix.rules.yld.helpers import get_yield_type
 
 @rule(
     "YLD105",
-    targets=FunctionCtx,
-    cst_types=(GoogleYield, NumPyYields),
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleYield, NumPyYields}),
     enabled_by_default=False,
     conflicts_with=frozenset({"YLD102", "YLD106"}),
     activation_condition=ActivationCondition("type_annotation_style", frozenset({"signature", "both"})),

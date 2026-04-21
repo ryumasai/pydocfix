@@ -10,7 +10,7 @@ from pydocfix.diagnostics import Diagnostic
 from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 
 
-@rule("RTN003", targets=FunctionCtx, cst_types=(GoogleReturn, NumPyReturns))
+@rule("RTN003", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleReturn, NumPyReturns}))
 def rtn003(node: GoogleReturn | NumPyReturns, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Returns section entry has no description."""
     cst_node = node

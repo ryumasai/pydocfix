@@ -57,8 +57,8 @@ class RuleRegistry:
         """Register a rule function (decorated with ``@rule``)."""
         code: str = rule_fn._rule_code  # type: ignore[attr-defined]
         self._rules[code] = rule_fn
-        for ctx_type in rule_fn._targets_ctx:  # type: ignore[attr-defined]
-            for cst_type in rule_fn._targets_cst:  # type: ignore[attr-defined]
+        for ctx_type in rule_fn._ctx_types:  # type: ignore[attr-defined]
+            for cst_type in rule_fn._cst_types:  # type: ignore[attr-defined]
                 self._handlers[(ctx_type, cst_type)].append(rule_fn)
 
     def get(self, code: str) -> RuleFn | None:

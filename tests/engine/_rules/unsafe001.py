@@ -15,7 +15,7 @@ _FIXED = "FIXED(UNSAFE001)."
 
 
 @rule(
-    "UNSAFE001", targets=(FunctionCtx, ClassCtx, ModuleCtx), cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring)
+    "UNSAFE001", ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring})
 )
 def unsafe001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Detects VIOLATION(UNSAFE001) in docstring summary and fixes it unsafely."""

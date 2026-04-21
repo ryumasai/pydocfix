@@ -20,7 +20,7 @@ from pydocfix.rules.helpers import build_section_stub, detect_docstring_style, d
 from pydocfix.rules.rtn.helpers import has_return_annotation
 
 
-@rule("RTN001", targets=FunctionCtx, cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring))
+@rule("RTN001", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}))
 def rtn001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Function has return type annotation but docstring has no Returns section."""
     root = node

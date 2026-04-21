@@ -53,7 +53,7 @@ def _build_reorder_fix(
     )
 
 
-@rule("PRM006", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+@rule("PRM006", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def prm006(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring parameters are listed in a different order than the function signature."""
     section = node

@@ -12,7 +12,7 @@ from pydocfix.rules.helpers import delete_section_fix
 from pydocfix.rules.ris.helpers import get_raised_exceptions, is_raises_section
 
 
-@rule("RIS002", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+@rule("RIS002", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def ris002(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring has a Raises section but function body has no raise statements."""
     section = node

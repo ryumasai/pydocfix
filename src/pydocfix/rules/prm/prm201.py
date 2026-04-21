@@ -26,7 +26,7 @@ def _get_default_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str
     return names
 
 
-@rule("PRM201", targets=FunctionCtx, cst_types=(GoogleArg, NumPyParameter))
+@rule("PRM201", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleArg, NumPyParameter}))
 def prm201(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Parameter has a default value but docstring does not mention ``optional``."""
     cst_node = node

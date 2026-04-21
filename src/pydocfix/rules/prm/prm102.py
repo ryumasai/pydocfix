@@ -11,7 +11,7 @@ from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 from pydocfix.rules.prm.helpers import bare_name, get_annotation_map, get_param_name_token, get_signature_params
 
 
-@rule("PRM102", targets=FunctionCtx, cst_types=(GoogleArg, NumPyParameter))
+@rule("PRM102", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleArg, NumPyParameter}))
 def prm102(node: GoogleArg | NumPyParameter, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Parameter has no type annotation in either docstring or signature."""
     cst_node = node

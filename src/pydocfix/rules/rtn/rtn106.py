@@ -12,8 +12,8 @@ from pydocfix.rules._base import ActivationCondition, FunctionCtx, make_diagnost
 
 @rule(
     "RTN106",
-    targets=FunctionCtx,
-    cst_types=(GoogleReturn, NumPyReturns),
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleReturn, NumPyReturns}),
     enabled_by_default=False,
     conflicts_with=frozenset({"RTN105"}),
     activation_condition=ActivationCondition("type_annotation_style", frozenset({"docstring"})),

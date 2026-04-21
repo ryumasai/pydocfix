@@ -13,7 +13,7 @@ from pydocfix.rules.helpers import normalize_optional
 from pydocfix.rules.yld.helpers import get_yield_type
 
 
-@rule("YLD101", targets=FunctionCtx, cst_types=(GoogleYield, NumPyYields))
+@rule("YLD101", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleYield, NumPyYields}))
 def yld101(node: GoogleYield | NumPyYields, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring yield type does not match type hint."""
     cst_node = node

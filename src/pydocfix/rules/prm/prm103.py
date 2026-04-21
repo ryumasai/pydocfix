@@ -42,8 +42,8 @@ def _build_insert_type_fix(cst_node: GoogleArg | NumPyParameter, ann: str) -> Fi
 
 @rule(
     "PRM103",
-    targets=FunctionCtx,
-    cst_types=(GoogleArg, NumPyParameter),
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleArg, NumPyParameter}),
     enabled_by_default=False,
     conflicts_with=frozenset({"PRM104"}),
     activation_condition=ActivationCondition("type_annotation_style", frozenset({"docstring", "both"})),

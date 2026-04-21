@@ -21,7 +21,7 @@ _CONFLICT_PATH_DIR = _PLUGINS / "conflict_path"
 
 
 # Duplicate of a built-in code
-@rule("SUM001", targets=(FunctionCtx, ModuleCtx), cst_types=PlainDocstring)
+@rule("SUM001", ctx_types=frozenset({FunctionCtx, ModuleCtx}), cst_types=frozenset({PlainDocstring}))
 def _dup_sum001(node: PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Duplicate SUM001 for testing builtin-wins-over-plugin precedence."""
     return iter(())

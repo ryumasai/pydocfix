@@ -19,7 +19,7 @@ from pydocfix.rules.prm.helpers import (
 )
 
 
-@rule("PRM007", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+@rule("PRM007", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def prm007(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring documents a parameter more than once."""
     section = node

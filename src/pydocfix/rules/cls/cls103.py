@@ -14,8 +14,8 @@ from pydocfix.rules.helpers import delete_section_fix
 
 @rule(
     "CLS103",
-    targets=ClassCtx,
-    cst_types=(GoogleSection, NumPySection),
+    ctx_types=frozenset({ClassCtx}),
+    cst_types=frozenset({GoogleSection, NumPySection}),
     enabled_by_default=False,
     activation_condition=ActivationCondition("class_docstring_style", frozenset({"init"})),
 )

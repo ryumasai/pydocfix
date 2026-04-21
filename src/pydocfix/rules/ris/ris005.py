@@ -12,7 +12,7 @@ from pydocfix.rules.helpers import delete_entry_fix
 from pydocfix.rules.ris.helpers import _bare_exc_name, get_raised_exceptions
 
 
-@rule("RIS005", targets=FunctionCtx, cst_types=(GoogleException, NumPyException))
+@rule("RIS005", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleException, NumPyException}))
 def ris005(node: GoogleException | NumPyException, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Raises entry documents an exception not raised in the function body."""
     cst_node = node

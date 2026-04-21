@@ -12,7 +12,7 @@ from pydocfix.rules.helpers import delete_section_fix
 from pydocfix.rules.yld.helpers import is_generator_function, is_yields_section
 
 
-@rule("YLD002", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+@rule("YLD002", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def yld002(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Function is not a generator but docstring has a Yields section."""
     section = node

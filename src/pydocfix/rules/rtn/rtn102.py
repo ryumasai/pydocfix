@@ -10,7 +10,7 @@ from pydocfix.diagnostics import Diagnostic
 from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 
 
-@rule("RTN102", targets=FunctionCtx, cst_types=(GoogleReturn, NumPyReturns))
+@rule("RTN102", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleReturn, NumPyReturns}))
 def rtn102(node: GoogleReturn | NumPyReturns, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Return type not specified in either docstring or signature."""
     cst_node = node

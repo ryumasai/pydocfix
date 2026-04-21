@@ -15,8 +15,8 @@ _VIOLATION = "VIOLATION(DISPLAY001)"
 
 @rule(
     "DISPLAY001",
-    targets=(FunctionCtx, ClassCtx, ModuleCtx),
-    cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring),
+    ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
 )
 def display001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Detects VIOLATION(DISPLAY001) and proposes a DISPLAY_ONLY fix (never applied)."""

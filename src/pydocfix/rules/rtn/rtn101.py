@@ -19,7 +19,7 @@ def _get_return_annotation(func: ast.FunctionDef | ast.AsyncFunctionDef) -> str 
     return ast.unparse(func.returns)
 
 
-@rule("RTN101", targets=FunctionCtx, cst_types=(GoogleReturn, NumPyReturns))
+@rule("RTN101", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleReturn, NumPyReturns}))
 def rtn101(node: GoogleReturn | NumPyReturns, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring return type does not match type hint."""
     cst_node = node

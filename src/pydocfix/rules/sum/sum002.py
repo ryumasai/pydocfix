@@ -15,7 +15,7 @@ _DEFAULT_PERIOD: Final[str] = "."
 _PERIOD_SET: Final[frozenset[str]] = frozenset([_DEFAULT_PERIOD, "!", "?"])
 
 
-@rule("SUM002", targets=(FunctionCtx, ClassCtx, ModuleCtx), cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring))
+@rule("SUM002", ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}))
 def sum002(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Summary should end with a period."""
     root = node

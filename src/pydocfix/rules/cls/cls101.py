@@ -12,7 +12,7 @@ from pydocfix.rules.cls.helpers import is_returns_section
 from pydocfix.rules.helpers import delete_section_fix
 
 
-@rule("CLS101", targets=ClassCtx, cst_types=(GoogleSection, NumPySection))
+@rule("CLS101", ctx_types=frozenset({ClassCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def cls101(node: GoogleSection | NumPySection, ctx: ClassCtx) -> Iterator[Diagnostic]:
     """Class docstring contains a Returns section."""
     if not is_returns_section(node):

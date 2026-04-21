@@ -12,8 +12,8 @@ from pydocfix.rules._base import BaseCtx, FunctionCtx, ModuleCtx, rule
 
 @rule(
     "PLUGIN002",
-    targets=(FunctionCtx, ModuleCtx),
-    cst_types=(GoogleDocstring, NumPyDocstring, PlainDocstring),
+    ctx_types=frozenset({FunctionCtx, ModuleCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
 )
 def plugin002(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Plugin rule in a _-prefixed file; should never be discovered via path."""

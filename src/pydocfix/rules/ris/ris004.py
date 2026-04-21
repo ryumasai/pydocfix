@@ -29,7 +29,7 @@ def _build_entry(exc_name: str, *, is_numpy: bool, indent: str) -> str:
     return f"\n{indent}{exc_name}:"
 
 
-@rule("RIS004", targets=FunctionCtx, cst_types=(GoogleSection, NumPySection))
+@rule("RIS004", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
 def ris004(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Raised exception not documented in the Raises section."""
     section = node
