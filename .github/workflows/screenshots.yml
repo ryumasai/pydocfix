@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   screenshots:
@@ -37,8 +38,11 @@ jobs:
       - name: Generate diff screenshot
         run: vhs docs/tapes/diff.tape
 
-      - name: Commit screenshots
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
         with:
-          commit_message: "docs: update screenshots"
-          file_pattern: "docs/images/*.gif"
+          commit-message: "docs: update screenshots"
+          branch: docs/update-screenshots
+          title: "docs: update screenshots"
+          body: "Automated screenshot update from VHS."
+          labels: documentation
