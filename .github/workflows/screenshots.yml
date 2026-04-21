@@ -13,29 +13,22 @@ permissions:
 jobs:
   screenshots:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/charmbracelet/vhs
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
       - name: Install pydocfix
-        run: pip install -e .
-
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+          apk add --no-cache python3 py3-pip
+          pip install -e . --break-system-packages
 
       - name: Generate diagnostic screenshot
-        uses: charmbracelet/vhs-action@v2
-        with:
-          path: docs/tapes/diagnostic.tape
+        run: vhs docs/tapes/diagnostic.tape
 
       - name: Generate diff screenshot
-        uses: charmbracelet/vhs-action@v2
-        with:
-          path: docs/tapes/diff.tape
+        run: vhs docs/tapes/diff.tape
 
       - name: Commit screenshots
         uses: stefanzweifel/git-auto-commit-action@v5
