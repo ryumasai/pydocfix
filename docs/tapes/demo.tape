@@ -1,6 +1,6 @@
 Output "docs/images/demo.gif"
 
-Set FontSize 40
+Set FontSize 36
 Set TypingSpeed 30ms
 Set Width 1800
 Set Height 900

@@ -8,7 +8,7 @@ A Python docstring linter that checks **signature ↔ docstring consistency** an
 Inspired by [pydoclint](https://github.com/jsh9/pydoclint), pydocfix goes further by **automatically repairing** the issues it finds.
 
 > [!NOTE]
-> This project is in **beta** (v0.1.0b2).
+> This project is in **beta** (v0.1.0b3).
 > APIs and behavior may change before the stable release.
 
 ## Table of Contents
@@ -29,7 +29,7 @@ Inspired by [pydoclint](https://github.com/jsh9/pydoclint), pydocfix goes furthe
 
 [pydoclint](https://github.com/jsh9/pydoclint) pioneered fast signature ↔ docstring consistency checking for Python. However, it can only *report* violations — all corrections must be done by hand.
 
-pydocfix is built on [pydocstring-rs](https://github.com/aita/pydocstring-rs), a **CST (Concrete Syntax Tree) parser** for docstrings written in Rust by the same author. CST preserves every token's byte offset, whitespace, and formatting, enabling:
+pydocfix is built on [pydocstring-rs](https://github.com/ryumasai/pydocstring), a **CST (Concrete Syntax Tree) parser** for docstrings written in Rust by the same author. CST preserves every token's byte offset, whitespace, and formatting, enabling:
 
 - **Byte-level diagnostics** — point to the exact token (parameter name, type annotation, section header), not just the line
 - **Surgical auto-fix** — edits replace precise byte ranges, so fixes never corrupt adjacent content
@@ -369,7 +369,7 @@ Add to `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/ryumasai/pydocfix
-    rev: v0.1.0b2  # check https://pypi.org/project/pydocfix/ for the latest version
+    rev: v0.1.0b3  # check https://pypi.org/project/pydocfix/ for the latest version
     hooks:
       - id: pydocfix
 ```
