@@ -2,34 +2,22 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
-from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.diagnostics import Diagnostic
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 
 
-class YLD003(BaseRule):
+@rule("YLD003", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleYield, NumPyYields}))
+def yld003(node: GoogleYield | NumPyYields, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Yields section entry has no description."""
+    cst_node = node
 
-    code = "YLD003"
-    message = "Yields section has no description."
-    target_kinds = frozenset({
-        GoogleYield,
-        NumPyYields,
-    })
+    desc = cst_node.description
+    if desc is not None and desc.text.strip():
+        return
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleYield, NumPyYields)):
-            return
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
-
-        desc = cst_node.description
-        if desc is not None and desc.text.strip():
-            return
-
-        ret_type = cst_node.return_type
-        yield self._make_diagnostic(ctx, self.message, target=ret_type or cst_node)
+    ret_type = cst_node.return_type
+    yield make_diagnostic("YLD003", ctx, "Yields section has no description.", target=ret_type or cst_node)

@@ -38,24 +38,26 @@ pydocfix = "pydocfix.cli:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=6.0",
+    "pytest>=9.0",
+    "syrupy>=5.0",
     "ruff>=0.11",
+    "ty>=0.0.32",
+    "pre-commit>=4.5.1",
 ]
-
-[tool.ruff]
-target-version = "py311"
-line-length = 120
-
-[tool.ruff.lint]
-select = ["D", "E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
-
-[tool.pyright]
-pythonVersion = "3.11"
-extraPaths = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-include = ["tests/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
+
+[tool.ty.src]
+include = ["src", "tests"]
+
 [tool.pydocfix]
-ignore = ["PRM001", "RTN001", "YLD001", "RIS001"]
+exclude = ["tests/**/fixtures/"]

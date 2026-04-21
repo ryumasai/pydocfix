@@ -2,38 +2,28 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
-from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic
-from pydocfix.rules.yld._helpers import get_yield_type
+from pydocfix.diagnostics import Diagnostic
+from pydocfix.rules._base import ActivationCondition, FunctionCtx, make_diagnostic, rule
+from pydocfix.rules.yld.helpers import get_yield_type
 
 
-class YLD105(BaseRule):
+@rule(
+    "YLD105",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleYield, NumPyYields}),
+    enabled_by_default=False,
+    conflicts_with=frozenset({"YLD102", "YLD106"}),
+    activation_condition=ActivationCondition("type_annotation_style", frozenset({"signature", "both"})),
+)
+def yld105(node: GoogleYield | NumPyYields, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Documented yield has no type annotation in the function signature."""
+    cst_node = node
 
-    code = "YLD105"
-    message = "Yield has no type annotation in signature."
-    enabled_by_default = False
-    conflicts_with = frozenset({"YLD102", "YLD106"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature", "both"}))
-    target_kinds = frozenset(
-        {
-            GoogleYield,
-            NumPyYields,
-        }
-    )
+    if get_yield_type(ctx.parent) is not None:
+        return  # has annotation in signature
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleYield, NumPyYields)):
-            return
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
-
-        if get_yield_type(ctx.parent_ast) is not None:
-            return  # has annotation in signature
-
-        yield self._make_diagnostic(ctx, self.message, target=cst_node)
+    yield make_diagnostic("YLD105", ctx, "Yield has no type annotation in signature.", target=cst_node)

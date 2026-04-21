@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import (
@@ -10,8 +9,11 @@ from pydocstring import (
     NumPySection,
 )
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, insert_at
-from pydocfix.rules.prm._helpers import (
+from pydocfix.diagnostics import Applicability, Diagnostic, Fix
+from pydocfix.fixes import insert_at
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
+from pydocfix.rules.helpers import detect_section_indent
+from pydocfix.rules.prm.helpers import (
     bare_name,
     get_documented_param_nodes,
     get_signature_params,
@@ -19,56 +21,41 @@ from pydocfix.rules.prm._helpers import (
 )
 
 
-class PRM004(BaseRule):
+def _build_stub(name: str, ann: str | None, *, is_numpy: bool, indent: str) -> str:
+    """Build a stub entry string for a missing parameter."""
+    if is_numpy:
+        header = f"{indent}{name} : {ann}" if ann else f"{indent}{name}"
+        return f"\n{header}"
+    if ann:
+        return f"\n{indent}{name} ({ann}):"
+    return f"\n{indent}{name}:"
+
+
+@rule("PRM004", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
+def prm004(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring has Args/Parameters section but is missing documented parameters."""
+    section = node
+    if not is_param_section(section):
+        return
 
-    code = "PRM004"
-    message = "Missing parameter in docstring."
-    target_kinds = frozenset({
-        GoogleSection,
-        NumPySection,
-    })
+    documented = {bare_name(name) for name, _ in get_documented_param_nodes(ctx.docstring_cst, section)}
+    sig_params = get_signature_params(ctx.parent)
 
-    # -- helpers -------------------------------------------------------
+    if not documented:
+        return
 
-    @staticmethod
-    def _build_stub(name: str, ann: str | None, *, is_numpy: bool, indent: str) -> str:
-        """Build a stub entry string for a missing parameter."""
-        if is_numpy:
-            header = f"{indent}{name} : {ann}" if ann else f"{indent}{name}"
-            return f"\n{header}"
-        if ann:
-            return f"\n{indent}{name} ({ann}):"
-        return f"\n{indent}{name}:"
+    is_numpy = isinstance(section, NumPySection)
+    section_indent = detect_section_indent(ctx.docstring_text, ctx.docstring_stmt.col_offset)
+    indent = section_indent + "    "
+    insert_offset = section.range.end
 
-    # -- entry point ---------------------------------------------------
-
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        section = ctx.target_cst
-        if not isinstance(section, (GoogleSection, NumPySection)):
-            return
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
-        if not is_param_section(section):
-            return
-
-        documented = {bare_name(name) for name, _ in get_documented_param_nodes(ctx.docstring_cst, section)}
-        sig_params = get_signature_params(ctx.parent_ast)
-
-        if not documented:
-            return
-
-        is_numpy = isinstance(section, NumPySection)
-        indent = "    "
-        insert_offset = section.range.end
-
-        for display_name, ann in sig_params:
-            if bare_name(display_name) in documented:
-                continue
-            stub = self._build_stub(display_name, ann, is_numpy=is_numpy, indent=indent)
-            fix = Fix(
-                edits=[insert_at(insert_offset, stub)],
-                applicability=Applicability.UNSAFE,
-            )
-            message = f"Missing parameter '{display_name}' in docstring."
-            yield self._make_diagnostic(ctx, message, fix=fix, target=section.header_name or section)
+    for display_name, ann in sig_params:
+        if bare_name(display_name) in documented:
+            continue
+        stub = _build_stub(display_name, ann, is_numpy=is_numpy, indent=indent)
+        fix = Fix(
+            edits=[insert_at(insert_offset, stub)],
+            applicability=Applicability.UNSAFE,
+        )
+        message = f"Missing parameter '{display_name}' in docstring."
+        yield make_diagnostic("PRM004", ctx, message, fix=fix, target=section.header_name or section)

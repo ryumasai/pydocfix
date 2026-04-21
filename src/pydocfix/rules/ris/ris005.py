@@ -2,51 +2,32 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleException, NumPyException
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
-from pydocfix.rules.ris._helpers import _bare_exc_name, get_raised_exceptions
+from pydocfix.diagnostics import Applicability, Diagnostic
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
+from pydocfix.rules.helpers import delete_entry_fix
+from pydocfix.rules.ris.helpers import _bare_exc_name, get_raised_exceptions
 
 
-class RIS005(BaseRule):
+@rule("RIS005", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleException, NumPyException}))
+def ris005(node: GoogleException | NumPyException, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Raises entry documents an exception not raised in the function body."""
+    cst_node = node
 
-    code = "RIS005"
-    message = "Raises entry documents exception not raised in function body."
-    target_kinds = frozenset({
-        GoogleException,
-        NumPyException,
-    })
+    type_token = cst_node.type
+    if type_token is None:
+        return
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleException, NumPyException)):
-            return
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
+    documented_name = _bare_exc_name(type_token.text)
+    raised_names = {_bare_exc_name(e) for e in get_raised_exceptions(ctx.parent)}
 
-        type_token = cst_node.type
-        if type_token is None:
-            return
+    if documented_name in raised_names:
+        return
 
-        documented_name = _bare_exc_name(type_token.text)
-        raised_names = {_bare_exc_name(e) for e in get_raised_exceptions(ctx.parent_ast)}
+    fix = delete_entry_fix(ctx.docstring_text, cst_node.range, Applicability.UNSAFE)
 
-        if documented_name in raised_names:
-            return
-
-        ds_bytes = ctx.docstring_text.encode("utf-8")
-        nl_before = ds_bytes.rfind(b"\n", 0, cst_node.range.start)
-        start = nl_before + 1 if nl_before != -1 else cst_node.range.start
-        nl_after = ds_bytes.find(b"\n", cst_node.range.end)
-        end = nl_after + 1 if nl_after != -1 else cst_node.range.end
-
-        fix = Fix(
-            edits=[delete_range(start, end)],
-            applicability=Applicability.UNSAFE,
-        )
-        message = f"Raises entry '{type_token.text}' not raised in function body."
-        yield self._make_diagnostic(ctx, message, fix=fix, target=type_token)
+    message = f"Raises entry '{type_token.text}' not raised in function body."
+    yield make_diagnostic("RIS005", ctx, message, fix=fix, target=type_token)

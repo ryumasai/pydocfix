@@ -2,34 +2,22 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.diagnostics import Diagnostic
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 
 
-class RTN003(BaseRule):
+@rule("RTN003", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleReturn, NumPyReturns}))
+def rtn003(node: GoogleReturn | NumPyReturns, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Returns section entry has no description."""
+    cst_node = node
 
-    code = "RTN003"
-    message = "Returns section has no description."
-    target_kinds = frozenset({
-        GoogleReturn,
-        NumPyReturns,
-    })
+    desc = cst_node.description
+    if desc is not None and desc.text.strip():
+        return
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleReturn, NumPyReturns)):
-            return
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
-
-        desc = cst_node.description
-        if desc is not None and desc.text.strip():
-            return
-
-        ret_type = cst_node.return_type
-        yield self._make_diagnostic(ctx, self.message, target=ret_type or cst_node)
+    ret_type = cst_node.return_type
+    yield make_diagnostic("RTN003", ctx, "Returns section has no description.", target=ret_type or cst_node)

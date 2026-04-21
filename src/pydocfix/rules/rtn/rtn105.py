@@ -2,38 +2,28 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleReturn, NumPyReturns
 
-from pydocfix.rules._base import BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic
+from pydocfix.diagnostics import Diagnostic
+from pydocfix.rules._base import ActivationCondition, FunctionCtx, make_diagnostic, rule
 
 
-class RTN105(BaseRule):
+@rule(
+    "RTN105",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleReturn, NumPyReturns}),
+    enabled_by_default=False,
+    conflicts_with=frozenset({"RTN102", "RTN106"}),
+    activation_condition=ActivationCondition("type_annotation_style", frozenset({"signature", "both"})),
+)
+def rtn105(node: GoogleReturn | NumPyReturns, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Documented return has no type annotation in the function signature."""
+    cst_node = node
 
-    code = "RTN105"
-    message = "Return has no type annotation in signature."
-    enabled_by_default = False
-    conflicts_with = frozenset({"RTN102", "RTN106"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"signature", "both"}))
-    target_kinds = frozenset(
-        {
-            GoogleReturn,
-            NumPyReturns,
-        }
-    )
+    func = ctx.parent
+    if func.returns is not None:
+        return  # has annotation in signature
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleReturn, NumPyReturns)):
-            return
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
-
-        func = ctx.parent_ast
-        if func.returns is not None:  # type: ignore[union-attr]
-            return  # has annotation in signature
-
-        yield self._make_diagnostic(ctx, self.message, target=cst_node)
+    yield make_diagnostic("RTN105", ctx, "Return has no type annotation in signature.", target=cst_node)

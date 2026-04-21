@@ -2,53 +2,43 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleYield, NumPyYields
 
-from pydocfix.rules._base import Applicability, BaseRule, ConfigRequirement, DiagnoseContext, Diagnostic, Edit, Fix
-from pydocfix.rules.yld._helpers import get_yield_type
+from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
+from pydocfix.rules._base import ActivationCondition, FunctionCtx, make_diagnostic, rule
+from pydocfix.rules.yld.helpers import get_yield_type
 
 
-class YLD103(BaseRule):
+@rule(
+    "YLD103",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleYield, NumPyYields}),
+    enabled_by_default=False,
+    conflicts_with=frozenset({"YLD104"}),
+    activation_condition=ActivationCondition("type_annotation_style", frozenset({"docstring", "both"})),
+)
+def yld103(node: GoogleYield | NumPyYields, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Docstring yield entry has no type (type_annotation_style = "docstring")."""
+    cst_node = node
 
-    code = "YLD103"
-    message = "Yield has no type in docstring."
-    enabled_by_default = False
-    conflicts_with = frozenset({"YLD104"})
-    requires_config = ConfigRequirement("type_annotation_style", frozenset({"docstring", "both"}))
-    target_kinds = frozenset(
-        {
-            GoogleYield,
-            NumPyYields,
-        }
-    )
+    ret_type_token = cst_node.return_type
+    if ret_type_token is not None and ret_type_token.text.strip():
+        return
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleYield, NumPyYields)):
-            return
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
+    ann = get_yield_type(ctx.parent)
+    fix = None
+    if ann:
+        if isinstance(cst_node, GoogleYield):
+            fix = Fix(
+                edits=[Edit(start=cst_node.range.start, end=cst_node.range.start, new_text=f"{ann}: ")],
+                applicability=Applicability.UNSAFE,
+            )
+        else:  # NumPyYields
+            fix = Fix(
+                edits=[Edit(start=cst_node.range.start, end=cst_node.range.start, new_text=f"{ann}\n")],
+                applicability=Applicability.UNSAFE,
+            )
 
-        ret_type_token = cst_node.return_type
-        if ret_type_token is not None and ret_type_token.text.strip():
-            return
-
-        ann = get_yield_type(ctx.parent_ast)
-        fix = None
-        if ann:
-            if isinstance(cst_node, GoogleYield):
-                fix = Fix(
-                    edits=[Edit(start=cst_node.range.start, end=cst_node.range.start, new_text=f"{ann}: ")],
-                    applicability=Applicability.UNSAFE,
-                )
-            else:  # NumPyYields
-                fix = Fix(
-                    edits=[Edit(start=cst_node.range.start, end=cst_node.range.start, new_text=f"{ann}\n")],
-                    applicability=Applicability.UNSAFE,
-                )
-
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=cst_node)
+    yield make_diagnostic("YLD103", ctx, "Yield has no type in docstring.", fix=fix, target=cst_node)

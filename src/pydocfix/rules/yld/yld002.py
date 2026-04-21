@@ -2,47 +2,31 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleSection, NumPySection
 
-from pydocfix.rules._base import Applicability, BaseRule, DiagnoseContext, Diagnostic, Fix, delete_range
-from pydocfix.rules.yld._helpers import is_generator_function, is_yields_section
+from pydocfix.diagnostics import Applicability, Diagnostic
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
+from pydocfix.rules.helpers import delete_section_fix
+from pydocfix.rules.yld.helpers import is_generator_function, is_yields_section
 
 
-class YLD002(BaseRule):
+@rule("YLD002", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleSection, NumPySection}))
+def yld002(node: GoogleSection | NumPySection, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Function is not a generator but docstring has a Yields section."""
+    section = node
 
-    code = "YLD002"
-    message = "Unnecessary Yields section in docstring."
-    target_kinds = frozenset({
-        GoogleSection,
-        NumPySection,
-    })
+    if not is_yields_section(section):
+        return
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        section = ctx.target_cst
-        if not isinstance(section, (GoogleSection, NumPySection)):
-            return
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
+    if is_generator_function(ctx.parent):
+        return
 
-        if not is_yields_section(section):
-            return
+    # Delete the entire Yields section
+    fix = delete_section_fix(ctx.docstring_text, section, Applicability.SAFE)
 
-        if is_generator_function(ctx.parent_ast):
-            return
-
-        ds_bytes = ctx.docstring_text.encode("utf-8")
-        nl_before = ds_bytes.rfind(b"\n", 0, section.range.start)
-        start = nl_before if nl_before != -1 else section.range.start
-        nl_after = ds_bytes.find(b"\n", section.range.end)
-        end = nl_after + 1 if nl_after != -1 else section.range.end
-
-        fix = Fix(
-            edits=[delete_range(start, end)],
-            applicability=Applicability.SAFE,
-        )
-        header_name = section.header_name
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=header_name or section)
+    header_name = section.header_name
+    yield make_diagnostic(
+        "YLD002", ctx, "Unnecessary Yields section in docstring.", fix=fix, target=header_name or section
+    )

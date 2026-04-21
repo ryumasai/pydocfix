@@ -2,34 +2,22 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Iterator
 
 from pydocstring import GoogleException, NumPyException
 
-from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.diagnostics import Diagnostic
+from pydocfix.rules._base import FunctionCtx, make_diagnostic, rule
 
 
-class RIS003(BaseRule):
+@rule("RIS003", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleException, NumPyException}))
+def ris003(node: GoogleException | NumPyException, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Raises entry has no description."""
+    cst_node = node
 
-    code = "RIS003"
-    message = "Raises entry has no description."
-    target_kinds = frozenset({
-        GoogleException,
-        NumPyException,
-    })
+    desc = cst_node.description
+    if desc is not None and desc.text.strip():
+        return
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        cst_node = ctx.target_cst
-        if not isinstance(cst_node, (GoogleException, NumPyException)):
-            return
-        if not isinstance(ctx.parent_ast, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return
-
-        desc = cst_node.description
-        if desc is not None and desc.text.strip():
-            return
-
-        type_token = cst_node.type
-        yield self._make_diagnostic(ctx, self.message, target=type_token or cst_node)
+    type_token = cst_node.type
+    yield make_diagnostic("RIS003", ctx, "Raises entry has no description.", target=type_token or cst_node)

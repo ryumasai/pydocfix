@@ -6,12 +6,15 @@ Usage:
     python benchmarks/bench.py --target /path/to/local/project --docstyle google
 
 pydoclint is configured to match pydocfix's rule scope:
-  --style <google|numpy>         docstring style to parse
-  --check-class-attributes False pydocfix has no class-attribute rules"""
+  --style <google|numpy>                 docstring style to parse
+  --arg-type-hints-in-signature False    pydocfix PRM103-106 disabled by default
+  --arg-type-hints-in-docstring False    (type_annotation_style not set → omitted)"""
 
 from __future__ import annotations
 
 import argparse
+import contextlib
+import json
 import shutil
 import subprocess
 import sys
@@ -39,9 +42,15 @@ STYLE_DEFAULT_TARGET: dict[str, str] = {
 }
 
 # pydoclint options that align its checks to pydocfix's rule scope:
-#   --check-class-attributes False  pydocfix has no class-attribute rules
-#   --style <style>                 explicit style; pydocfix auto-detects
-PYDOCLINT_ALIGN_OPTS: list[str] = ["--check-class-attributes", "False"]
+#   --arg-type-hints-in-signature False   pydocfix disables PRM103-106 by default
+#   --arg-type-hints-in-docstring False   (type_annotation_style not set → omitted)
+#   --style <style>                       explicit style; pydocfix auto-detects
+PYDOCLINT_ALIGN_OPTS: list[str] = [
+    "--arg-type-hints-in-signature",
+    "False",
+    "--arg-type-hints-in-docstring",
+    "False",
+]
 
 WARMUP_RUNS = 1
 DEFAULT_BENCH_RUNS = 5
@@ -52,6 +61,9 @@ class BenchResult:
     tool: str
     version: str
     elapsed_secs: list[float] = field(default_factory=list)
+    stddev_secs: float = 0.0
+    min_secs: float = 0.0
+    max_secs: float = 0.0
     violation_count: int = 0
     rule_codes: set[str] = field(default_factory=set)
     has_autofix: bool = False
@@ -82,10 +94,8 @@ def count_python_files(target: Path) -> tuple[int, int]:
         if any(part in skip for part in p.parts):
             continue
         files += 1
-        try:
+        with contextlib.suppress(OSError):
             lines += len(p.read_text(errors="replace").splitlines())
-        except OSError:
-            pass
     return files, lines
 
 
@@ -108,8 +118,61 @@ def find_python_src(target: Path) -> Path:
     return best if best is not None else target
 
 
-def _timed_runs(cmd: list[str], runs: int) -> tuple[list[float], subprocess.CompletedProcess[str]]:
-    """Run warmup + timed runs, return (elapsed list, last CompletedProcess)."""
+def _timed_runs(cmd: list[str], runs: int) -> tuple[list[float], float, float, float, subprocess.CompletedProcess[str]]:
+    """Run via hyperfine (warmup + timed runs).
+
+    Returns (all_times_secs, stddev, min, max, last_subprocess_result).
+    Falls back to manual timing if hyperfine is unavailable.
+    """
+    if shutil.which("hyperfine"):
+        return _timed_runs_hyperfine(cmd, runs)
+    return _timed_runs_manual(cmd, runs)
+
+
+def _timed_runs_hyperfine(
+    cmd: list[str], runs: int
+) -> tuple[list[float], float, float, float, subprocess.CompletedProcess[str]]:
+    """Time a command using hyperfine with JSON export."""
+    import tempfile as _tf
+
+    with _tf.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        json_path = Path(f.name)
+
+    hyperfine_cmd = [
+        "hyperfine",
+        "--warmup",
+        str(WARMUP_RUNS),
+        "--runs",
+        str(runs),
+        "--export-json",
+        str(json_path),
+        "--style",
+        "none",  # no ANSI/progress bars
+        "--ignore-failure",  # tools may exit 1 when violations are found
+        " ".join(cmd),
+    ]
+    subprocess.run(hyperfine_cmd, capture_output=True)
+
+    data = json.loads(json_path.read_text())
+    json_path.unlink(missing_ok=True)
+
+    result_data = data["results"][0]
+    times: list[float] = result_data["times"]
+    stddev: float = result_data.get("stddev", 0.0)
+    min_t: float = result_data.get("min", min(times))
+    max_t: float = result_data.get("max", max(times))
+
+    # Run once more to capture output for violation parsing
+    last = subprocess.run(cmd, capture_output=True, text=True)
+    return times, stddev, min_t, max_t, last
+
+
+def _timed_runs_manual(
+    cmd: list[str], runs: int
+) -> tuple[list[float], float, float, float, subprocess.CompletedProcess[str]]:
+    """Fallback: manual warmup + timing loop."""
+    import statistics
+
     for _ in range(WARMUP_RUNS):
         subprocess.run(cmd, capture_output=True, text=True)
 
@@ -118,19 +181,21 @@ def _timed_runs(cmd: list[str], runs: int) -> tuple[list[float], subprocess.Comp
     for _ in range(runs):
         t0 = time.perf_counter()
         r = subprocess.run(cmd, capture_output=True, text=True)
-        t1 = time.perf_counter()
-        elapsed.append(t1 - t0)
+        elapsed.append(time.perf_counter() - t0)
     assert r is not None
-    return elapsed, r
+    stddev = statistics.stdev(elapsed) if len(elapsed) > 1 else 0.0
+    return elapsed, stddev, min(elapsed), max(elapsed), r
 
 
 # --- Tool runners ---
 
 
-def run_pydocfix(target: Path, runs: int) -> BenchResult:
+def run_pydocfix(target: Path, runs: int, jobs: int | None = None) -> BenchResult:
     result = BenchResult(tool="pydocfix", version=get_version("pydocfix"), has_autofix=True)
     cmd = ["pydocfix", "check", str(target)]
-    result.elapsed_secs, r = _timed_runs(cmd, runs)
+    if jobs is not None:
+        cmd += ["--jobs", str(jobs)]
+    result.elapsed_secs, result.stddev_secs, result.min_secs, result.max_secs, r = _timed_runs(cmd, runs)
     result.exit_code = r.returncode
 
     codes: set[str] = set()
@@ -140,7 +205,7 @@ def run_pydocfix(target: Path, runs: int) -> BenchResult:
         if len(parts) >= 4:
             msg = parts[3].strip()
             code = msg.split()[0] if msg else ""
-            if code and code.startswith(("DOC", "SUM", "PRM", "RTN", "YLD", "RIS")):
+            if code and code.startswith(("CLS", "DOC", "SUM", "PRM", "RTN", "YLD", "RIS")):
                 codes.add(code)
                 count += 1
     result.violation_count = count
@@ -157,7 +222,7 @@ def run_pydoclint(target: Path, runs: int, docstyle: str = "numpy") -> BenchResu
         *PYDOCLINT_ALIGN_OPTS,
         str(target),
     ]
-    result.elapsed_secs, r = _timed_runs(cmd, runs)
+    result.elapsed_secs, result.stddev_secs, result.min_secs, result.max_secs, r = _timed_runs(cmd, runs)
     result.exit_code = r.returncode
 
     codes: set[str] = set()
@@ -178,11 +243,16 @@ def run_pydoclint(target: Path, runs: int, docstyle: str = "numpy") -> BenchResu
 # --- Output formatting ---
 
 
-def fmt_time(secs: list[float]) -> str:
-    if not secs:
-        return "N/A"
-    median = sorted(secs)[len(secs) // 2]
-    return f"{median * 1000:.0f}ms" if median < 1.0 else f"{median:.2f}s"
+def fmt_secs(secs: float) -> str:
+    return f"{secs * 1000:.0f}ms" if secs < 1.0 else f"{secs:.2f}s"
+
+
+def fmt_time(r: BenchResult) -> str:
+    med = median_secs(r.elapsed_secs)
+    s = fmt_secs(med)
+    if r.stddev_secs > 0:
+        s += f" ± {fmt_secs(r.stddev_secs)}"
+    return s
 
 
 def median_secs(secs: list[float]) -> float:
@@ -219,13 +289,13 @@ def print_results(
 
     print("## Execution Speed (median)")
     print()
-    print(f"{'Tool':<20} {'Version':<25} {'Time':>10} {'Relative':>10}")
-    print("-" * 67)
+    print(f"{'Tool':<20} {'Version':<25} {'Time (median ± σ)':>22} {'Relative':>10}")
+    print("-" * 79)
 
     for r in sorted(results, key=lambda x: median_secs(x.elapsed_secs)):
         med = median_secs(r.elapsed_secs)
         rel = f"{med / pydocfix_time:.1f}x" if pydocfix_time > 0 else "N/A"
-        print(f"{r.tool:<20} {r.version:<25} {fmt_time(r.elapsed_secs):>10} {rel:>10}")
+        print(f"{r.tool:<20} {r.version:<25} {fmt_time(r):>22} {rel:>10}")
 
     print()
 
@@ -240,57 +310,6 @@ def print_results(
 
     print()
 
-    # Rule categories
-    print("## Rule Categories Covered")
-    print()
-
-    def categorize(tool: str, code: str) -> str:
-        if tool == "pydocfix":
-            for prefix, cat in [
-                ("SUM", "Summary"),
-                ("DOC", "Docstring"),
-                ("PRM", "Parameters"),
-                ("RTN", "Returns"),
-                ("YLD", "Yields"),
-                ("RIS", "Raises"),
-            ]:
-                if code.startswith(prefix):
-                    return cat
-        elif tool == "pydoclint":
-            for prefix, cat in [
-                ("DOC0", "Docstring"),
-                ("DOC1", "Parameters"),
-                ("DOC2", "Returns"),
-                ("DOC3", "Class"),
-                ("DOC4", "Yields"),
-                ("DOC5", "Raises"),
-                ("DOC6", "Attributes"),
-            ]:
-                if code.startswith(prefix):
-                    return cat
-        return "Other"
-
-    tools = [r.tool for r in results]
-    all_cats: set[str] = set()
-    tool_cat_codes: dict[str, dict[str, set[str]]] = {r.tool: {} for r in results}
-    for r in results:
-        for code in r.rule_codes:
-            cat = categorize(r.tool, code)
-            all_cats.add(cat)
-            tool_cat_codes[r.tool].setdefault(cat, set()).add(code)
-
-    header = f"{'Category':<20}" + "".join(f"{t:>14}" for t in tools)
-    print(header)
-    print("-" * (20 + 14 * len(tools)))
-    for cat in sorted(all_cats):
-        row = f"{cat:<20}"
-        for t in tools:
-            n = len(tool_cat_codes[t].get(cat, set()))
-            row += f"{n:>14}"
-        print(row)
-
-    print()
-
     # Detected rule codes per tool
     print("## Detected Rule Codes")
     print()
@@ -299,26 +318,80 @@ def print_results(
         print(f"  {r.tool}: {', '.join(codes) if codes else '(none)'}")
     print()
 
-    # Feature comparison
-    print("## Feature Comparison")
-    print()
-    print(f"{'Feature':<35} {'pydocfix':>12} {'pydoclint':>12}")
-    print("-" * 61)
 
-    features = {
-        "Auto-fix (safe)": ("Yes", "No"),
-        "Auto-fix (unsafe)": ("Yes", "No"),
-        "Google style": ("Yes", "Yes"),
-        "NumPy style": ("Yes", "Yes"),
-        "Param type checking": ("Yes", "Yes"),
-        "Return type checking": ("Yes", "Yes"),
-        "Yield checking": ("Yes", "Yes"),
-        "Raises checking": ("Yes", "Yes"),
-        "Default value checking": ("Yes", "No"),
-        "Iterative fix loop": ("Yes", "No"),
-    }
-    for feat, (a, b) in features.items():
-        print(f"{feat:<35} {a:>12} {b:>12}")
+@dataclass
+class TargetBenchResult:
+    """Aggregated benchmark results for one target."""
+
+    target_name: str
+    scan_path: Path
+    py_files: int
+    py_lines: int
+    parallel: BenchResult
+    single: BenchResult
+    pydoclint: BenchResult
+
+
+def print_readme_section(
+    targets: list[TargetBenchResult],
+    bench_runs: int,
+) -> None:
+    """Print README-ready markdown tables (parallel + single-thread) to stdout."""
+
+    def fmt(secs: float) -> str:
+        return f"{secs:.2f} sec"
+
+    def spdup(fix: float, ref: float) -> str:
+        return f"**{ref / fix:.1f}x**"
+
+    def speed_row(t: TargetBenchResult, secs: float, pdl: float) -> str:
+        lines_k = f"{round(t.py_lines / 1000)}K"
+        url = OSS_REPOS.get(t.target_name, "#").removesuffix(".git")
+        return (
+            f"| [{t.target_name}]({url}) | {t.py_files} | {lines_k} | {fmt(secs)} | {fmt(pdl)} | {spdup(secs, pdl)} |"
+        )
+
+    def violation_row(t: TargetBenchResult) -> str:
+        url = OSS_REPOS.get(t.target_name, "#").removesuffix(".git")
+        return f"| [{t.target_name}]({url}) | {t.parallel.violation_count:,} | {t.pydoclint.violation_count:,} |"
+
+    print()
+    print("=" * 80)
+    print("  README Markdown (copy-paste ready)")
+    print("=" * 80)
+    print()
+    print("#### Parallel (default, auto-detected cores \u2014 10-core machine)")
+    print()
+    print("| Project | Files | Lines | pydocfix | pydoclint | Speedup |")
+    print("|---------|------:|------:|---------:|----------:|--------:|")
+    for t in targets:
+        print(speed_row(t, median_secs(t.parallel.elapsed_secs), median_secs(t.pydoclint.elapsed_secs)))
+    print()
+    print("#### Single-threaded (`--jobs 1`)")
+    print()
+    print("| Project | Files | Lines | pydocfix | pydoclint | Speedup |")
+    print("|---------|------:|------:|---------:|----------:|--------:|")
+    for t in targets:
+        print(speed_row(t, median_secs(t.single.elapsed_secs), median_secs(t.pydoclint.elapsed_secs)))
+    print()
+    print(f"> Median of {bench_runs} runs (+ {WARMUP_RUNS} warmup). pydoclint runs single-threaded only.")
+    print()
+    print("#### Violations detected")
+    print()
+    print("| Project | pydocfix | pydoclint |")
+    print("|---------|------:|------:|")
+    for t in targets:
+        print(violation_row(t))
+    print()
+    print("## Violations (detail)")
+    for t in targets:
+        print(
+            f"  [{t.target_name}] pydocfix:  {t.parallel.violation_count:,} ({len(t.parallel.rule_codes)} unique rules)"
+        )
+        print(
+            f"  [{t.target_name}] pydoclint: {t.pydoclint.violation_count:,} "
+            f"({len(t.pydoclint.rule_codes)} unique rules)"
+        )
     print()
 
 
@@ -330,12 +403,28 @@ def clone_repo(name: str, tmp_dir: Path) -> Path:
     return dest
 
 
+def _resolve_target(target_arg: str, tmp_dir: Path) -> tuple[Path, Path]:
+    """Resolve a target name/path to (repo_path, scan_path). Clones if needed."""
+    target_path = Path(target_arg)
+    if target_path.is_dir():
+        return target_path, find_python_src(target_path)
+    if target_arg in OSS_REPOS:
+        repo_path = clone_repo(target_arg, tmp_dir)
+        return repo_path, find_python_src(repo_path)
+    print(f"Unknown target: {target_arg}", file=sys.stderr)
+    print(f"Available: {', '.join(OSS_REPOS.keys())} or a local path", file=sys.stderr)
+    sys.exit(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Benchmark pydocfix against other linters")
     parser.add_argument(
         "--target",
         default=None,
-        help="OSS project name or path to local project (default depends on --docstyle)",
+        help=(
+            "Comma-separated OSS project names or local paths "
+            "(e.g. numpy,scikit-learn). Defaults to the style's canonical target."
+        ),
     )
     parser.add_argument(
         "--runs",
@@ -353,45 +442,52 @@ def main() -> None:
     bench_runs: int = args.runs
     docstyle: str = args.docstyle
 
-    target_arg: str = args.target or STYLE_DEFAULT_TARGET[docstyle]
+    raw_targets = args.target or STYLE_DEFAULT_TARGET[docstyle]
+    target_args = [t.strip() for t in raw_targets.split(",") if t.strip()]
 
-    target_path = Path(target_arg)
-    tmp_dir: Path | None = None
-
-    if target_path.is_dir():
-        scan_path = find_python_src(target_path)
-    elif target_arg in OSS_REPOS:
-        tmp = tempfile.mkdtemp(prefix="pydocfix_bench_")
-        tmp_dir = Path(tmp)
-        repo_path = clone_repo(target_arg, tmp_dir)
-        scan_path = find_python_src(repo_path)
-    else:
-        print(f"Unknown target: {target_arg}", file=sys.stderr)
-        print(
-            f"Available: {', '.join(OSS_REPOS.keys())} or a local path",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    py_files, py_lines = count_python_files(scan_path)
-    print(f"Target: {target_arg} ({scan_path})")
-    print(f"Docstyle: {docstyle}")
-    print(f"Python files: {py_files:,} | Lines: {py_lines:,}")
-    print()
+    tmp_dir = Path(tempfile.mkdtemp(prefix="pydocfix_bench_"))
+    all_target_results: list[TargetBenchResult] = []
 
     try:
-        results: list[BenchResult] = []
+        for target_arg in target_args:
+            _, scan_path = _resolve_target(target_arg, tmp_dir)
+            py_files, py_lines = count_python_files(scan_path)
+            print(f"Target: {target_arg} ({scan_path})")
+            print(f"Docstyle: {docstyle}")
+            print(f"Python files: {py_files:,} | Lines: {py_lines:,}")
+            print()
 
-        print("Running pydocfix ...")
-        results.append(run_pydocfix(scan_path, bench_runs))
+            results: list[BenchResult] = []
 
-        print("Running pydoclint ...")
-        results.append(run_pydoclint(scan_path, bench_runs, docstyle=docstyle))
+            print(f"[{target_arg}] Running pydocfix (parallel) ...")
+            parallel_fix = run_pydocfix(scan_path, bench_runs)
+            results.append(parallel_fix)
 
-        print_results(results, scan_path, bench_runs, docstyle=docstyle)
+            print(f"[{target_arg}] Running pydocfix (--jobs 1) ...")
+            single_fix = run_pydocfix(scan_path, bench_runs, jobs=1)
+
+            print(f"[{target_arg}] Running pydoclint ...")
+            pydoclint_res = run_pydoclint(scan_path, bench_runs, docstyle=docstyle)
+            results.append(pydoclint_res)
+
+            print_results(results, scan_path, bench_runs, docstyle=docstyle)
+
+            all_target_results.append(
+                TargetBenchResult(
+                    target_name=target_arg,
+                    scan_path=scan_path,
+                    py_files=py_files,
+                    py_lines=py_lines,
+                    parallel=parallel_fix,
+                    single=single_fix,
+                    pydoclint=pydoclint_res,
+                )
+            )
+
+        print_readme_section(all_target_results, bench_runs)
 
     finally:
-        if tmp_dir and tmp_dir.exists():
+        if tmp_dir.exists():
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
 

@@ -12,14 +12,8 @@ from pydocstring import (
     NumPySectionKind,
 )
 
-from pydocfix.rules._base import (
-    Applicability,
-    BaseRule,
-    DiagnoseContext,
-    Diagnostic,
-    Edit,
-    Fix,
-)
+from pydocfix.diagnostics import Applicability, Diagnostic, Edit, Fix
+from pydocfix.rules._base import BaseCtx, ClassCtx, FunctionCtx, make_diagnostic, rule
 
 # Canonical section order for Google-style docstrings.
 # Sections not in this list (UNKNOWN) sort to the end.
@@ -123,89 +117,79 @@ def _section_clean_end(section_bytes: bytes) -> int:
     return clean_end
 
 
-class DOC001(BaseRule):
+@rule("DOC001", ctx_types=frozenset({FunctionCtx, ClassCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring}))
+def doc001(node: GoogleDocstring | NumPyDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Docstring sections are not in canonical order."""
+    root = node
+    if isinstance(root, GoogleDocstring):
+        order = _GOOGLE_ORDER
+    elif isinstance(root, NumPyDocstring):
+        order = _NUMPY_ORDER
+    else:
+        return
 
-    code = "DOC001"
-    message = "Docstring sections are not in canonical order."
-    enabled_by_default = True
-    target_kinds = frozenset({
-        GoogleDocstring,
-        NumPyDocstring,
-    })
+    sections = root.sections
+    if len(sections) < 2:
+        return  # nothing to reorder
 
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        root = ctx.target_cst
-        if isinstance(root, GoogleDocstring):
-            order = _GOOGLE_ORDER
-        elif isinstance(root, NumPyDocstring):
-            order = _NUMPY_ORDER
-        else:
-            return
+    current_keys = [_order_key(s.section_kind, order) for s in sections]
+    sorted_keys = sorted(current_keys)
+    if current_keys == sorted_keys:
+        return  # already in canonical order
 
-        sections = root.sections
-        if len(sections) < 2:
-            return  # nothing to reorder
+    ds_bytes = ctx.docstring_text.encode("utf-8")
 
-        current_keys = [_order_key(s.section_kind, order) for s in sections]
-        sorted_keys = sorted(current_keys)
-        if current_keys == sorted_keys:
-            return  # already in canonical order
+    # Sort sections by canonical order; for equal keys (e.g. two UNKNOWN
+    # sections), preserve their original relative order via the enumerate
+    # index.
+    sorted_indexed = sorted(
+        enumerate(sections),
+        key=lambda x: (_order_key(x[1].section_kind, order), x[0]),
+    )
+    sorted_sections = [s for _, s in sorted_indexed]
 
-        ds_bytes = ctx.docstring_text.encode("utf-8")
+    # Build a single Edit covering the entire section block
+    # (from the first section's start to the last section's end).
+    #
+    # For each section, only its "clean" text (up to the last entry-depth
+    # line) is moved.  Any trailing content absorbed by the parser at
+    # shallower indent (stray lines without a blank-line separator) stays
+    # at its original byte position by being included in the inter-section
+    # gap rather than travelling with the section.
+    #
+    # Using one Edit instead of per-slot edits ensures DOC001's edit
+    # geometrically overlaps any edit from other rules (e.g. RIS005) that
+    # touch the same section block, so that the overlap detector serialises
+    # them across iterations rather than applying both simultaneously.
+    n = len(sections)
+    # clean_end byte (absolute) for each section: end of last entry-depth line
+    clean_ends = [
+        sections[i].range.start + _section_clean_end(ds_bytes[sections[i].range.start : sections[i].range.end])
+        for i in range(n)
+    ]
+    # Gaps between sections: from clean_end[i] to sections[i+1].range.start
+    gaps = [ds_bytes[clean_ends[i] : sections[i + 1].range.start].decode("utf-8") for i in range(n - 1)]
 
-        # Sort sections by canonical order; for equal keys (e.g. two UNKNOWN
-        # sections), preserve their original relative order via the enumerate
-        # index.
-        sorted_indexed = sorted(
-            enumerate(sections),
-            key=lambda x: (_order_key(x[1].section_kind, order), x[0]),
-        )
-        sorted_sections = [s for _, s in sorted_indexed]
+    # Reconstruct the full section block in sorted order, preserving gaps.
+    parts: list[str] = []
+    for i, src_section in enumerate(sorted_sections):
+        src_bytes = ds_bytes[src_section.range.start : src_section.range.end]
+        clean_len = _section_clean_end(src_bytes)
+        parts.append(src_bytes[:clean_len].decode("utf-8"))
+        if i < n - 1:
+            parts.append(gaps[i])
 
-        # Build a single Edit covering the entire section block
-        # (from the first section's start to the last section's end).
-        #
-        # For each section, only its "clean" text (up to the last entry-depth
-        # line) is moved.  Any trailing content absorbed by the parser at
-        # shallower indent (stray lines without a blank-line separator) stays
-        # at its original byte position by being included in the inter-section
-        # gap rather than travelling with the section.
-        #
-        # Using one Edit instead of per-slot edits ensures DOC001's edit
-        # geometrically overlaps any edit from other rules (e.g. RIS005) that
-        # touch the same section block, so that the overlap detector serialises
-        # them across iterations rather than applying both simultaneously.
-        n = len(sections)
-        # clean_end byte (absolute) for each section: end of last entry-depth line
-        clean_ends = [
-            sections[i].range.start + _section_clean_end(ds_bytes[sections[i].range.start : sections[i].range.end])
-            for i in range(n)
-        ]
-        # Gaps between sections: from clean_end[i] to sections[i+1].range.start
-        gaps = [
-            ds_bytes[clean_ends[i] : sections[i + 1].range.start].decode("utf-8")
-            for i in range(n - 1)
-        ]
+    new_text = "".join(parts)
+    fix = Fix(
+        edits=[Edit(start=sections[0].range.start, end=sections[-1].range.end, new_text=new_text)],
+        applicability=Applicability.UNSAFE,
+    )
 
-        # Reconstruct the full section block in sorted order, preserving gaps.
-        parts: list[str] = []
-        for i, src_section in enumerate(sorted_sections):
-            src_bytes = ds_bytes[src_section.range.start : src_section.range.end]
-            clean_len = _section_clean_end(src_bytes)
-            parts.append(src_bytes[:clean_len].decode("utf-8"))
-            if i < n - 1:
-                parts.append(gaps[i])
-
-        new_text = "".join(parts)
-        fix = Fix(
-            edits=[Edit(start=sections[0].range.start, end=sections[-1].range.end, new_text=new_text)],
-            applicability=Applicability.UNSAFE,
-        )
-
-        # Report at the first section whose position differs from the sorted
-        # order, so the user can see exactly where the disorder begins.
-        first_wrong = next(
-            sections[i] for i, (actual, expected) in enumerate(zip(sections, sorted_sections)) if actual is not expected
-        )
-        yield self._make_diagnostic(ctx, self.message, fix=fix, target=first_wrong)
+    # Report at the first section whose position differs from the sorted
+    # order, so the user can see exactly where the disorder begins.
+    first_wrong = next(
+        sections[i]
+        for i, (actual, expected) in enumerate(zip(sections, sorted_sections, strict=False))
+        if actual is not expected
+    )
+    yield make_diagnostic("DOC001", ctx, "Docstring sections are not in canonical order.", fix=fix, target=first_wrong)

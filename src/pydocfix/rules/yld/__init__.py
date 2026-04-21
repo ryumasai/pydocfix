@@ -1,23 +1,23 @@
 """Yield-related linting rules (YLD0xx, YLD1xx)."""
 
-from pydocfix.rules.yld.yld001 import YLD001
-from pydocfix.rules.yld.yld002 import YLD002
-from pydocfix.rules.yld.yld003 import YLD003
-from pydocfix.rules.yld.yld101 import YLD101
-from pydocfix.rules.yld.yld102 import YLD102
-from pydocfix.rules.yld.yld103 import YLD103
-from pydocfix.rules.yld.yld104 import YLD104
-from pydocfix.rules.yld.yld105 import YLD105
-from pydocfix.rules.yld.yld106 import YLD106
+from pydocfix.rules.yld.yld001 import yld001
+from pydocfix.rules.yld.yld002 import yld002
+from pydocfix.rules.yld.yld003 import yld003
+from pydocfix.rules.yld.yld101 import yld101
+from pydocfix.rules.yld.yld102 import yld102
+from pydocfix.rules.yld.yld103 import yld103
+from pydocfix.rules.yld.yld104 import yld104
+from pydocfix.rules.yld.yld105 import yld105
+from pydocfix.rules.yld.yld106 import yld106
 
 __all__ = [
-    "YLD001",
-    "YLD002",
-    "YLD003",
-    "YLD101",
-    "YLD102",
-    "YLD103",
-    "YLD104",
-    "YLD105",
-    "YLD106",
+    "yld001",
+    "yld002",
+    "yld003",
+    "yld101",
+    "yld102",
+    "yld103",
+    "yld104",
+    "yld105",
+    "yld106",
 ]

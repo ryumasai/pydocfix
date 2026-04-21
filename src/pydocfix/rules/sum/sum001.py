@@ -6,32 +6,26 @@ from collections.abc import Iterator
 
 from pydocstring import GoogleDocstring, NumPyDocstring, PlainDocstring
 
-from pydocfix.rules._base import BaseRule, DiagnoseContext, Diagnostic
+from pydocfix.diagnostics import Diagnostic
+from pydocfix.rules._base import BaseCtx, ClassCtx, FunctionCtx, ModuleCtx, make_diagnostic, rule
 
 
-class SUM001(BaseRule):
+def _has_summary(root: GoogleDocstring | NumPyDocstring | PlainDocstring) -> bool:
+    """Return True if the docstring contains a non-empty summary token."""
+    if root.summary is None:
+        return False
+    text = root.summary.text
+    return bool(text and text.strip())
+
+
+@rule(
+    "SUM001",
+    ctx_types=frozenset({FunctionCtx, ClassCtx, ModuleCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring, PlainDocstring}),
+)
+def sum001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: BaseCtx) -> Iterator[Diagnostic]:
     """Docstring has no summary line."""
-
-    code = "SUM001"
-    message = "Docstring has no summary line."
-    target_kinds = frozenset({
-        GoogleDocstring,
-        NumPyDocstring,
-        PlainDocstring,
-    })
-
-    @staticmethod
-    def _has_summary(root: GoogleDocstring | NumPyDocstring | PlainDocstring) -> bool:
-        """Return True if the docstring contains a non-empty summary token."""
-        if root.summary is None:
-            return False
-        text = root.summary.text
-        return bool(text and text.strip())
-
-    def diagnose(self, ctx: DiagnoseContext) -> Iterator[Diagnostic]:
-        root = ctx.target_cst
-        if not isinstance(root, (GoogleDocstring, NumPyDocstring, PlainDocstring)):
-            return
-        if self._has_summary(root):
-            return
-        yield self._make_diagnostic(ctx, self.message, target=root)
+    root = node
+    if _has_summary(root):
+        return
+    yield make_diagnostic("SUM001", ctx, "Docstring has no summary line.", target=root)
