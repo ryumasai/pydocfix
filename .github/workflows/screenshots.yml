@@ -13,16 +13,23 @@ permissions:
 jobs:
   screenshots:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/charmbracelet/vhs
 
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Install pydocfix
+        run: pip install -e .
+
+      - name: Install VHS and dependencies
         run: |
-          apt-get update && apt-get install -y git python3 python3-pip
-          pip install -e . --break-system-packages
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
+          sudo apt-get update && sudo apt-get install -y vhs ffmpeg ttyd
 
       - name: Generate diagnostic screenshot
         run: vhs docs/tapes/diagnostic.tape
