@@ -53,7 +53,12 @@ def example001(node: GoogleDocstring | NumPyDocstring | PlainDocstring, ctx: Bas
         )
 
 
-@rule("EXAMPLE002", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleDocstring, NumPyDocstring}), enabled_by_default=False)
+@rule(
+    "EXAMPLE002",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleDocstring, NumPyDocstring}),
+    enabled_by_default=False,
+)
 def example002(node: GoogleDocstring | NumPyDocstring, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Example rule: Require Examples section for public functions.
 
@@ -85,7 +90,12 @@ def example002(node: GoogleDocstring | NumPyDocstring, ctx: FunctionCtx) -> Iter
         )
 
 
-@rule("EXAMPLE003", ctx_types=frozenset({FunctionCtx}), cst_types=frozenset({GoogleDocstring}), enabled_by_default=False)
+@rule(
+    "EXAMPLE003",
+    ctx_types=frozenset({FunctionCtx}),
+    cst_types=frozenset({GoogleDocstring}),
+    enabled_by_default=False,
+)
 def example003(node: GoogleDocstring, ctx: FunctionCtx) -> Iterator[Diagnostic]:
     """Example rule with auto-fix: Add TODO marker for incomplete docstrings."""
     if node.summary is None:
